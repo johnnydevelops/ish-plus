@@ -135,6 +135,13 @@ public final class VirtualMachine: NSObject {
     private let lock = NSLock()
     typealias ConsoleResize = @convention(c) (UnsafePointer<CChar>, Int32, Int32) -> Int32
     private var consoleResize: ConsoleResize?
+    typealias ShareOwner = @convention(c) (Int32, Int32) -> Void
+    private var shareOwner: ShareOwner?
+
+    /// Who owns files added to the share from iOS, in the guest.
+    func setShareOwner(uid: Int32, gid: Int32) {
+        shareOwner?(uid, gid)
+    }
     /// Last size of each console; sent once QEMU is initialized.
     private var consoleSizes: [Int: (Int, Int)] = [:]
     private var resizeReady = false
@@ -259,6 +266,9 @@ public final class VirtualMachine: NSObject {
         if let symbol = dlsym(handle, "ishplus_console_resize") {
             consoleResize = unsafeBitCast(symbol, to: ConsoleResize.self)
         }
+        if let symbol = dlsym(handle, "ishplus_9p_set_owner") {
+            shareOwner = unsafeBitCast(symbol, to: ShareOwner.self)
+        }
 
         try? FileManager.default.removeItem(at: socketDirectory)
         try FileManager.default.createDirectory(at: socketDirectory, withIntermediateDirectories: true)
@@ -299,6 +309,7 @@ public final class VirtualMachine: NSObject {
         thread.qualityOfService = .userInteractive
         thread.start()
         isRunning = true
+        GuestServices.shared.start()
         scheduleDiagnostics()
         if installing { watchInstallation() }
     }
@@ -453,6 +464,8 @@ public final class VirtualMachine: NSObject {
             args += ["-drive", "if=none,file=\(file("autorun.sh")),format=raw,id=autorun,readonly=on",
                      "-device", "virtio-blk-pci,drive=autorun,serial=ishplus-autorun"]
         }
+        // The Files app share, the clipboard and Shortcuts' commands
+        args += GuestServices.shared.qemuArguments(socketDirectory: socketDirectory)
         for i in 0..<VirtualMachine.consoleCount {
             args += ["-chardev", "socket,id=con\(i),path=\(socketPath(i)),server=on,wait=off",
                      "-device", "virtconsole,id=vcon\(i),chardev=con\(i),name=org.ishplus.console.\(i)"]

@@ -26,6 +26,26 @@ $B ifconfig lo up
 $B ifconfig eth0 up 2>/dev/null
 $B udhcpc -b -q -n -t 5 -i eth0 -s $S/boot/udhcpc.script >/dev/null 2>&1
 [ -x $S/init.sh ] && $S/init.sh
+# The Files app share: iSH+'s Documents/Shared folder, at /mnt/ios, and as
+# iOS in the user's home
+$B modprobe -q 9pnet_virtio; $B modprobe -q 9p
+$B mkdir -p /mnt/ios
+$B mount -t 9p -o trans=virtio,version=9p2000.L,msize=1048576,cache=mmap ishplus-share /mnt/ios 2>/dev/null
+user=$($B cat /etc/ishplus/user 2>/dev/null)
+home=/root
+[ -n "$user" ] && home=$($B awk -F: -v u="$user" '$1 == u { print $6 }' /etc/passwd)
+# Files added to the share from iOS belong to the user
+. $S/boot/port.sh
+if P=$(port org.ishplus.clipboard); then
+    owner=${user:-root}
+    printf 'U %s %s\n' "$($B id -u "$owner")" "$($B id -g "$owner")" > "$P"
+fi
+if [ -d "$home" ] && [ ! -e "$home/iOS" ]; then
+    $B ln -s /mnt/ios "$home/iOS"
+    [ -n "$user" ] && $B chown -h "$user:" "$home/iOS"
+fi
+# Commands sent by iSH+ (Shortcuts)
+$B sh $S/boot/exec-agent.sh &
 # Developer hook: run a script attached as a disk (serial "ishplus-autorun"),
 # with its output on the serial port (serial.log).
 for serial in /sys/block/vd*/serial; do

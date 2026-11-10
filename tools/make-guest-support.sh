@@ -80,7 +80,36 @@ cp "$(apk_fetch e2fsprogs)/sbin/mke2fs" "$stage/sbin/mke2fs"
 for p in e2fsprogs-libs libcom_err libblkid libuuid libeconf; do
     find "$(apk_fetch $p)" -name "*.so.*" -exec cp -L {} "$stage/lib/musl/" \;
 done
-cp "$ROOT/tools/guest/boot/main.sh" "$ROOT/tools/guest/boot/shell.sh" "$ROOT/tools/guest/boot/udhcpc.script" "$stage/boot/"
+cp "$ROOT/tools/guest/boot/main.sh" "$ROOT/tools/guest/boot/shell.sh" "$ROOT/tools/guest/boot/udhcpc.script" \
+   "$ROOT/tools/guest/boot/port.sh" "$ROOT/tools/guest/boot/exec-agent.sh" "$stage/boot/"
+# The iOS clipboard (like macOS's commands), through iSH+
+cat > "$stage/commands/pbcopy" <<'EOF'
+#!/bin/sh
+# Copies standard input to the iOS clipboard.
+B=/opt/ishplus/bin/busybox
+. /opt/ishplus/boot/port.sh
+P=$(port org.ishplus.clipboard) || { echo "pbcopy: the clipboard is not available" >&2; exit 1; }
+t=$($B mktemp); trap '$B rm -f "$t"' EXIT
+$B cat > "$t"
+(
+    $B flock 9
+    { printf 'C %s\n' "$($B wc -c < "$t")"; $B cat "$t"; } > "$P"
+) 9>/run/ishplus-clipboard.lock
+EOF
+cat > "$stage/commands/pbpaste" <<'EOF'
+#!/bin/sh
+# Prints the iOS clipboard's text.
+B=/opt/ishplus/bin/busybox
+. /opt/ishplus/boot/port.sh
+P=$(port org.ishplus.clipboard) || { echo "pbpaste: the clipboard is not available" >&2; exit 1; }
+(
+    $B flock 9
+    exec 3<>"$P"
+    printf 'P\n' >&3
+    read -r length <&3
+    [ "$length" -gt 0 ] 2>/dev/null && $B head -c "$length" <&3
+) 9>/run/ishplus-clipboard.lock
+EOF
 
 # FEX
 unpack_deb "$(fetch "$FEX_PPA/$FEX_DEB" "$FEX_SHA256")" "$WORK/debs/fex"

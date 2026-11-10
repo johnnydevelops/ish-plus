@@ -67,6 +67,19 @@ create_user() {
     [ -n "$user" ] || return 0
     case "$user" in *[!a-z0-9_-]*|[!a-z_]*|root) say "invalid user name"; return 0;; esac
     say "creating the user $user"
+    # Accounts some images come with for cloud setups (Ubuntu's "ubuntu"),
+    # replaced by the user's own
+    for stock in ubuntu; do
+        [ "$stock" = "$user" ] && continue
+        grep -q "^$stock:" $R/etc/passwd || continue
+        for f in passwd shadow group gshadow; do
+            [ -e $R/etc/$f ] || continue
+            awk -F: -v OFS=: -v u="$stock" '$1 != u { if (NF >= 4) { n = split($4, m, ","); $4 = ""; for (i = 1; i <= n; i++) if (m[i] != u) $4 = ($4 == "" ? m[i] : $4 "," m[i]) } print }' \
+                $R/etc/$f > $R/etc/$f.new
+            cat $R/etc/$f.new > $R/etc/$f; rm $R/etc/$f.new
+        done
+        rm -rf "$R/home/$stock" "$R/etc/sudoers.d/90-cloud-init-users"
+    done
     if ! grep -q "^$user:" $R/etc/passwd; then
         id=1000
         while cut -d: -f3 $R/etc/passwd | grep -qx $id || cut -d: -f3 $R/etc/group | grep -qx $id; do
