@@ -23,3 +23,5 @@ e2e_out/
 /build-qemu/
 /build-guest/
 /deps/StikJIT/
+/ffi/rppairing/target/
+/build-rppairing/

@@ -114,6 +114,7 @@
 		4F15F87C7B8C9EADA4797559 /* DistrosViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A650484A8360D2669C1C3344 /* DistrosViewController.swift */; };
 		513374B37BBB25AEC8C621C8 /* DistroManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3ECFE55CA115CDF5C60459 /* DistroManager.swift */; };
 		54051DB41170AF9C3C0E2C5C /* VirtualMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08EFD7D513BBE4A4DB86DC3E /* VirtualMachine.swift */; };
+		611DBAE48BB21E277E429F6A /* OnDevicePairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C9D381ABA749D43BCE9377 /* OnDevicePairing.swift */; };
 		62A737F846F8EF35046F8491 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 599290A47C2DDDD7A435DFA3 /* Foundation.framework */; };
 		63A76CAC87E1FE87EACBF434 /* libqemu-aarch64-softmmu.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = DF4620D19DC63C97C4EDA00A /* libqemu-aarch64-softmmu.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		68FD8AD22DA4B3320B7ECE3A /* JITHelperLauncher.m in Sources */ = {isa = PBXBuildFile; fileRef = 9607608D73FBB17969CF5E8A /* JITHelperLauncher.m */; };
@@ -261,6 +262,7 @@
 		BBFB55662158644C00DFE6DE /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = BBFB55652158644C00DFE6DE /* libresolv.tbd */; };
 		C5BA678EA73D1B1E22A34A86 /* JITHelperHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6234104F5D7ECA6A9B59D3 /* JITHelperHandler.swift */; };
 		C876B13D90AE2041533295F4 /* OnboardingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31C1FD4EDA1E80CCD8B66426 /* OnboardingViewController.swift */; };
+		D6D89CB8E65064A68AC6FDDB /* OnDevicePairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C9D381ABA749D43BCE9377 /* OnDevicePairing.swift */; };
 		DBED49CEC16EC9FC22DE2A12 /* JITProbe.c in Sources */ = {isa = PBXBuildFile; fileRef = A1D5D57A854E74B275EE46AB /* JITProbe.c */; };
 		E06E1BD62396B4106039C4AB /* SwiftLinkage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A891C9AEEDBFA1130B28128 /* SwiftLinkage.swift */; };
 		E4ABA6762629329C8F07E452 /* libqemu-aarch64-softmmu-tci.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = 477E1313748964CA68B92D2A /* libqemu-aarch64-softmmu-tci.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
@@ -642,6 +644,7 @@
 		6A6234104F5D7ECA6A9B59D3 /* JITHelperHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = JITHelperHandler.swift; sourceTree = "<group>"; };
 		6F3ECFE55CA115CDF5C60459 /* DistroManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DistroManager.swift; sourceTree = "<group>"; };
 		81BD35790524254A633600D3 /* StikJIT.xcframework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.xcframework; name = StikJIT.xcframework; path = deps/StikJIT/StikJIT.xcframework; sourceTree = SOURCE_ROOT; };
+		85C9D381ABA749D43BCE9377 /* OnDevicePairing.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnDevicePairing.swift; sourceTree = "<group>"; };
 		8632A7BD219A59FB00F02325 /* UserPreferences.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UserPreferences.h; sourceTree = "<group>"; };
 		8632A7BE219A59FB00F02325 /* UserPreferences.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UserPreferences.m; sourceTree = "<group>"; };
 		9607608D73FBB17969CF5E8A /* JITHelperLauncher.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = JITHelperLauncher.m; sourceTree = "<group>"; };
@@ -1200,6 +1203,7 @@
 				6F3ECFE55CA115CDF5C60459 /* DistroManager.swift */,
 				A650484A8360D2669C1C3344 /* DistrosViewController.swift */,
 				E6D2D852F3D9B73E99D70407 /* DistroSetupViewController.swift */,
+				85C9D381ABA749D43BCE9377 /* OnDevicePairing.swift */,
 			);
 			path = app;
 			sourceTree = "<group>";
@@ -1606,6 +1610,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = BB792B661F96D90D00FFB7A4 /* Build configuration list for PBXNativeTarget "iSH" */;
 			buildPhases = (
+				C649C671202ED6DEFF8DAECE /* Build On-Device Pairing */,
 				BB21A17826890A5B00BD19B4 /* Sources */,
 				BB792B4D1F96D90D00FFB7A4 /* Frameworks */,
 				BBF1248B1FA7BF530088FB50 /* Download Root */,
@@ -2242,6 +2247,27 @@
 			shellPath = /bin/sh;
 			shellScript = "mkdir -p \"$CONFIGURATION_BUILD_DIR\"\nln -sf \"$MESON_BUILD_DIR/$PRODUCT_NAME.a\" \"$CONFIGURATION_BUILD_DIR\"\n";
 		};
+		C649C671202ED6DEFF8DAECE /* Build On-Device Pairing */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/ffi/rppairing/src/lib.rs",
+				"$(SRCROOT)/ffi/rppairing/Cargo.toml",
+			);
+			name = "Build On-Device Pairing";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/build-rppairing/libishplus_rppairing.a",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Rust library for pairing with this device (ffi/rppairing)\n\"$SRCROOT/tools/build-rppairing.sh\"\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -2426,6 +2452,7 @@
 				43B0A9C57F9394AD1D099B10 /* DistroManager.swift in Sources */,
 				8AD89A3688A7BF36D7204254 /* DistrosViewController.swift in Sources */,
 				1884D9B2B02CFCE4F96BC38B /* DistroSetupViewController.swift in Sources */,
+				D6D89CB8E65064A68AC6FDDB /* OnDevicePairing.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2478,6 +2505,7 @@
 				513374B37BBB25AEC8C621C8 /* DistroManager.swift in Sources */,
 				4F15F87C7B8C9EADA4797559 /* DistrosViewController.swift in Sources */,
 				7C170B0049C15E6B6456497A /* DistroSetupViewController.swift in Sources */,
+				611DBAE48BB21E277E429F6A /* OnDevicePairing.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2846,6 +2874,10 @@
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
 				DEVELOPMENT_TEAM = P6W2HPMYUF;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(SRCROOT)/build-rppairing/libishplus_rppairing.a",
+				);
 				SWIFT_VERSION = 5.0;
 			};
 			name = "Debug-ApplePleaseFixFB19282108";
@@ -2855,6 +2887,10 @@
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
 				DEVELOPMENT_TEAM = P6W2HPMYUF;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(SRCROOT)/build-rppairing/libishplus_rppairing.a",
+				);
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -2872,6 +2908,10 @@
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
 				DEVELOPMENT_TEAM = P6W2HPMYUF;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(SRCROOT)/build-rppairing/libishplus_rppairing.a",
+				);
 				SWIFT_VERSION = 5.0;
 			};
 			name = DebugLinux;
@@ -3144,6 +3184,10 @@
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
 				DEVELOPMENT_TEAM = P6W2HPMYUF;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(SRCROOT)/build-rppairing/libishplus_rppairing.a",
+				);
 				SWIFT_VERSION = 5.0;
 			};
 			name = ReleaseLinux;

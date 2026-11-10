@@ -178,6 +178,8 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
     }
 
     private var distroChosen = false
+    /// Progress of pairing on this device, shown on the pairing step.
+    private var pairingStatus: String?
 
     @objc private func distrosChanged() {
         guard steps[index].kind == .distro else { return }
@@ -190,23 +192,34 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
     }
 
     private func updateStatus() {
-        statusLabel.isHidden = true
-        if steps[index].kind == .distro, let distro = DistroManager.shared.distros.last {
-            statusLabel.isHidden = false
-            statusLabel.textColor = .secondaryLabel
-            if let download = DistroManager.shared.downloads[distro.id] {
-                let percent = Int(download.fraction * 100)
-                statusLabel.text = download.verifying ? "\(distro.title): checking the download…"
-                    : "\(distro.title): downloading… \(percent)%"
-            } else {
-                statusLabel.textColor = .systemGreen
-                statusLabel.text = "\(distro.title) is ready."
+        // Work out the final state, then apply it once: setting isHidden on
+        // a stack view's subview more than once while animating can leave
+        // it in the wrong state.
+        var status: (String, UIColor)?
+        switch steps[index].kind {
+        case .distro:
+            if let distro = DistroManager.shared.distros.last {
+                if let download = DistroManager.shared.downloads[distro.id] {
+                    let percent = Int(download.fraction * 100)
+                    status = (download.verifying ? "\(distro.title): checking the download…"
+                              : "\(distro.title): downloading… \(percent)%", .secondaryLabel)
+                } else {
+                    status = ("\(distro.title) is ready.", .systemGreen)
+                }
             }
+        case .pairing:
+            if let pairingStatus {
+                status = (pairingStatus, .secondaryLabel)
+            } else if Onboarding.hasPairing {
+                status = ("Paired. A pairing file is installed.", .systemGreen)
+            }
+        default:
+            break
         }
-        if steps[index].kind == .pairing && Onboarding.hasPairing {
-            statusLabel.isHidden = false
-            statusLabel.textColor = .systemGreen
-            statusLabel.text = "Paired. A pairing file is installed."
+        statusLabel.text = status?.0
+        statusLabel.textColor = status?.1 ?? .secondaryLabel
+        if statusLabel.isHidden != (status == nil) {
+            statusLabel.isHidden = status == nil
         }
     }
 
@@ -221,6 +234,8 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
                     makeButton("Get LocalDevVPN", prominent: false) {
                         if let url = URL(string: "itms-apps://apps.apple.com/search?term=LocalDevVPN") { UIApplication.shared.open(url) }
                     }]
+        case .pairing where pairing:
+            return [makeButton("Cancel Pairing", prominent: false) { OnDevicePairing.cancel() }]
         case .pairing:
             var list = [makeButton("Import Pairing File…", prominent: !Onboarding.hasPairing) { [weak self] in self?.importPairingFile() },
                         makeButton("Pair With This Device", prominent: false) { [weak self] in self?.pairOnDevice() }]
@@ -327,9 +342,38 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
         }
     }
 
+    /// Pairing with this device is in progress.
+    private var pairing = false
+
     private func pairOnDevice() {
-        showAlert("Coming Soon",
-                  "Pairing directly on this device (iOS 27) is being built. For now, import a pairing file made on a computer.")
+        guard OnDevicePairing.isSupported else {
+            showAlert("Needs iOS 27", "Pairing on this device needs iOS 27 or later. Import a pairing file made on a computer instead.")
+            return
+        }
+        pairing = true
+        pairingStatus = "Starting…"
+        show(index, animated: true)
+        OnDevicePairing.start { [weak self] event in
+            guard let self else { return }
+            switch event {
+            case .waiting:
+                pairingStatus = "Now open Settings > Privacy & Security > Developer Mode, scroll down and tap Pair with \(OnDevicePairing.hostName). Keep Wi-Fi on."
+            case .pin(let pin):
+                pairingStatus = "Enter \(OnDevicePairing.spaced(pin)) in Settings."
+            case .paired:
+                pairing = false
+                pairingStatus = nil
+            case .failed(let message):
+                pairing = false
+                pairingStatus = nil
+                if message != "Cancelled." {
+                    showAlert("Could Not Pair", message)
+                }
+            }
+            if steps[index].kind == .pairing {
+                show(index, animated: true)
+            }
+        }
     }
 
     private func showAlert(_ title: String, _ message: String) {

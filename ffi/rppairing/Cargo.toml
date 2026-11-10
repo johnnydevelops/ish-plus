@@ -1,0 +1,20 @@
+[package]
+name = "ishplus-rppairing"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Pairs iSH+ with the device it runs on (RemotePairing pairable host), for its JIT enabler"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+idevice = { git = "https://github.com/jkcoxson/idevice.git", rev = "89702099f4d7552f704f93b4526756abda319ceb", default-features = false, features = ["remote_pairing", "ring"] }
+tokio = { version = "1", features = ["rt", "net", "macros", "time"] }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
