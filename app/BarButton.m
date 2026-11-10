@@ -16,10 +16,15 @@ extern UIAccessibilityTraits UIAccessibilityTraitToggle;
 
 - (void)awakeFromNib {
     [super awakeFromNib];
-    self.layer.cornerRadius = 5;
-    self.layer.shadowOffset = CGSizeMake(0, 1);
-    self.layer.shadowOpacity = 0.4;
-    self.layer.shadowRadius = 0;
+    if (ISHUseGlassBar()) {
+        self.layer.cornerRadius = 9;
+        self.layer.cornerCurve = kCACornerCurveContinuous;
+    } else {
+        self.layer.cornerRadius = 5;
+        self.layer.shadowOffset = CGSizeMake(0, 1);
+        self.layer.shadowOpacity = 0.4;
+        self.layer.shadowRadius = 0;
+    }
     self.backgroundColor = self.defaultColor;
     self.keyAppearance = UIKeyboardAppearanceLight;
     self.accessibilityTraits |= UIAccessibilityTraitKeyboardKey;
@@ -41,11 +46,15 @@ extern UIAccessibilityTraits UIAccessibilityTraitToggle;
         return [UIColor colorWithRed:147/255. green:147/255. blue:147/255. alpha:66/255.];
 }
 - (UIColor *)defaultColor {
+    if (ISHUseGlassBar())
+        return UIColor.clearColor;
     if (self.secondary)
         return self.secondaryColor;
     return self.primaryColor;
 }
 - (UIColor *)highlightedColor {
+    if (ISHUseGlassBar())
+        return ISHGlassKeyHighlightColor(self.keyAppearance);
     if (!self.secondary)
         return self.secondaryColor;
     return self.primaryColor;

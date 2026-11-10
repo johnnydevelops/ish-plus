@@ -6,6 +6,7 @@
 //
 
 #import "ArrowBarButton.h"
+#import "BarButton.h"
 
 
 @interface ArrowBarButton () <CALayerDelegate> {
@@ -50,10 +51,15 @@ static CGPoint anchors[] = {
     [self addTextLayer:@"→" direction:ArrowRight];
     [self layoutSublayersOfLayer:self.layer];
     
-    self.layer.cornerRadius = 5;
-    self.layer.shadowOffset = CGSizeMake(0, 1);
-    self.layer.shadowOpacity = 0.4;
-    self.layer.shadowRadius = 0;
+    if (ISHUseGlassBar()) {
+        self.layer.cornerRadius = 9;
+        self.layer.cornerCurve = kCACornerCurveContinuous;
+    } else {
+        self.layer.cornerRadius = 5;
+        self.layer.shadowOffset = CGSizeMake(0, 1);
+        self.layer.shadowOpacity = 0.4;
+        self.layer.shadowRadius = 0;
+    }
     
     self.accessibilityUpDown = YES;
 }
@@ -195,12 +201,16 @@ static CGPoint anchors[] = {
 
 // copy pasted code :dab:
 - (UIColor *)defaultColor {
+    if (ISHUseGlassBar())
+        return UIColor.clearColor;
     if (self.keyAppearance == UIKeyboardAppearanceLight)
         return UIColor.whiteColor;
     else
         return [UIColor colorWithRed:1 green:1 blue:1 alpha:77/255.];
 }
 - (UIColor *)highlightedColor {
+    if (ISHUseGlassBar())
+        return ISHGlassKeyHighlightColor(self.keyAppearance);
     if (self.keyAppearance == UIKeyboardAppearanceLight)
         return [UIColor colorWithRed:172/255. green:180/255. blue:190/255. alpha:1];
     else

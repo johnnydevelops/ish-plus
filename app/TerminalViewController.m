@@ -285,6 +285,8 @@
         self.view.backgroundColor = [[UIColor alloc] ish_initWithHexString:UserPreferences.shared.palette.backgroundColor];
         UIKeyboardAppearance keyAppearance = UserPreferences.shared.keyboardAppearance;
         self.termView.keyboardAppearance = keyAppearance;
+        // The glass bar and its symbols follow the keyboard's light/dark appearance.
+        self.barView.overrideUserInterfaceStyle = keyAppearance == UIKeyboardAppearanceLight ? UIUserInterfaceStyleLight : UIUserInterfaceStyleDark;
         for (BarButton *button in self.barButtons) {
             button.keyAppearance = keyAppearance;
         }
@@ -528,8 +530,38 @@
 @property (weak) IBOutlet TerminalViewController *terminalViewController;
 @property (nonatomic) IBInspectable BOOL allowsSelfSizing;
 @end
-@implementation BarView
+@implementation BarView {
+    UIVisualEffectView *_glassView;
+}
 @dynamic allowsSelfSizing;
+
+- (void)awakeFromNib {
+    [super awakeFromNib];
+    if (@available(iOS 26.0, *)) {
+        // Float the keys in a Liquid Glass capsule above the keyboard, like the
+        // system's own accessory bars, instead of a solid keyboard-coloured strip.
+        self.backgroundColor = UIColor.clearColor;
+        UIStackView *stack = nil;
+        for (UIView *view in self.subviews) {
+            if ([view isKindOfClass:UIStackView.class])
+                stack = (UIStackView *) view;
+        }
+        if (stack == nil)
+            return;
+        UIVisualEffectView *glass = [[UIVisualEffectView alloc] initWithEffect:[UIGlassEffect effectWithStyle:UIGlassEffectStyleRegular]];
+        glass.cornerConfiguration = [UICornerConfiguration capsuleConfigurationWithMaximumRadius:22];
+        glass.translatesAutoresizingMaskIntoConstraints = NO;
+        glass.userInteractionEnabled = NO;
+        [self insertSubview:glass belowSubview:stack];
+        [NSLayoutConstraint activateConstraints:@[
+            [glass.leadingAnchor constraintEqualToAnchor:stack.leadingAnchor constant:-4],
+            [glass.trailingAnchor constraintEqualToAnchor:stack.trailingAnchor constant:4],
+            [glass.topAnchor constraintEqualToAnchor:stack.topAnchor constant:-3],
+            [glass.bottomAnchor constraintEqualToAnchor:stack.bottomAnchor constant:3],
+        ]];
+        _glassView = glass;
+    }
+}
 
 - (void)layoutSubviews {
     [self.terminalViewController resizeBar];
