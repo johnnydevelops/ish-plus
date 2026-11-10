@@ -59,8 +59,17 @@
     }];
 }
 
+// Shows whether iSH+ can enable JIT by itself.
+- (void)updateJITSetupCell {
+    UIListContentConfiguration *content = [UIListContentConfiguration valueCellConfiguration];
+    content.text = @"JIT Setup";
+    content.secondaryText = ISHOnboarding.hasPairing ? @"Paired" : @"Not Set Up";
+    self.jitSetupCell.contentConfiguration = content;
+}
+
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    [self updateJITSetupCell];
     [self _updateUI];
 }
 
@@ -92,8 +101,13 @@
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
     if (cell == self.jitSetupCell) {
-        ISHOnboardingViewController *onboarding = [[ISHOnboardingViewController alloc] initWithCompletion:^{}];
+        __weak typeof(self) weakSelf = self;
+        ISHOnboardingViewController *onboarding = [[ISHOnboardingViewController alloc] initWithCompletion:^{
+            [weakSelf updateJITSetupCell];
+        }];
+        onboarding.fromSettings = YES;
         [self presentViewController:onboarding animated:YES completion:nil];
+        [tableView deselectRowAtIndexPath:indexPath animated:YES];
     } else if (cell == self.openGithub) {
         [UIApplication openURL:@"https://github.com/ish-app/ish"];
     } else if (cell == self.openFediverse) {

@@ -91,6 +91,13 @@ public final class VirtualMachineConsole: NSObject {
         }
     }
 
+    /// Tells the guest the terminal's size, so its tty (and programs like
+    /// htop) use the whole view. Remembered by QEMU until the guest is ready.
+    @objc(resizeWithColumns:rows:)
+    public func resize(columns: Int, rows: Int) {
+        VirtualMachine.shared.setConsoleSize(index: index, columns: columns, rows: rows)
+    }
+
     @objc public func close() {
         queue.async { [self] in
             guard !closed else { return }
@@ -126,6 +133,36 @@ public final class VirtualMachine: NSObject {
     @objc public private(set) var hasStopped = false
     private var busyConsoles = Set<Int>()
     private let lock = NSLock()
+    typealias ConsoleResize = @convention(c) (UnsafePointer<CChar>, Int32, Int32) -> Int32
+    private var consoleResize: ConsoleResize?
+    /// Last size of each console; sent once QEMU is initialized.
+    private var consoleSizes: [Int: (Int, Int)] = [:]
+    private var resizeReady = false
+    /// Resizing takes QEMU's big lock, so keep it off the main thread.
+    private let resizeQueue = DispatchQueue(label: "app.ishplus.vm.resize")
+
+    fileprivate func setConsoleSize(index: Int, columns: Int, rows: Int) {
+        lock.lock()
+        consoleSizes[index] = (columns, rows)
+        let ready = resizeReady
+        lock.unlock()
+        if ready { sendConsoleSize(index: index, columns: columns, rows: rows) }
+    }
+
+    private func sendConsoleSize(index: Int, columns: Int, rows: Int) {
+        guard let resize = consoleResize else { return }
+        resizeQueue.async {
+            _ = "vcon\(index)".withCString { resize($0, Int32(columns), Int32(rows)) }
+        }
+    }
+
+    private func qemuInitialized() {
+        lock.lock()
+        resizeReady = true
+        let sizes = consoleSizes
+        lock.unlock()
+        for (index, size) in sizes { sendConsoleSize(index: index, columns: size.0, rows: size.1) }
+    }
 
     /// Where the guest files live: Documents/VM, visible in the Files app.
     @objc public static var guestDirectory: URL {
@@ -203,6 +240,9 @@ public final class VirtualMachine: NSObject {
         let qemuInit = unsafeBitCast(initSymbol, to: QemuInit.self)
         let qemuMainLoop = unsafeBitCast(loopSymbol, to: QemuMainLoop.self)
         let qemuCleanup = unsafeBitCast(cleanupSymbol, to: QemuCleanup.self)
+        if let symbol = dlsym(handle, "ishplus_console_resize") {
+            consoleResize = unsafeBitCast(symbol, to: ConsoleResize.self)
+        }
 
         try? FileManager.default.removeItem(at: socketDirectory)
         try FileManager.default.createDirectory(at: socketDirectory, withIntermediateDirectories: true)
@@ -232,6 +272,7 @@ public final class VirtualMachine: NSObject {
             var envp: [UnsafeMutablePointer<CChar>?] = [nil]
             let status = qemuInit(Int32(arguments.count), &argv, &envp)
             vmLog("qemu_init returned \(status)")
+            self?.qemuInitialized()
             qemuMainLoop()
             qemuCleanup()
             vmLog("QEMU stopped")
@@ -329,7 +370,7 @@ public final class VirtualMachine: NSObject {
         for i in 0..<VirtualMachine.consoleCount {
             args += ["-chardev", "socket,id=con\(i),path=\(socketPath(i)),server=on,wait=off",
                      // Named, because Alpine's initramfs reads each port's name
-                     "-device", "virtconsole,chardev=con\(i),name=org.ishplus.console.\(i)"]
+                     "-device", "virtconsole,id=vcon\(i),chardev=con\(i),name=org.ishplus.console.\(i)"]
         }
         return args
     }

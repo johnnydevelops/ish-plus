@@ -55,6 +55,9 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
 
     private var index = 0
     private let completion: () -> Void
+    /// Opened from Settings rather than on first launch: start at pairing,
+    /// offer Cancel, and finish with Done.
+    @objc public var fromSettings = false
 
     private let symbolView = UIImageView()
     private let titleLabel = UILabel()
@@ -124,7 +127,7 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
             textLabel.widthAnchor.constraint(equalTo: content.widthAnchor),
             statusLabel.widthAnchor.constraint(equalTo: content.widthAnchor),
         ])
-        show(0, animated: false)
+        show(fromSettings ? 1 : 0, animated: false)
     }
 
     public override func viewDidLayoutSubviews() {
@@ -191,13 +194,18 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
             }
             return list
         default:
-            return [makeButton("Start iSH+", prominent: true) { [weak self] in self?.finish() }]
+            return [makeButton(fromSettings ? "Done" : "Start iSH+", prominent: true) { [weak self] in self?.finish() }]
         }
     }
 
     private func setButtons(_ list: [UIButton]) {
         buttons.arrangedSubviews.forEach { $0.removeFromSuperview() }
         list.forEach { buttons.addArrangedSubview($0) }
+        if fromSettings && index < steps.count - 1 {
+            buttons.addArrangedSubview(makeButton("Cancel", prominent: false) { [weak self] in
+                self?.dismiss(animated: true) { [weak self] in self?.completion() }
+            })
+        }
     }
 
     private func makeButton(_ title: String, prominent: Bool, action: @escaping () -> Void) -> UIButton {

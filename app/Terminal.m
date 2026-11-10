@@ -133,6 +133,10 @@ static NSMapTable<NSUUID *, Terminal *> *terminalsByUUID;
     int rows = (int) _surface.rows;
     if (cols <= 0 || rows <= 0)
         return;
+    if (self.resizeHandler != nil) {
+        self.resizeHandler(cols, rows);
+        return;
+    }
     @synchronized (self) {
         if (self.tty == NULL)
             return;

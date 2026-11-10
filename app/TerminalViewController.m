@@ -421,6 +421,9 @@ static int nextVMTerminalNumber;
     terminal.destroyHandler = ^{
         [console close];
     };
+    terminal.resizeHandler = ^(int columns, int rows) {
+        [console resizeWithColumns:columns rows:rows];
+    };
     [self addSessionWithTerminal:terminal pid:0];
     return 0;
 }

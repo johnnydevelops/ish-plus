@@ -82,6 +82,9 @@ mount -o remount,rw /
 mountpoint -q /.modloop || mount -t squashfs -o ro /dev/vdb /.modloop
 mountpoint -q /lib/modules || mount --bind /.modloop/modules /lib/modules
 hostname -F /etc/hostname
+# Log to /var/log/messages; without a syslog daemon, programs like login
+# print their log messages on the console instead.
+syslogd -s 512 -b 1
 ifconfig lo up
 ifconfig eth0 up
 udhcpc -b -q -n -t 5 -i eth0 -s /usr/share/udhcpc/default.script >/dev/null 2>&1

@@ -31,6 +31,8 @@ struct tty;
 // destroyHandler runs when the terminal is destroyed (its session closed).
 @property (copy) void (^inputHandler)(NSData *data);
 @property (copy) void (^destroyHandler)(void);
+// Linux VM: called with the terminal's size whenever it changes.
+@property (copy) void (^resizeHandler)(int columns, int rows);
 
 - (NSString *)arrow:(char)direction;
 
