@@ -7,9 +7,11 @@
 #   fex/        FEX-Emu (MIT, https://fex-emu.com), from the FEX Ubuntu PPA, made
 #               self-contained with Ubuntu's glibc and libstdc++ (the guest is
 #               musl-based Alpine), so x86_64 programs run in the arm64 guest.
-#   x86_64.tar.gz  Alpine's x86_64 minirootfs: the libraries x86_64 programs
-#               see (FEX's RootFS), unpacked to /opt/x86_64 on first boot.
-#   commands/   x86 (run an x86_64 command) and apk-x86 (install x86_64 packages)
+#   x86_64.tar.gz  Ubuntu 24.04's x86_64 base system (glibc, apt), the
+#               libraries x86_64 programs see (FEX's RootFS), unpacked to
+#               /opt/x86_64 on first boot; musl.tar adds musl's loader, so
+#               musl programs (e.g. Alpine's) run too.
+#   commands/   x86 (run an x86_64 command) and apt-x86 (install x86_64 packages)
 #   boot/       iSH+'s init inside the distribution (see tools/guest/boot)
 #   bin/, sbin/, lib/musl/  static busybox, tini and apk; mke2fs for the initramfs
 #
@@ -108,9 +110,13 @@ for b in "$stage"/fex/bin/*; do
              --force-rpath --set-rpath /opt/ishplus/fex/lib "$b"
 done
 
-# The x86_64 root
-cp "$(fetch "https://dl-cdn.alpinelinux.org/alpine/v${ALPINE_VERSION%.*}/releases/x86_64/alpine-minirootfs-$ALPINE_VERSION-x86_64.tar.gz")" \
-   "$stage/x86_64.tar.gz"
+# The x86_64 root: Ubuntu's base system, and musl's loader from its package
+cp "$(fetch "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.5-base-amd64.tar.gz" \
+    e77b6f10c2590cef872b33ee9f635a0e3fd1f57fb074c0e52b5c7f56147a0c86)" "$stage/x86_64.tar.gz"
+rm -rf "$WORK/musl" && mkdir -p "$WORK/musl"
+(cd "$WORK/musl" && ar x "$(fetch http://archive.ubuntu.com/ubuntu/pool/universe/m/musl/musl_1.2.4-2_amd64.deb \
+    9f0883c20b4b746e05e947bafd99cb933f5494ffaaa6fcd360cbe1fbcf264883)" && mkdir root && tar -xf data.tar.* -C root)
+tar -cf "$stage/musl.tar" -C "$WORK/musl/root" --uid 0 --gid 0 .
 
 cat > "$stage/commands/x86" <<'EOF'
 #!/bin/sh
@@ -126,13 +132,28 @@ for dir in /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin; do
         exec "$cmd" "$@"
     fi
 done
-echo "x86: $1: not found in /opt/x86_64 (install it with apk-x86 add)" >&2
+echo "x86: $1: not found in /opt/x86_64 (install it with apt-x86 install)" >&2
 exit 127
 EOF
-cat > "$stage/commands/apk-x86" <<'EOF'
+cat > "$stage/commands/apt-x86" <<'EOF'
 #!/bin/sh
-# apk for the x86_64 root used by x86_64 programs (/opt/x86_64).
-exec /opt/ishplus/bin/apk --root /opt/x86_64 --arch x86_64 "$@"
+# apt for the x86_64 root used by x86_64 programs (/opt/x86_64, Ubuntu 24.04),
+# e.g. "apt-x86 install libsdl2-2.0-0". Runs through FEX, so it is slow.
+R=/opt/x86_64
+X=/opt/ishplus/bin/busybox
+if [ "$(id -u)" != 0 ]; then
+    if command -v sudo >/dev/null; then
+        exec sudo "$0" "$@"
+    fi
+    echo "apt-x86 needs root: enter the root password." >&2
+    exec su root -c "$0 $*"
+fi
+for d in proc sys dev dev/pts; do
+    $X mountpoint -q $R/$d || $X mount --bind /$d $R/$d
+done
+cp /etc/resolv.conf $R/etc/resolv.conf 2>/dev/null
+exec $X chroot $R /usr/bin/env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root TERM="$TERM" \
+    DEBIAN_FRONTEND=noninteractive /usr/bin/apt-get "$@"
 EOF
 chmod 755 "$stage/bin/"* "$stage/sbin/"* "$stage/commands/"* "$stage/boot/"*
 
@@ -148,11 +169,16 @@ echo 200 > /proc/sys/vm/dirty_expire_centisecs
 echo 100 > /proc/sys/vm/dirty_writeback_centisecs
 # x86_64 programs run through FEX. Unpacked to a temporary directory and
 # synced first, so an interrupted first boot does not leave empty files.
-if [ ! -s /opt/x86_64/etc/alpine-release ]; then
+# (Earlier versions used Alpine's x86_64 root, without glibc: replaced.)
+if [ ! -e /opt/x86_64/.ishplus-ubuntu ]; then
     $X rm -rf /opt/x86_64 /opt/.x86_64.new
     $X mkdir -p /opt/.x86_64.new
-    $X tar -xzf $S/x86_64.tar.gz -C /opt/.x86_64.new && $X sync && $X mv /opt/.x86_64.new /opt/x86_64 && $X sync
+    $X tar -xzf $S/x86_64.tar.gz -C /opt/.x86_64.new && $X tar -xf $S/musl.tar -C /opt/.x86_64.new \
+        && echo 'APT::Sandbox::User "root";' > /opt/.x86_64.new/etc/apt/apt.conf.d/99ishplus \
+        && $X touch /opt/.x86_64.new/.ishplus-ubuntu && $X sync && $X mv /opt/.x86_64.new /opt/x86_64 && $X sync
 fi
+# apk-x86 from earlier versions
+$X rm -f /usr/local/bin/apk-x86
 $X cp /etc/resolv.conf /opt/x86_64/etc/resolv.conf 2>/dev/null
 $X mkdir -p /usr/share /usr/local/bin
 $X ln -sfn $S/fex/share/fex-emu /usr/share/fex-emu
