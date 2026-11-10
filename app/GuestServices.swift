@@ -133,6 +133,10 @@ final class GuestServices {
 
     func qemuArguments(socketDirectory: URL) -> [String] {
         try? FileManager.default.createDirectory(at: Self.sharedFolder, withIntermediateDirectories: true)
+        // The guest's DNS, answered by the system resolver (see DNSProxy)
+        if let port = DNSProxy.shared.start() {
+            setenv("ISHPLUS_DNS_PORT", "\(port)", 1)
+        }
         clipboard = GuestPort(name: "clipboard", path: socketDirectory.appendingPathComponent("clipboard").path)
         exec = GuestPort(name: "exec", path: socketDirectory.appendingPathComponent("exec").path)
         // Files made in the guest keep their owner and mode in extended

@@ -1,0 +1,40 @@
+diff -ru a/src/slirp.c b/src/slirp.c
+--- a/src/slirp.c	2026-10-30 01:22:53
++++ b/src/slirp.c	2026-11-10 21:58:32
+@@ -349,6 +349,17 @@
+ 
+ int get_dns_addr(struct in_addr *pdns_addr, uint16_t *pdns_port)
+ {
++    /*
++     * iSH+: the app answers DNS itself on 127.0.0.1:$ISHPLUS_DNS_PORT, with
++     * the system resolver, which knows split DNS (VPNs such as Tailscale)
++     * that the plain DNS servers from res_ninit do not.
++     */
++    const char *ishplus_port = getenv("ISHPLUS_DNS_PORT");
++    if (ishplus_port && *ishplus_port) {
++        pdns_addr->s_addr = htonl(INADDR_LOOPBACK);
++        *pdns_port = htons((uint16_t)atoi(ishplus_port));
++        return 0;
++    }
+     if (dns_addr.s_addr != 0) {
+         int ret;
+         ret = get_dns_addr_cached(pdns_addr, &dns_addr, sizeof(dns_addr),
+diff -ru a/src/socket.c b/src/socket.c
+--- a/src/socket.c	2026-10-30 01:22:53
++++ b/src/socket.c	2026-11-10 21:58:50
+@@ -1079,6 +1079,15 @@
+             }
+         }
+ 
++        /* iSH+: answers from the app's DNS server (see get_dns_addr) come
++         * from the guest-visible name server's port 53. */
++        if (!slirp->disable_dns &&
++            so->so_faddr.s_addr == slirp->vnameserver_addr.s_addr &&
++            so->so_fport == htons(53)) {
++            sin->sin_port = htons(53);
++            break;
++        }
++
+         /* Restore the guest-visible gateway DNS endpoint. */
+         if (!slirp->disable_dns &&
+             so->so_faddr.s_addr == slirp->vhost_addr.s_addr &&

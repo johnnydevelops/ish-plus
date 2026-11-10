@@ -23,6 +23,7 @@
 /* Begin PBXBuildFile section */
 		0613F6CA23E90E7A579F3A42 /* JITViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97EA159F635965A28FE3E83 /* JITViewController.swift */; };
 		2352FD9E3A32D954A010933D /* StikJIT.xcframework in Embed QEMU */ = {isa = PBXBuildFile; fileRef = 81BD35790524254A633600D3 /* StikJIT.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		313F8C227740F07613B9E6D9 /* DNSProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F7EDF01267B0CE2AB2DC08 /* DNSProxy.swift */; };
 		37988EFDAF0D0747A964C9B9 /* BackgroundKeepAlive.m in Sources */ = {isa = PBXBuildFile; fileRef = DADA01E465A18DDFDE1C066B /* BackgroundKeepAlive.m */; };
 		491B31E62883BF22008EEFB0 /* ThemeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 491B31E52883BF22008EEFB0 /* ThemeViewController.m */; };
 		496C7AB227CC697E005D7613 /* Theme.m in Sources */ = {isa = PBXBuildFile; fileRef = 491C4C1E27C8FB65008B1DFA /* Theme.m */; };
@@ -203,6 +204,7 @@
 		A650484A8360D2669C1C3344 /* DistrosViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DistrosViewController.swift; sourceTree = "<group>"; };
 		AE31D69ABEE4B7F9683187EC /* iSHJITHelper.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = iSHJITHelper.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF98129378181E7CF436D4BC /* JITHelperLauncher.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = JITHelperLauncher.h; sourceTree = "<group>"; };
+		B9F7EDF01267B0CE2AB2DC08 /* DNSProxy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DNSProxy.swift; sourceTree = "<group>"; };
 		BB0B848E2586A4CF00208600 /* XcodeDefault.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = XcodeDefault.xcconfig; sourceTree = "<group>"; };
 		BB0B859B2586F13200208600 /* XcodeDebug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = XcodeDebug.xcconfig; sourceTree = "<group>"; };
 		BB0B859C2586F19000208600 /* XcodeRelease.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = XcodeRelease.xcconfig; sourceTree = "<group>"; };
@@ -510,6 +512,7 @@
 				85C9D381ABA749D43BCE9377 /* OnDevicePairing.swift */,
 				5B62450DCAB3F80C9FC06E4B /* GuestServices.swift */,
 				FF2EB9ACBD43D9BA161EE2A8 /* RunCommandIntent.swift */,
+				B9F7EDF01267B0CE2AB2DC08 /* DNSProxy.swift */,
 			);
 			path = app;
 			sourceTree = "<group>";
@@ -937,6 +940,7 @@
 				7C170B0049C15E6B6456497A /* DistroSetupViewController.swift in Sources */,
 				611DBAE48BB21E277E429F6A /* OnDevicePairing.swift in Sources */,
 				F832E7EDE71419B080DCC704 /* GuestServices.swift in Sources */,
+				313F8C227740F07613B9E6D9 /* DNSProxy.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
