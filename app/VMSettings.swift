@@ -19,31 +19,45 @@ public final class VMSettings: NSObject {
         Int((Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824).rounded())
     }
 
-    /// The most memory the VM can have here. iOS ends apps (even with the
-    /// increased memory limit entitlement) at a bit over half the RAM — about
-    /// 1.7 GB on a 3 GB iPad — and QEMU itself needs some (its translated code
-    /// cache alone is 256 MB), so: 57% of the RAM, less 650 MB, in 256 MB
-    /// steps, at least 1 GB and at most 16 GB.
-    @objc public static var maximumMemoryMB: Int {
-        let limit = Double(ProcessInfo.processInfo.physicalMemory) / 1_048_576 * 0.57
-        let usable = Int(limit) - 650
-        return min(16384, max(1024, usable / 256 * 256))
+    /// The memory iOS lets iSH+ use before ending it (with the increased
+    /// memory limit entitlement): what it uses now plus what is still
+    /// available to it. About 1.85 GB on a 3 GB iPad.
+    @objc public static var processMemoryLimitMB: Int {
+        let available = os_proc_available_memory()
+        guard available > 0 else {
+            // Not limited (or unknown): estimate, as a bit over half the RAM
+            return Int(Double(ProcessInfo.processInfo.physicalMemory) / 1_048_576 * 0.6)
+        }
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+            }
+        }
+        let used = result == KERN_SUCCESS ? Int(info.phys_footprint) : 0
+        return (used + available) >> 20
     }
 
-    /// Automatic memory (the default): the maximum. 1 GB on 3 GB iPads,
-    /// about 1.5 GB on 4 GB, 2.5 GB on 6 GB, 3.5 GB on 8 GB.
-    @objc public static var automaticMemoryMB: Int { maximumMemoryMB }
+    /// QEMU's own memory besides the VM's: its translated code cache
+    /// (256 MB), its code and devices, the app.
+    private static let qemuOverheadMB = 450
+    /// Kept free, so iOS does not end iSH+ at the edge.
+    private static let marginMB = 150
 
-    @objc public static let memoryChoices: [Int] = {
-        var choices: [Int] = []
-        var value = 512
-        while value <= maximumMemoryMB {
-            choices.append(value)
-            value += value < 2048 ? 256 : 512
-        }
-        if choices.last != maximumMemoryMB { choices.append(maximumMemoryMB) }
-        return choices
-    }()
+    /// The most memory the VM can have here: iSH+'s memory limit, less QEMU's
+    /// own and a margin (about 1.2 GB on a 3 GB iPad), at least 512 MB.
+    @objc public static var maximumMemoryMB: Int {
+        max(512, (processMemoryLimitMB - qemuOverheadMB - marginMB) / 16 * 16)
+    }
+
+    /// Automatic memory (the default): from the RAM, 57% less 650 MB in
+    /// 256 MB steps (1 GB on 3 GB iPads, 1.5 GB on 4 GB, 2.5 GB on 6 GB,
+    /// 3.5 GB on 8 GB), within the maximum.
+    @objc public static var automaticMemoryMB: Int {
+        let estimate = Int(Double(ProcessInfo.processInfo.physicalMemory) / 1_048_576 * 0.57) - 650
+        return min(maximumMemoryMB, max(512, estimate / 256 * 256))
+    }
 
     /// The memory the user chose, or 0 for automatic.
     @objc public static var chosenMemoryMB: Int {

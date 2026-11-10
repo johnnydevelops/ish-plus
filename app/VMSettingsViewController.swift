@@ -13,6 +13,13 @@ import UIKit
 public final class VMSettingsViewController: UITableViewController {
     private enum Section: Int, CaseIterable { case performance, ports }
     private let networkSwitch = UISwitch()
+    private let automaticMemorySwitch = UISwitch()
+    private let memorySlider = UISlider()
+    /// The memory, in MB; can be typed
+    private let memoryField = UITextField()
+    private let maximumMemory = VMSettings.maximumMemoryMB
+    /// Memory slider steps
+    private static let memoryStep = 256
     /// What the running VM was started with, to tell when a restart is needed.
     private let startedWith = (VMSettings.memoryMB, VMSettings.cpuCount)
 
@@ -28,6 +35,29 @@ public final class VMSettingsViewController: UITableViewController {
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         networkSwitch.isOn = UserDefaults.standard.bool(forKey: PortForwarder.shareOnNetworkKey)
         networkSwitch.addTarget(self, action: #selector(networkChanged), for: .valueChanged)
+        automaticMemorySwitch.isOn = VMSettings.chosenMemoryMB == 0
+        automaticMemorySwitch.addTarget(self, action: #selector(automaticMemoryChanged), for: .valueChanged)
+        memorySlider.minimumValue = 512
+        memorySlider.maximumValue = Float(maximumMemory)
+        memorySlider.addTarget(self, action: #selector(memorySliderChanged), for: .valueChanged)
+        memorySlider.addTarget(self, action: #selector(memorySliderEnded), for: [.touchUpInside, .touchUpOutside, .touchCancel])
+        memoryField.font = .monospacedDigitSystemFont(ofSize: UIFont.preferredFont(forTextStyle: .body).pointSize, weight: .regular)
+        memoryField.textAlignment = .right
+        memoryField.keyboardType = .numberPad
+        memoryField.borderStyle = .roundedRect
+        let unit = UILabel()
+        unit.text = " MB "
+        unit.textColor = .secondaryLabel
+        unit.font = .preferredFont(forTextStyle: .body)
+        memoryField.rightView = unit
+        memoryField.rightViewMode = .always
+        memoryField.addTarget(self, action: #selector(memoryTyped), for: .editingDidEnd)
+        let toolbar = UIToolbar()
+        toolbar.items = [UIBarButtonItem(systemItem: .flexibleSpace),
+                         UIBarButtonItem(systemItem: .done, primaryAction: UIAction { [weak self] _ in self?.view.endEditing(true) })]
+        toolbar.sizeToFit()
+        memoryField.inputAccessoryView = toolbar
+        updateMemoryControls()
         NotificationCenter.default.addObserver(self, selector: #selector(portsChanged),
                                                name: PortForwarder.didChangeNotification, object: nil)
     }
@@ -39,6 +69,52 @@ public final class VMSettingsViewController: UITableViewController {
 
     @objc private func portsChanged() {
         tableView.reloadSections(IndexSet(integer: Section.ports.rawValue), with: .automatic)
+    }
+
+    private func updateMemoryControls() {
+        memorySlider.value = Float(VMSettings.memoryMB)
+        memorySlider.isEnabled = !automaticMemorySwitch.isOn
+        memoryField.text = "\(VMSettings.memoryMB)"
+        memoryField.isEnabled = !automaticMemorySwitch.isOn
+        memoryField.textColor = automaticMemorySwitch.isOn ? .secondaryLabel : .label
+    }
+
+    /// A typed amount, within 256 MB and the maximum
+    @objc private func memoryTyped() {
+        if let typed = Int(memoryField.text ?? "") {
+            VMSettings.chosenMemoryMB = min(maximumMemory, max(256, typed))
+        }
+        updateMemoryControls()
+        reloadRestartRow()
+    }
+
+    @objc private func automaticMemoryChanged() {
+        // Off: start from the automatic amount
+        VMSettings.chosenMemoryMB = automaticMemorySwitch.isOn ? 0 : VMSettings.memoryMB
+        updateMemoryControls()
+        reloadRestartRow()
+    }
+
+    /// The slider moves in steps of 256 MB (up to the maximum, which may not be one)
+    private var sliderMemory: Int {
+        let value = Int(memorySlider.value.rounded())
+        let stepped = (value + Self.memoryStep / 2) / Self.memoryStep * Self.memoryStep
+        // The maximum itself is reachable at the end of the slider
+        return memorySlider.value >= Float(maximumMemory) - 1 ? maximumMemory : min(maximumMemory, max(512, stepped))
+    }
+
+    @objc private func memorySliderChanged() {
+        memoryField.text = "\(sliderMemory)"
+    }
+
+    @objc private func memorySliderEnded() {
+        VMSettings.chosenMemoryMB = sliderMemory
+        updateMemoryControls()
+        reloadRestartRow()
+    }
+
+    private func reloadRestartRow() {
+        tableView.reloadSections(IndexSet(integer: Section.performance.rawValue), with: .none)
     }
 
     @objc private func networkChanged() {
@@ -55,7 +131,7 @@ public final class VMSettingsViewController: UITableViewController {
 
     public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch Section(rawValue: section)! {
-        case .performance: return needsRestart ? 3 : 2
+        case .performance: return needsRestart ? 4 : 3
         case .ports: return 1 + PortForwarder.shared.ports.count
         }
     }
@@ -70,7 +146,7 @@ public final class VMSettingsViewController: UITableViewController {
     public override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         switch Section(rawValue: section)! {
         case .performance:
-            return "This iPad has \(VMSettings.deviceMemoryGB) GB of memory; iOS ends apps that use much more than half of it. Changes apply the next time Linux starts."
+            return "iOS lets iSH+ use \(VMSettings.formatMemory(VMSettings.processMemoryLimitMB)) of this iPad's \(VMSettings.deviceMemoryGB) GB before ending it; QEMU itself needs some, so Linux can have up to \(VMSettings.formatMemory(maximumMemory)). Changes apply the next time Linux starts."
         case .ports:
             let ports = PortForwarder.shared.ports.isEmpty
                 ? "Servers started in Linux appear here, and open at localhost on this iPad. "
@@ -87,12 +163,36 @@ public final class VMSettingsViewController: UITableViewController {
         var content = UIListContentConfiguration.valueCell()
         switch (Section(rawValue: indexPath.section)!, indexPath.row) {
         case (.performance, 0):
-            content.text = "Memory"
-            content.secondaryText = VMSettings.chosenMemoryMB == 0
-                ? "Automatic (\(VMSettings.formatMemory(VMSettings.memoryMB)))"
-                : VMSettings.formatMemory(VMSettings.memoryMB)
-            cell.accessoryType = .disclosureIndicator
+            content = .cell()
+            content.text = "Automatic Memory"
+            content.secondaryText = automaticMemorySwitch.isOn
+                ? "\(VMSettings.formatMemory(VMSettings.automaticMemoryMB)) for this iPad" : nil
+            content.secondaryTextProperties.color = .secondaryLabel
+            cell.accessoryView = automaticMemorySwitch
+            cell.selectionStyle = .none
         case (.performance, 1):
+            cell.selectionStyle = .none
+            cell.contentConfiguration = nil
+            cell.contentView.subviews.forEach { $0.removeFromSuperview() }
+            let title = UILabel()
+            title.text = "Memory"
+            title.isEnabled = !automaticMemorySwitch.isOn
+            let row = UIStackView(arrangedSubviews: [title, memorySlider, memoryField])
+            row.spacing = 12
+            row.alignment = .center
+            row.translatesAutoresizingMaskIntoConstraints = false
+            title.setContentHuggingPriority(.required, for: .horizontal)
+            memoryField.widthAnchor.constraint(equalToConstant: 104).isActive = true
+            cell.contentView.addSubview(row)
+            NSLayoutConstraint.activate([
+                row.leadingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.leadingAnchor),
+                row.trailingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.trailingAnchor),
+                row.topAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.topAnchor),
+                row.bottomAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.bottomAnchor),
+                row.heightAnchor.constraint(greaterThanOrEqualToConstant: 32),
+            ])
+            return cell
+        case (.performance, 2):
             content.text = "CPU Cores"
             content.secondaryText = VMSettings.chosenCPUCount == 0
                 ? "Automatic (\(VMSettings.cpuCount))" : "\(VMSettings.cpuCount)"
@@ -122,16 +222,9 @@ public final class VMSettingsViewController: UITableViewController {
     public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         switch (Section(rawValue: indexPath.section)!, indexPath.row) {
-        case (.performance, 0):
-            let automatic = Choice(label: "Automatic", detail: VMSettings.formatMemory(VMSettings.automaticMemoryMB), value: 0)
-            let choices = [automatic] + VMSettings.memoryChoices.map {
-                Choice(label: VMSettings.formatMemory($0), detail: nil, value: $0)
-            }
-            show(ChoiceViewController(title: "Memory", choices: choices, selected: VMSettings.chosenMemoryMB,
-                                      footer: "Automatic gives Linux as much memory as this iPad can safely run it with. More memory lets Linux keep more files cached and run bigger programs; too much and iOS ends iSH+.") {
-                VMSettings.chosenMemoryMB = $0
-            }, sender: self)
-        case (.performance, 1):
+        case (.performance, 0), (.performance, 1):
+            break
+        case (.performance, 2):
             let automatic = Choice(label: "Automatic", detail: "\(VMSettings.automaticCPUCount)", value: 0)
             let choices = [automatic] + (1...VMSettings.maximumCPUCount).map {
                 Choice(label: "\($0)", detail: nil, value: $0)
