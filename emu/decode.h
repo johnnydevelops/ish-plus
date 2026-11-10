@@ -5,6 +5,8 @@
 
 #undef oz
 #define oz OP_SIZE
+// The other operand size, selected by a 0x66 prefix that comes after a rep prefix.
+#define oz_flip (OP_SIZE == 32 ? 16 : 32)
 #define reg_ah reg_sp
 #define reg_ch reg_bp
 #define reg_dh reg_si
@@ -1263,6 +1265,18 @@ restart:
                 case 0xa7: TRACEI("repnz cmps"); REPNZ(cmps, oz); break;
                 case 0xae: TRACEI("repnz scasb"); REPNZ(scas, 8); break;
                 case 0xaf: TRACEI("repnz scas"); REPNZ(scas, oz); break;
+
+                // Operand size prefix after the rep prefix, e.g. f2 66 af
+                // (repnz scasw). Both prefix orders are valid; clang emits
+                // this one.
+                case 0x66:
+                    READINSN;
+                    switch (insn) {
+                        case 0xa7: TRACEI("repnz cmps (other size)"); REPNZ(cmps, oz_flip); break;
+                        case 0xaf: TRACEI("repnz scas (other size)"); REPNZ(scas, oz_flip); break;
+                        default: TRACE("undefined"); UNDEFINED;
+                    }
+                    break;
                 default: TRACE("undefined"); UNDEFINED;
             }
             break;
@@ -1349,6 +1363,21 @@ restart:
                 // ret. gcc used to use nop ret but repz ret is only one
                 // instruction
                 case 0xc3: TRACEI("repz ret\t"); RET_NEAR(0); break;
+
+                // Operand size prefix after the rep prefix, e.g. f3 66 ab
+                // (rep stosw). Both prefix orders are valid; clang emits
+                // this one.
+                case 0x66:
+                    READINSN;
+                    switch (insn) {
+                        case 0xa5: TRACEI("rep movs (other size)"); REP(movs, oz_flip); break;
+                        case 0xa7: TRACEI("repz cmps (other size)"); REPZ(cmps, oz_flip); break;
+                        case 0xab: TRACEI("rep stos (other size)"); REP(stos, oz_flip); break;
+                        case 0xad: TRACEI("rep lods (other size)"); REP(lods, oz_flip); break;
+                        case 0xaf: TRACEI("repz scas (other size)"); REPZ(scas, oz_flip); break;
+                        default: TRACE("undefined"); UNDEFINED;
+                    }
+                    break;
                 default: TRACE("undefined\n"); UNDEFINED;
             }
             break;
