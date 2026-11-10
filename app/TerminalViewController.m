@@ -6,21 +6,14 @@
 //
 
 #import "TerminalViewController.h"
-#import "AppDelegate.h"
 #import "TerminalView.h"
 #import "BarButton.h"
 #import "ArrowBarButton.h"
 #import "UserPreferences.h"
 #import "AboutViewController.h"
-#import "CurrentRoot.h"
 #import "NSObject+SaneKVO.h"
-#import "LinuxInterop.h"
 #import "iSHSwift.h"
 #import "JITHelperLauncher.h"
-#include "kernel/init.h"
-#include "kernel/task.h"
-#include "kernel/calls.h"
-#include "fs/devices.h"
 
 // One shell running in its own pseudo terminal. A window can hold several.
 @interface TerminalSession : NSObject
@@ -78,18 +71,6 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-#if !ISH_LINUX
-    int bootError = [AppDelegate bootError];
-    if (bootError < 0) {
-        NSString *message = [NSString stringWithFormat:@"could not boot"];
-        NSString *subtitle = [NSString stringWithFormat:@"error code %d", bootError];
-        if (bootError == _EINVAL)
-            subtitle = [subtitle stringByAppendingString:@"\n(try reinstalling the app, see release notes for details)"];
-        [self showMessage:message subtitle:subtitle];
-        NSLog(@"boot failed with code %d", bootError);
-    }
-#endif
-
     self.terminal = self.terminal;
     [self.termView becomeFirstResponder];
 
@@ -101,10 +82,6 @@
     [center addObserver:self
                selector:@selector(keyboardDidSomething:)
                    name:UIKeyboardDidChangeFrameNotification
-                 object:nil];
-    [center addObserver:self
-               selector:@selector(_updateBadge)
-                   name:FsUpdatedNotification
                  object:nil];
 
 
@@ -147,21 +124,6 @@
         });
     }];
     [self _updateBadge];
-}
-
-- (void)awakeFromNib {
-    [super awakeFromNib];
-#if !ISH_LINUX
-    [NSNotificationCenter.defaultCenter addObserver:self
-                                           selector:@selector(processExited:)
-                                               name:ProcessExitedNotification
-                                             object:nil];
-#else
-    [NSNotificationCenter.defaultCenter addObserver:self
-                                           selector:@selector(kernelPanicked:)
-                                               name:KernelPanicNotification
-                                             object:nil];
-#endif
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -502,54 +464,6 @@ static int nextVMTerminalNumber;
     return [self startVMSession];
 }
 
-#if !ISH_LINUX
-- (void)processExited:(NSNotification *)notif {
-    int pid = [notif.userInfo[@"pid"] intValue];
-    TerminalSession *exited = nil;
-    for (TerminalSession *session in self.sessions) {
-        if (session.pid == pid)
-            exited = session;
-    }
-    if (exited == nil)
-        return;
-    [exited.terminal destroy];
-    if (self.sessions.count > 1) {
-        // Other sessions remain: drop this one and show a neighbour.
-        NSUInteger index = [self.sessions indexOfObject:exited];
-        [self.sessions removeObject:exited];
-        if (exited == self.currentSession)
-            self.currentSession = self.sessions[MIN(index, self.sessions.count - 1)];
-        else
-            [self _updateSessionsButton];
-        current = NULL; // it's been freed
-        return;
-    }
-    [self.sessions removeObject:exited];
-    // On iOS 13, there are multiple windows, so just close this one.
-    if (@available(iOS 13, *)) {
-        // On iPhone, destroying scenes will fail, but the error doesn't actually go to the error handler, which is really stupid. Apple doesn't fix bugs, so I'm forced to just add a check here.
-        if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && self.sceneSession != nil) {
-            [UIApplication.sharedApplication requestSceneSessionDestruction:self.sceneSession options:nil errorHandler:^(NSError *error) {
-                NSLog(@"scene destruction error %@", error);
-                self.sceneSession = nil;
-                [self processExited:notif];
-            }];
-            return;
-        }
-    }
-    current = NULL; // it's been freed
-    [self startNewSession];
-}
-#endif
-
-#if ISH_LINUX
-- (void)kernelPanicked:(NSNotification *)notif {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"panik" message:notif.userInfo[@"message"] preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"k" style:UIAlertActionStyleDefault handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
-}
-#endif
-
 - (void)showMessage:(NSString *)message subtitle:(NSString *)subtitle {
     dispatch_async(dispatch_get_main_queue(), ^{
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:message message:subtitle preferredStyle:UIAlertControllerStyleAlert];
@@ -604,7 +518,8 @@ static int nextVMTerminalNumber;
 }
 
 - (void)_updateBadge {
-    self.settingsBadge.hidden = !FsNeedsRepositoryUpdate();
+    // iSH's "repositories need updating" badge; distributions manage their own.
+    self.settingsBadge.hidden = YES;
 }
 
 - (UIStatusBarStyle)preferredStatusBarStyle {
@@ -752,7 +667,7 @@ static int nextVMTerminalNumber;
     if (i == 7)
         self.terminal = self.sessionTerminal;
     else
-        self.terminal = [Terminal terminalWithType:TTY_CONSOLE_MAJOR number:i];
+        return;
 }
 
 - (void)increaseFontSize:(UIKeyCommand *)command {

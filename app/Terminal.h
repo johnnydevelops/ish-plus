@@ -7,31 +7,24 @@
 
 #import <UIKit/UIKit.h>
 
-struct tty;
 @class ISHTerminalSurface;
 
 @interface Terminal : NSObject
 
 + (Terminal *)terminalWithType:(int)type number:(int)number;
-#if !ISH_LINUX
-// Returns a strong struct tty and a Terminal that has a weak reference to the same tty
-+ (Terminal *)createPseudoTerminal:(struct tty **)tty;
-#endif
 
 + (Terminal *)terminalWithUUID:(NSUUID *)uuid;
 @property (readonly) NSUUID *uuid;
 
-+ (void)convertCommand:(NSArray<NSString *> *)command toArgs:(char *)argv limitSize:(size_t)maxSize;
-
 - (int)sendOutput:(const void *)buf length:(int)len;
 - (void)sendInput:(NSData *)input;
 
-// For terminals that are not backed by an iSH tty, such as the consoles of the
-// Linux VM: inputHandler receives what the user types (instead of a tty), and
-// destroyHandler runs when the terminal is destroyed (its session closed).
+// Each terminal is a console of the Linux VM: inputHandler receives what the
+// user types, and destroyHandler runs when the terminal is destroyed (its
+// session closed).
 @property (copy) void (^inputHandler)(NSData *data);
 @property (copy) void (^destroyHandler)(void);
-// Linux VM: called with the terminal's size whenever it changes.
+// Called with the terminal's size whenever it changes.
 @property (copy) void (^resizeHandler)(int columns, int rows);
 
 - (NSString *)arrow:(char)direction;
@@ -47,4 +40,3 @@ struct tty;
 
 @end
 
-extern struct tty_driver ios_console_driver;

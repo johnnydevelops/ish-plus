@@ -6,7 +6,6 @@
 //
 
 #import "UserPreferences.h"
-#import "fs/proc/ish.h"
 
 // IMPORTANT: If you add a constant here and expose it via UserPreferences,
 // consider if it also needs to be exposed as a friendly preference and included
@@ -43,97 +42,6 @@ static NSString *const kSystemMonospacedFontName = @"ui-monospace";
 - (void)updateTheme;
 @end
 
-char **get_all_defaults_keys_impl(void) {
-    NSArray<NSString *> *preferenceKeys = NSUserDefaults.standardUserDefaults.dictionaryRepresentation.allKeys;
-    char **entries = malloc((preferenceKeys.count + 1) * sizeof(*entries));
-    for (NSUInteger i = 0; i < preferenceKeys.count; ++i)
-        entries[i] = strdup(preferenceKeys[i].UTF8String);
-    entries[preferenceKeys.count] = NULL;
-    return entries;
-}
-
-char *get_friendly_name_impl(const char *name) {
-    const char *friendly_name = friendlyPreferenceReverseMapping[[NSString stringWithUTF8String:name]].UTF8String;
-    if (friendly_name == NULL)
-        return NULL;
-    return strdup(friendly_name);
-}
-
-char *get_underlying_name_impl(const char *name) {
-    return strdup(friendlyPreferenceMapping[[NSString stringWithUTF8String:name]].UTF8String);
-}
-
-bool get_user_default_impl(const char *name, char **buffer, size_t *size) {
-    id value = [NSUserDefaults.standardUserDefaults objectForKey:[NSString stringWithUTF8String:name]];
-    // Since we are writing with fragments, wrap the object in an array to have
-    // a top-level object to check.
-    if (!value || ![NSJSONSerialization isValidJSONObject:@[value]]) {
-        return false;
-    }
-    NSError *error;
-    NSJSONWritingOptions options = NSJSONWritingFragmentsAllowed | NSJSONWritingSortedKeys | NSJSONWritingPrettyPrinted;
-    if (@available(iOS 13.0, *)) {
-        options |= NSJSONWritingWithoutEscapingSlashes;
-    }
-    NSData *data = [NSJSONSerialization dataWithJSONObject:value options:options error:&error];
-    if (error) {
-        return false;
-    }
-    *buffer = malloc(data.length + 1);
-    memcpy(*buffer, data.bytes, data.length);
-    (*buffer)[data.length] = '\n';
-    *size = data.length + 1;
-    return true;
-}
-
-bool set_user_default_impl(const char *name, char *buffer, size_t size) {
-    NSString *key = [NSString stringWithUTF8String:name];
-    NSData *data = [NSData dataWithBytesNoCopy:buffer length:size freeWhenDone:NO];
-    NSError *error;
-    id value = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingFragmentsAllowed error:&error];
-    if (error) {
-        return false;
-    }
-    NSString *property = kvoProperties[key];
-    if (property) {
-        if ([UserPreferences.shared validateValue:&value forKey:property error:nil]) {
-            [UserPreferences.shared setValue:value forKey:property];
-        } else {
-            return false;
-        }
-    } else {
-        [NSUserDefaults.standardUserDefaults setValue:value forKey:key];
-    }
-    return true;
-}
-
-bool remove_user_default_impl(const char *name) {
-    NSString *key = [NSString stringWithUTF8String:name];
-    NSString *property = kvoProperties[key];
-    if (property) {
-        [UserPreferences.shared willChangeValueForKey:property];
-    }
-    [NSUserDefaults.standardUserDefaults removeObjectForKey:key];
-    if (property) {
-        [UserPreferences.shared didChangeValueForKey:property];
-    }
-    
-    // This particular property needs special handling to stay up-to-date
-    if ([property isEqualToString:@"userTheme"]) {
-        [UserPreferences.shared updateTheme];
-    }
-    return true;
-}
-
-// TODO: Move these to Linux
-#if ISH_LINUX
-char **(*get_all_defaults_keys)(void);
-char *(*get_friendly_name)(const char *name);
-char *(*get_underlying_name)(const char *name);
-bool (*get_user_default)(const char *name, char **buffer, size_t *size);
-bool (*set_user_default)(const char *name, char *buffer, size_t size);
-bool (*remove_user_default)(const char *name);
-#endif
 
 @implementation UserPreferences {
     NSUserDefaults *_defaults;
@@ -181,12 +89,6 @@ bool (*remove_user_default)(const char *name);
                 kPreferenceFontFamilyKey: @"Menlo",
             }];
         }
-        get_all_defaults_keys = get_all_defaults_keys_impl;
-        get_friendly_name = get_friendly_name_impl;
-        get_underlying_name = get_underlying_name_impl;
-        get_user_default = get_user_default_impl;
-        set_user_default = set_user_default_impl;
-        remove_user_default = remove_user_default_impl;
         friendlyPreferenceMapping = @{
             @"caps_lock_mapping": kPreferenceCapsLockMappingKey,
             @"option_mapping": kPreferenceOptionMappingKey,

@@ -30,7 +30,10 @@ public final class JITViewController: UIViewController {
     /// it fails. Set by the host, which owns the helper extension launcher.
     @objc public var launchEnabler: ((@escaping (String?) -> Void) -> Void)?
 
-    private var usesBuiltInEnabler: Bool { launchEnabler != nil && Onboarding.hasPairing }
+    /// The built-in enabler when iSH+ is paired; StikDebug otherwise, or when
+    /// the user picks it after the built-in one failed.
+    private var useStikDebug = false
+    private var usesBuiltInEnabler: Bool { !useStikDebug && launchEnabler != nil && Onboarding.hasPairing }
 
     private let symbol = UIImageView()
     private let spinner = UIActivityIndicatorView(style: .large)
@@ -113,7 +116,7 @@ public final class JITViewController: UIViewController {
         titleLabel.text = "Enabling JIT…"
         detailLabel.text = usesBuiltInEnabler
             ? "Connecting to this device through LocalDevVPN. The first time, iSH+ also downloads the developer disk image, which can take a minute."
-            : JITViewController.stikDebugInstalled
+            : JITViewController.stikDebugInstalled && (useStikDebug || !Onboarding.hasPairing)
             ? "Waiting for StikDebug to enable JIT for iSH+. Come back to iSH+ when it is done."
             : "Waiting for a JIT enabler (StikDebug, SideStore or a debugger) to attach to iSH+."
         setButtons([])
@@ -126,14 +129,23 @@ public final class JITViewController: UIViewController {
         symbol.image = UIImage(systemName: "exclamationmark.triangle")
         titleLabel.text = "Failed to enable JIT."
         let reason = failureReason.map { "\($0)\n\n" } ?? ""
-        detailLabel.text = reason + "The Linux VM needs JIT to run at full speed. Make sure LocalDevVPN is connected and StikDebug (or another JIT enabler) is set up, then tap Try Again. You can also run QEMU interpreted, which works without JIT but is much slower."
+        detailLabel.text = reason + "The Linux VM needs JIT to run at full speed. Make sure LocalDevVPN is connected, then tap Try Again. You can also run QEMU interpreted, which works without JIT but is much slower."
         var choices: [UIButton] = [
-            makeButton("Try Again", prominent: true) { [weak self] in self?.enableJIT() },
+            makeButton("Try Again", prominent: true) { [weak self] in
+                self?.useStikDebug = false
+                self?.enableJIT()
+            },
             makeButton("Set Up JIT…", prominent: false) { [weak self] in
                 let onboarding = OnboardingViewController { self?.enableJIT() }
                 self?.present(onboarding, animated: true)
             },
         ]
+        if JITViewController.stikDebugInstalled && Onboarding.hasPairing {
+            choices.append(makeButton("Use StikDebug", prominent: false) { [weak self] in
+                self?.useStikDebug = true
+                self?.enableJIT()
+            })
+        }
         if VirtualMachine.interpreterAvailable {
             choices.append(makeButton("Run QEMU Interpreted", prominent: false) { [weak self] in self?.finish(.interpreted) })
         }
@@ -162,12 +174,8 @@ public final class JITViewController: UIViewController {
 
     // MARK: Enabling
 
-    /// Temporarily off while testing with a debugger attached from Xcode, so
-    /// iSH+ does not switch to StikDebug. TODO: re-enable with the in-app enabler.
-    private static let openStikDebug = false
-
     private static var stikDebugInstalled: Bool {
-        guard openStikDebug, let url = URL(string: "stikdebug://") else { return false }
+        guard let url = URL(string: "stikdebug://") else { return false }
         return UIApplication.shared.canOpenURL(url)
     }
 

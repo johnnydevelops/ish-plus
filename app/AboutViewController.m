@@ -8,10 +8,8 @@
 #import "AboutViewController.h"
 #import "iSHSwift.h"
 #import "AppDelegate.h"
-#import "CurrentRoot.h"
 #import "AppGroup.h"
 #import "UserPreferences.h"
-#import "iOSFS.h"
 #import "UIApplication+OpenURL.h"
 #import "NSObject+SaneKVO.h"
 

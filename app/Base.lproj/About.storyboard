@@ -625,46 +625,6 @@
             <point key="canvasLocation" x="1057.5" y="1132.3943661971832"/>
         </scene>
         <!--Upgrade-->
-        <scene sceneID="D8q-Fv-Sfr">
-            <objects>
-                <viewController title="Upgrade" id="9eV-Jd-Xng" customClass="UpgradeRootViewController" sceneMemberID="viewController">
-                    <view key="view" contentMode="scaleToFill" id="GV8-4O-0fU">
-                        <rect key="frame" x="0.0" y="0.0" width="320" height="568"/>
-                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                        <subviews>
-                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="6OQ-mF-Mur" customClass="TerminalView">
-                                <rect key="frame" x="0.0" y="64" width="320" height="504"/>
-                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
-                                <userDefinedRuntimeAttributes>
-                                    <userDefinedRuntimeAttribute type="boolean" keyPath="canBecomeFirstResponder" value="NO"/>
-                                </userDefinedRuntimeAttributes>
-                            </view>
-                        </subviews>
-                        <viewLayoutGuide key="safeArea" id="1GV-qG-uh7"/>
-                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
-                        <constraints>
-                            <constraint firstItem="1GV-qG-uh7" firstAttribute="trailing" secondItem="6OQ-mF-Mur" secondAttribute="trailing" id="ZCA-Q1-Odv"/>
-                            <constraint firstItem="6OQ-mF-Mur" firstAttribute="leading" secondItem="1GV-qG-uh7" secondAttribute="leading" id="gbg-DM-mLG"/>
-                            <constraint firstItem="6OQ-mF-Mur" firstAttribute="top" secondItem="1GV-qG-uh7" secondAttribute="top" id="jGK-vN-hUm"/>
-                            <constraint firstItem="1GV-qG-uh7" firstAttribute="bottom" secondItem="6OQ-mF-Mur" secondAttribute="bottom" id="mK6-ba-K1i"/>
-                        </constraints>
-                    </view>
-                    <navigationItem key="navigationItem" title="Upgrade" id="uXA-OB-CN7">
-                        <barButtonItem key="rightBarButtonItem" title="Start" style="done" id="R2f-RB-uga">
-                            <connections>
-                                <action selector="upgrade:" destination="9eV-Jd-Xng" id="LNT-XH-Qvi"/>
-                            </connections>
-                        </barButtonItem>
-                    </navigationItem>
-                    <connections>
-                        <outlet property="terminalView" destination="6OQ-mF-Mur" id="mGv-Yc-HQL"/>
-                        <outlet property="upgradeButton" destination="R2f-RB-uga" id="n2L-Vs-nDF"/>
-                    </connections>
-                </viewController>
-                <placeholder placeholderIdentifier="IBFirstResponder" id="Ncd-Qn-RO3" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
-            </objects>
-            <point key="canvasLocation" x="1057.5" y="1810.5633802816901"/>
-        </scene>
         <!--Appearance-->
         <scene sceneID="Sh1-9Z-h4V">
             <objects>
@@ -1052,16 +1012,6 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="b5y-3s-wrw" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="-527" y="158"/>
-        </scene>
-        <!--Roots-->
-        <scene sceneID="g3o-GK-9cH">
-            <objects>
-                <viewControllerPlaceholder storyboardName="Roots" id="gsu-Hv-LDC" sceneMemberID="viewController">
-                    <navigationItem key="navigationItem" id="fgZ-7w-Ieb"/>
-                </viewControllerPlaceholder>
-                <placeholder placeholderIdentifier="IBFirstResponder" id="h2H-l2-gZ6" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
-            </objects>
-            <point key="canvasLocation" x="292" y="641"/>
         </scene>
     </scenes>
     <resources>

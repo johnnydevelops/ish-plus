@@ -57,7 +57,6 @@ char *previewString = "# cat /proc/ish/colors\r\n"
 @implementation AboutAppearanceViewController {
     TerminalView *_terminalView;
     Terminal *_terminal;
-    struct tty *_tty;
 }
 
 - (void)viewDidLoad {
@@ -77,12 +76,9 @@ char *previewString = "# cat /proc/ish/colors\r\n"
     }];
     [self updateOtherControls];
     
-#if !ISH_LINUX
-    if (![NSUserDefaults.standardUserDefaults boolForKey:@"recovery"]) {
-        _terminal = [Terminal createPseudoTerminal:&_tty];
-        [_terminal sendOutput:previewString length:(int)strlen(previewString)];
-    }
-#endif
+    // A terminal only for showing the colours (not connected to the VM)
+    _terminal = [Terminal terminalWithType:-1 number:0];
+    [_terminal sendOutput:previewString length:(int)strlen(previewString)];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
