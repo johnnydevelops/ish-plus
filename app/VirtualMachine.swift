@@ -418,7 +418,7 @@ public final class VirtualMachine: NSObject {
             // iSH+'s initramfs finds its disks by their serial (see
             // tools/guest/boot/init); boot messages go to the first session.
             "-append", "earlycon=pl011,0x9000000 console=ttyAMA0 console=hvc0 loglevel=4",
-            "-drive", "if=none,file=\(distro!.diskURL.path),format=raw,id=root,cache=writeback,discard=unmap",
+            "-drive", "if=none,file=\(distro!.diskURL.path),format=raw,id=root,cache=writeback,discard=unmap,detect-zeroes=unmap",
             "-device", "virtio-blk-pci,drive=root,serial=ishplus-root,discard_granularity=4096",
             "-drive", "if=none,file=\(kernel("modloop")),format=raw,id=modloop,readonly=on",
             "-device", "virtio-blk-pci,drive=modloop,serial=ishplus-modloop",

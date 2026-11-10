@@ -39,7 +39,7 @@ console() {
     # Output before iSH+ connects to the console is lost, and iSH+ sends a
     # return when it connects: wait for it (without echoing it), so the
     # welcome and the first prompt are seen, once.
-    until { $B stty -echo; read -r _; $B stty echo; } < /dev/hvc$1 2>/dev/null; do $B sleep 10; done
+    until { $B stty -echo; read -r _; $B stty echo; } 2>/dev/null < /dev/hvc$1; do $B sleep 10; done
     while :; do
         # Fails quietly (and is retried) while QEMU has no port for it
         if ! { $B setsid -c $B sh $S/boot/shell.sh < /dev/hvc$1 > /dev/hvc$1 2>&1; } 2>/dev/null; then

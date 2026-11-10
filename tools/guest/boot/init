@@ -50,7 +50,7 @@ if [ -n "$INSTALL" ]; then
     fi
     if [ -z "$mounted" ]; then
         say "preparing the disk"
-        LD_LIBRARY_PATH=/opt/ishplus/lib/musl /opt/ishplus/sbin/mke2fs -q -F -t ext4 -L ishplus-root -E lazy_itable_init=1,lazy_journal_init=1 "$ROOT" \
+        LD_LIBRARY_PATH=/opt/ishplus/lib/musl /opt/ishplus/sbin/mke2fs -q -F -t ext4 -L ishplus-root -E assume_storage_prezeroed=1,nodiscard "$ROOT" \
             || fail "cannot format the disk"
         mount -t ext4 "$ROOT" /newroot || fail "cannot mount the new disk"
         mounted=1
