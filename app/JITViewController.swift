@@ -71,25 +71,18 @@ public final class JITViewController: UIViewController {
             stack.leadingAnchor.constraint(greaterThanOrEqualTo: view.layoutMarginsGuide.leadingAnchor),
             stack.trailingAnchor.constraint(lessThanOrEqualTo: view.layoutMarginsGuide.trailingAnchor),
             stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            stack.widthAnchor.constraint(lessThanOrEqualToConstant: 440),
+            {
+                // A definite width; without it the column (and its labels) can collapse.
+                let width = stack.widthAnchor.constraint(equalToConstant: 440)
+                width.priority = .defaultHigh
+                return width
+            }(),
             buttons.widthAnchor.constraint(equalTo: stack.widthAnchor),
             detailLabel.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])
 
         NotificationCenter.default.addObserver(self, selector: #selector(check),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
-    }
-
-    public override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        var changed = false
-        for label in [titleLabel, detailLabel] where label.bounds.width > 0 && label.preferredMaxLayoutWidth != label.bounds.width {
-            label.preferredMaxLayoutWidth = label.bounds.width
-            changed = true
-        }
-        if changed {
-            view.setNeedsLayout()
-        }
     }
 
     public override func viewDidAppear(_ animated: Bool) {
