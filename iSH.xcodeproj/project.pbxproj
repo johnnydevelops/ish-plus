@@ -99,6 +99,7 @@
 		BBECF3BC26913F1600DEC937 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = BB792B541F96D90D00FFB7A4 /* AppDelegate.m */; };
 		BBFB55662158644C00DFE6DE /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = BBFB55652158644C00DFE6DE /* libresolv.tbd */; };
 		C5BA678EA73D1B1E22A34A86 /* JITHelperHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6234104F5D7ECA6A9B59D3 /* JITHelperHandler.swift */; };
+		D864D6185FB3C47575C41253 /* ish.png in Resources */ = {isa = PBXBuildFile; fileRef = DD81969CD8758D3D51CF4C70 /* ish.png */; };
 		E4ABA6762629329C8F07E452 /* libqemu-aarch64-softmmu-tci.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = 477E1313748964CA68B92D2A /* libqemu-aarch64-softmmu-tci.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		F1ACF3EEC304BB68445CE94E /* ResumeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB7B4901B1A2E1D8686C0BF /* ResumeViewController.swift */; };
 		F832E7EDE71419B080DCC704 /* GuestServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B62450DCAB3F80C9FC06E4B /* GuestServices.swift */; };
@@ -315,6 +316,7 @@
 		D657DA6CA639A3C79F8158C0 /* BackgroundKeepAlive.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = BackgroundKeepAlive.h; sourceTree = "<group>"; };
 		D97EA159F635965A28FE3E83 /* JITViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = JITViewController.swift; sourceTree = "<group>"; };
 		DADA01E465A18DDFDE1C066B /* BackgroundKeepAlive.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = BackgroundKeepAlive.m; sourceTree = "<group>"; };
+		DD81969CD8758D3D51CF4C70 /* ish.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = ish.png; path = ish.png; sourceTree = "<group>"; };
 		DF4620D19DC63C97C4EDA00A /* libqemu-aarch64-softmmu.dylib */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = "compiled.mach-o.dylib"; name = "libqemu-aarch64-softmmu.dylib"; path = "build-qemu/sysroot-ios-arm64/lib/libqemu-aarch64-softmmu.dylib"; sourceTree = SOURCE_ROOT; };
 		E6D2D852F3D9B73E99D70407 /* DistroSetupViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DistroSetupViewController.swift; sourceTree = "<group>"; };
 		EF79ECEFDBB2821EB483E54D /* PortForwarder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortForwarder.swift; sourceTree = "<group>"; };
@@ -436,6 +438,7 @@
 				BB0B88052589661A00208600 /* rgb.png */,
 				BB0B880E2589662200208600 /* sprite64.png */,
 				BB0F552F239F8B360032A2A1 /* uninspired.png */,
+				DD81969CD8758D3D51CF4C70 /* ish.png */,
 			);
 			path = Icons;
 			sourceTree = "<group>";
@@ -825,6 +828,7 @@
 				BB38599F27BCEE6B000A1082 /* icon1337.png in Resources */,
 				BB3859A127BCEE6B000A1082 /* iinhash.png in Resources */,
 				BB38599727BCEE6B000A1082 /* freeiosterminal.png in Resources */,
+				D864D6185FB3C47575C41253 /* ish.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
