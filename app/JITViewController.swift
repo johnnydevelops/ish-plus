@@ -13,7 +13,6 @@ import UIKit
 public enum JITChoice: Int {
     case jit           // JIT is enabled, run QEMU normally
     case interpreted   // run QEMU's interpreter (no JIT, much slower)
-    case builtinEngine // use iSH's built-in engine instead of the VM
 }
 
 @objc(ISHJITViewController)
@@ -112,7 +111,6 @@ public final class JITViewController: UIViewController {
         if VirtualMachine.interpreterAvailable {
             choices.append(makeButton("Run QEMU Interpreted", prominent: false) { [weak self] in self?.finish(.interpreted) })
         }
-        choices.append(makeButton("Use the Built-in iSH Engine", prominent: false) { [weak self] in self?.finish(.builtinEngine) })
         setButtons(choices)
     }
 

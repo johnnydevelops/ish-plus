@@ -162,7 +162,6 @@
 }
 
 - (void)viewDidAppear:(BOOL)animated {
-    [AppDelegate maybePresentStartupMessageOnViewController:self];
     [super viewDidAppear:animated];
     if (self.pendingJITScreen) {
         self.pendingJITScreen = NO;
@@ -185,9 +184,6 @@
         switch (choice) {
             case ISHJITChoiceInterpreted:
                 ISHVirtualMachine.shared.interpreted = YES;
-                break;
-            case ISHJITChoiceBuiltinEngine:
-                UserPreferences.shared.useLinuxVM = NO;
                 break;
             case ISHJITChoiceJit:
                 break;
@@ -430,65 +426,9 @@ static int nextVMTerminalNumber;
     }
 }
 
+// iSH+ runs every session in the Linux VM; iSH's own kernel is not used.
 - (int)startSession {
-    if (UserPreferences.shared.useLinuxVM)
-        return [self startVMSession];
-    NSArray<NSString *> *command = UserPreferences.shared.launchCommand;
-
-#if !ISH_LINUX
-    int err = become_new_init_child();
-    if (err < 0)
-        return err;
-    struct tty *tty;
-    Terminal *terminal = [Terminal createPseudoTerminal:&tty];
-    if (terminal == nil) {
-        NSAssert(IS_ERR(tty), @"tty should be error");
-        return (int) PTR_ERR(tty);
-    }
-    TerminalSession *session = [self addSessionWithTerminal:terminal pid:0];
-    NSString *stdioFile = [NSString stringWithFormat:@"/dev/pts/%d", tty->num];
-    err = create_stdio(stdioFile.fileSystemRepresentation, TTY_PSEUDO_SLAVE_MAJOR, tty->num);
-    if (err < 0)
-        return err;
-    tty_release(tty);
-
-    char argv[4096];
-    [Terminal convertCommand:command toArgs:argv limitSize:sizeof(argv)];
-    const char *envp = "TERM=xterm-256color\0";
-    err = do_execve(command[0].UTF8String, command.count, argv, envp);
-    if (err < 0)
-        return err;
-    session.pid = current->pid;
-    task_start(current);
-#else
-    const char *argv_arr[command.count + 1];
-    for (NSUInteger i = 0; i < command.count; i++)
-        argv_arr[i] = command[i].UTF8String;
-    argv_arr[command.count] = NULL;
-    const char *envp_arr[] = {
-        "TERM=xterm-256color",
-        NULL,
-    };
-    const char *const *argv = argv_arr;
-    const char *const *envp = envp_arr;
-    __block Terminal *terminal = nil;
-    __block int sessionPid = 0;
-    __block int err = 1;
-    sync_do_in_workqueue(^(void (^done)(void)) {
-        linux_start_session(argv[0], argv, envp, ^(int retval, int pid, nsobj_t term) {
-            err = retval;
-            if (term)
-                terminal = CFBridgingRelease(term);
-            sessionPid = pid;
-            done();
-        });
-    });
-    NSAssert(err <= 0, @"session start did not finish??");
-    if (err < 0)
-        return err;
-    [self addSessionWithTerminal:terminal pid:sessionPid];
-#endif
-    return 0;
+    return [self startVMSession];
 }
 
 #if !ISH_LINUX

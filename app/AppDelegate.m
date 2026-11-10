@@ -233,7 +233,8 @@ void SyncHostname(void) {
     if ([NSUserDefaults.standardUserDefaults boolForKey:@"recovery"])
         return YES;
 
-    bootError = [self boot];
+    // iSH+ runs Linux in a QEMU virtual machine (see VirtualMachine.swift);
+    // iSH's own kernel is no longer booted.
 
 #if ISH_LINUX
     [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationWillEnterForegroundNotification object:UIApplication.sharedApplication queue:nil usingBlock:^(NSNotification * _Nonnull note) {
@@ -283,17 +284,6 @@ void NetworkReachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReach
         });
     }];
     
-    // This code is IPv4 and IPv6 aware: see https://developer.apple.com/library/archive/samplecode/Reachability/Listings/ReadMe_md.html
-    struct sockaddr_in address = {
-        .sin_len = sizeof(address),
-        .sin_family = AF_INET,
-    };
-    self.reachability = SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (struct sockaddr *) &address);
-    SCNetworkReachabilityContext context = {
-        .info = (__bridge void *) self,
-    };
-    SCNetworkReachabilitySetCallback(self.reachability, NetworkReachabilityCallback, &context);
-    SCNetworkReachabilityScheduleWithRunLoop(self.reachability, CFRunLoopGetMain(), kCFRunLoopCommonModes);
 
     if (self.window != nil) {
         // For iOS <13, where the app delegate owns the window instead of the scene
