@@ -7,4 +7,6 @@ export HOME=/root USER=root LOGNAME=root SHELL="$shell" TERM=xterm-256color LANG
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 $B stty sane 2>/dev/null
 cd "$HOME" 2>/dev/null || cd /
+# The welcome message, as login prints it
+[ -s /etc/motd ] && $B cat /etc/motd
 exec $shell -l
