@@ -10,3 +10,8 @@
 	path = deps/SwiftTerm
 	url = https://github.com/johnnydevelops/SwiftTerm-ishplus.git
 	branch = ishplus
+[submodule "deps/qemu"]
+	path = deps/qemu
+	url = https://github.com/johnnydevelops/qemu-ishplus.git
+	branch = ishplus
+	shallow = true

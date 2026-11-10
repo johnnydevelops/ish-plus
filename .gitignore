@@ -20,3 +20,4 @@ fastlane/test_output
 e2e_out/
 /build-uc/
 /.cache/
+/build-qemu/

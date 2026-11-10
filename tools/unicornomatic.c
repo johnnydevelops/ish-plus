@@ -141,7 +141,9 @@ int compare_cpus(struct cpu_state *cpu, struct tlb *tlb, uc_engine *uc, int unde
     CHECK_REG(ebp);
 
     // check the flags, with a nice visual representation
-    regs.eflags = (regs.eflags & ~undefined_flags) | (cpu->eflags & undefined_flags);
+    // IF (0x200) is not visible to user programs, and unicorn and ish disagree on it
+    int ignored_flags = undefined_flags | 0x200;
+    regs.eflags = (regs.eflags & ~ignored_flags) | (cpu->eflags & ignored_flags);
     if (regs.eflags != cpu->eflags) {
 #define f(x,n) ((regs.eflags & (1 << n)) ? #x : "-"),
         printk("real eflags = 0x%x %s%s%s%s%s%s%s%s%s, fake eflags = 0x%x %s%s%s%s%s%s%s%s%s\n%0d",
@@ -493,6 +495,9 @@ int main(int argc, char *const argv[]) {
     struct cpu_state old_cpu = *cpu;
     while (true) {
         while (compare_cpus(cpu, &tlb, uc, undefined_flags) < 0) {
+            printk("diverged after the instruction at eip %#x\n", old_cpu.eip);
+            if (getenv("UNICORNOMATIC_DEBUG") == NULL)
+                exit(1);
             printk("resetting cpu\n");
             *cpu = old_cpu;
             debugger;
