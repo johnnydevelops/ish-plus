@@ -58,6 +58,19 @@ static void *timer_thread(void *param) {
     return NULL;
 }
 
+void timer_get(struct timer *timer, struct timer_spec *spec) {
+    lock(&timer->lock);
+    spec->value = (struct timespec) {0};
+    spec->interval = (struct timespec) {0};
+    if (timer->active) {
+        struct timespec left = timespec_subtract(timer->end, timespec_now(timer->clockid));
+        if (timespec_positive(left))
+            spec->value = left;
+        spec->interval = timer->interval;
+    }
+    unlock(&timer->lock);
+}
+
 int timer_set(struct timer *timer, struct timer_spec spec, struct timer_spec *oldspec) {
     lock(&timer->lock);
     struct timespec now = timespec_now(timer->clockid);

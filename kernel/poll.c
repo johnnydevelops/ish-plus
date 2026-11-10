@@ -214,14 +214,12 @@ dword_t sys_poll(addr_t fds, dword_t nfds, int_t timeout) {
     return res;
 }
 
-dword_t sys_pselect(fd_t nfds, addr_t readfds_addr, addr_t writefds_addr, addr_t exceptfds_addr, addr_t timeout_addr, addr_t sigmask_addr) {
-    struct timespec_ timeout_timespec;
+static dword_t pselect_common(fd_t nfds, addr_t readfds_addr, addr_t writefds_addr, addr_t exceptfds_addr, addr_t timeout_addr, addr_t sigmask_addr, bool time64) {
     struct timespec timeout_ts;
     struct timespec *timeout_ts_addr = NULL;
     if (timeout_addr != 0) {
-        if (user_get(timeout_addr, timeout_timespec))
+        if (user_get_timespec(timeout_addr, time64, &timeout_ts))
             return _EFAULT;
-        timeout_ts = convert_timespec(timeout_timespec);
         timeout_ts_addr = &timeout_ts;
     }
     // a system call can only take 6 parameters, so the last two need to be passed as a pointer to a struct
@@ -243,13 +241,21 @@ dword_t sys_pselect(fd_t nfds, addr_t readfds_addr, addr_t writefds_addr, addr_t
     return select_common(nfds, readfds_addr, writefds_addr, exceptfds_addr, timeout_ts_addr, "pselect");
 }
 
-dword_t sys_ppoll(addr_t fds, dword_t nfds, addr_t timeout_addr, addr_t sigmask_addr, dword_t sigsetsize) {
+dword_t sys_pselect(fd_t nfds, addr_t readfds_addr, addr_t writefds_addr, addr_t exceptfds_addr, addr_t timeout_addr, addr_t sigmask_addr) {
+    return pselect_common(nfds, readfds_addr, writefds_addr, exceptfds_addr, timeout_addr, sigmask_addr, false);
+}
+
+dword_t sys_pselect_time64(fd_t nfds, addr_t readfds_addr, addr_t writefds_addr, addr_t exceptfds_addr, addr_t timeout_addr, addr_t sigmask_addr) {
+    return pselect_common(nfds, readfds_addr, writefds_addr, exceptfds_addr, timeout_addr, sigmask_addr, true);
+}
+
+static dword_t ppoll_common(addr_t fds, dword_t nfds, addr_t timeout_addr, addr_t sigmask_addr, dword_t sigsetsize, bool time64) {
     int timeout = -1;
     if (timeout_addr != 0) {
-        struct timespec_ timeout_timespec;
-        if (user_get(timeout_addr, timeout_timespec))
+        struct timespec timeout_ts;
+        if (user_get_timespec(timeout_addr, time64, &timeout_ts))
             return _EFAULT;
-        timeout = timeout_timespec.sec * 1000 + timeout_timespec.nsec / 1000000;
+        timeout = timeout_ts.tv_sec * 1000 + timeout_ts.tv_nsec / 1000000;
     }
 
     sigset_t_ mask;
@@ -262,4 +268,12 @@ dword_t sys_ppoll(addr_t fds, dword_t nfds, addr_t timeout_addr, addr_t sigmask_
     }
 
     return sys_poll(fds, nfds, timeout);
+}
+
+dword_t sys_ppoll(addr_t fds, dword_t nfds, addr_t timeout_addr, addr_t sigmask_addr, dword_t sigsetsize) {
+    return ppoll_common(fds, nfds, timeout_addr, sigmask_addr, sigsetsize, false);
+}
+
+dword_t sys_ppoll_time64(addr_t fds, dword_t nfds, addr_t timeout_addr, addr_t sigmask_addr, dword_t sigsetsize) {
+    return ppoll_common(fds, nfds, timeout_addr, sigmask_addr, sigsetsize, true);
 }

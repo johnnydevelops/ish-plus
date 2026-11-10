@@ -96,6 +96,8 @@ dword_t sys_poll(addr_t fds, dword_t nfds, int_t timeout);
 dword_t sys_select(fd_t nfds, addr_t readfds_addr, addr_t writefds_addr, addr_t exceptfds_addr, addr_t timeout_addr);
 dword_t sys_pselect(fd_t nfds, addr_t readfds_addr, addr_t writefds_addr, addr_t exceptfds_addr, addr_t timeout_addr, addr_t sigmask_addr);
 dword_t sys_ppoll(addr_t fds, dword_t nfds, addr_t timeout_addr, addr_t sigmask_addr, dword_t sigsetsize);
+dword_t sys_ppoll_time64(addr_t fds, dword_t nfds, addr_t timeout_addr, addr_t sigmask_addr, dword_t sigsetsize);
+dword_t sys_pselect_time64(fd_t nfds, addr_t readfds_addr, addr_t writefds_addr, addr_t exceptfds_addr, addr_t timeout_addr, addr_t sigmask_addr);
 fd_t sys_epoll_create(int_t flags);
 fd_t sys_epoll_create0(void);
 int_t sys_epoll_ctl(fd_t epoll, int_t op, fd_t fd, addr_t event_addr);
@@ -144,6 +146,7 @@ dword_t sys_fallocate(fd_t f, dword_t mode, dword_t offset_low, dword_t offset_h
 dword_t sys_mkdir(addr_t path_addr, mode_t_ mode);
 dword_t sys_mkdirat(fd_t at_f, addr_t path_addr, mode_t_ mode);
 dword_t sys_utimensat(fd_t at_f, addr_t path_addr, addr_t times_addr, dword_t flags);
+dword_t sys_utimensat_time64(fd_t at_f, addr_t path_addr, addr_t times_addr, dword_t flags);
 dword_t sys_utimes(addr_t path_addr, addr_t times_addr);
 dword_t sys_utime(addr_t path_addr, addr_t times_addr);
 dword_t sys_times( addr_t tbuf);
@@ -247,6 +250,7 @@ dword_t sys_sysinfo(addr_t info_addr);
 
 // futexes
 dword_t sys_futex(addr_t uaddr, dword_t op, dword_t val, addr_t timeout_or_val2, addr_t uaddr2, dword_t val3);
+dword_t sys_futex_time64(addr_t uaddr, dword_t op, dword_t val, addr_t timeout_or_val2, addr_t uaddr2, dword_t val3);
 int_t sys_set_robust_list(addr_t robust_list, dword_t len);
 int_t sys_get_robust_list(pid_t_ pid, addr_t robust_list_ptr, addr_t len_ptr);
 

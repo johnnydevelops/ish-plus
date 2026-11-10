@@ -152,17 +152,14 @@ int futex_wake(addr_t uaddr, dword_t wake_max) {
     return futex_wakelike(FUTEX_WAKE_, uaddr, wake_max, 0, 0);
 }
 
-dword_t sys_futex(addr_t uaddr, dword_t op, dword_t val, addr_t timeout_or_val2, addr_t uaddr2, dword_t val3) {
+static dword_t futex_common(addr_t uaddr, dword_t op, dword_t val, addr_t timeout_or_val2, addr_t uaddr2, dword_t val3, bool time64) {
     if (!(op & FUTEX_PRIVATE_FLAG_)) {
         STRACE("!FUTEX_PRIVATE ");
     }
     struct timespec timeout = {0};
     if ((op & FUTEX_CMD_MASK_) == FUTEX_WAIT_ && timeout_or_val2) {
-        struct timespec_ timeout_;
-        if (user_get(timeout_or_val2, timeout_))
+        if (user_get_timespec(timeout_or_val2, time64, &timeout))
             return _EFAULT;
-        timeout.tv_sec = timeout_.sec;
-        timeout.tv_nsec = timeout_.nsec;
     }
     switch (op & FUTEX_CMD_MASK_) {
         case FUTEX_WAIT_:
@@ -178,6 +175,14 @@ dword_t sys_futex(addr_t uaddr, dword_t op, dword_t val, addr_t timeout_or_val2,
     STRACE("futex(%#x, %d, %d, timeout=%#x, %#x, %d) ", uaddr, op, val, timeout_or_val2, uaddr2, val3);
     FIXME("unsupported futex operation %d", op);
     return _ENOSYS;
+}
+
+dword_t sys_futex(addr_t uaddr, dword_t op, dword_t val, addr_t timeout_or_val2, addr_t uaddr2, dword_t val3) {
+    return futex_common(uaddr, op, val, timeout_or_val2, uaddr2, val3, false);
+}
+
+dword_t sys_futex_time64(addr_t uaddr, dword_t op, dword_t val, addr_t timeout_or_val2, addr_t uaddr2, dword_t val3) {
+    return futex_common(uaddr, op, val, timeout_or_val2, uaddr2, val3, true);
 }
 
 struct robust_list_head_ {

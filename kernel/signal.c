@@ -642,7 +642,7 @@ int_t sys_pause(void) {
     return _EINTR;
 }
 
-int_t sys_rt_sigtimedwait(addr_t set_addr, addr_t info_addr, addr_t timeout_addr, uint_t set_size) {
+static int_t rt_sigtimedwait_common(addr_t set_addr, addr_t info_addr, addr_t timeout_addr, uint_t set_size, bool time64) {
     if (set_size != sizeof(sigset_t_))
         return _EINVAL;
     sigset_t_ set;
@@ -650,11 +650,8 @@ int_t sys_rt_sigtimedwait(addr_t set_addr, addr_t info_addr, addr_t timeout_addr
         return _EFAULT;
     struct timespec timeout;
     if (timeout_addr != 0) {
-        struct timespec_ fake_timeout;
-        if (user_get(timeout_addr, fake_timeout))
+        if (user_get_timespec(timeout_addr, time64, &timeout))
             return _EFAULT;
-        timeout.tv_sec = fake_timeout.sec;
-        timeout.tv_nsec = fake_timeout.nsec;
     }
     STRACE("sigtimedwait(%#llx, %#x, %#x) = ...\n", (long long) set, info_addr, timeout_addr);
 
@@ -691,6 +688,14 @@ int_t sys_rt_sigtimedwait(addr_t set_addr, addr_t info_addr, addr_t timeout_addr
             return _EFAULT;
     STRACE("done sigtimedwait = %d\n", info.sig);
     return info.sig;
+}
+
+int_t sys_rt_sigtimedwait(addr_t set_addr, addr_t info_addr, addr_t timeout_addr, uint_t set_size) {
+    return rt_sigtimedwait_common(set_addr, info_addr, timeout_addr, set_size, false);
+}
+
+int_t sys_rt_sigtimedwait_time64(addr_t set_addr, addr_t info_addr, addr_t timeout_addr, uint_t set_size) {
+    return rt_sigtimedwait_common(set_addr, info_addr, timeout_addr, set_size, true);
 }
 
 static int kill_task(struct task *task, dword_t sig) {

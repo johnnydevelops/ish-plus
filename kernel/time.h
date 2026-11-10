@@ -9,6 +9,11 @@ dword_t sys_stime(addr_t time);
 #define CLOCK_PROCESS_CPUTIME_ID_ 2
 #define CLOCK_REALTIME_COARSE_ 5
 dword_t sys_clock_gettime(dword_t clock, addr_t tp);
+dword_t sys_clock_gettime64(dword_t clock, addr_t tp);
+dword_t sys_clock_getres_time64(dword_t clock, addr_t res_addr);
+dword_t sys_clock_settime64(dword_t clock, addr_t tp);
+dword_t sys_clock_nanosleep(dword_t clock, dword_t flags, addr_t req_addr, addr_t rem_addr);
+dword_t sys_clock_nanosleep_time64(dword_t clock, dword_t flags, addr_t req_addr, addr_t rem_addr);
 dword_t sys_clock_settime(dword_t clock, addr_t tp);
 dword_t sys_clock_getres(dword_t clock, addr_t res_addr);
 
@@ -56,6 +61,18 @@ struct itimerspec_ {
     struct timespec_ value;
 };
 
+// struct __kernel_timespec, used by the *_time64 syscalls that 32-bit programs
+// call to get times past 2038.
+struct timespec64_ {
+    sqword_t sec;
+    sqword_t nsec;
+};
+
+// Read or write a timespec in user memory, in the time32 or time64 layout.
+// Both return 0 or _EFAULT.
+int user_get_timespec(addr_t addr, bool time64, struct timespec *ts);
+int user_put_timespec(addr_t addr, bool time64, struct timespec ts);
+
 struct tms_ {
     clock_t_ tms_utime;  /* user time */
     clock_t_ tms_stime;  /* system time */
@@ -64,12 +81,19 @@ struct tms_ {
 };
 
 int_t sys_setitimer(int_t which, addr_t new_val, addr_t old_val);
+int_t sys_getitimer(int_t which, addr_t val_addr);
 uint_t sys_alarm(uint_t seconds);
 int_t sys_timer_create(dword_t clock, addr_t sigevent_addr, addr_t timer_addr);
 int_t sys_timer_settime(dword_t timer, int_t flags, addr_t new_value_addr, addr_t old_value_addr);
 int_t sys_timer_delete(dword_t timer_id);
 fd_t sys_timerfd_create(int_t clockid, int_t flags);
 int_t sys_timerfd_settime(fd_t f, int_t flags, addr_t new_value_addr, addr_t old_value_addr);
+int_t sys_timerfd_settime64(fd_t f, int_t flags, addr_t new_value_addr, addr_t old_value_addr);
+int_t sys_timerfd_gettime(fd_t f, addr_t value_addr);
+int_t sys_timerfd_gettime64(fd_t f, addr_t value_addr);
+int_t sys_timer_settime64(dword_t timer_id, int_t flags, addr_t new_value_addr, addr_t old_value_addr);
+int_t sys_timer_gettime(dword_t timer_id, addr_t value_addr);
+int_t sys_timer_gettime64(dword_t timer_id, addr_t value_addr);
 
 dword_t sys_times(addr_t tbuf);
 dword_t sys_nanosleep(addr_t req, addr_t rem);
