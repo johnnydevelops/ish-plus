@@ -57,20 +57,7 @@ mkdir -p "$stage/rootfs/.modloop" "$stage/rootfs/lib/modules"
 # Guest configuration: logins on the virtio consoles (one per iSH+ session),
 # networking through QEMU's user-mode network, and the Files app share.
 cat > "$stage/rootfs/etc/inittab" <<'EOF'
-::sysinit:/bin/mount -t proc proc /proc
-::sysinit:/bin/mount -t sysfs sysfs /sys
-::sysinit:/bin/mount -t devtmpfs devtmpfs /dev
-::sysinit:/bin/mkdir -p /dev/pts /dev/shm /run
-::sysinit:/bin/mount -t devpts devpts /dev/pts
-::sysinit:/bin/mount -t tmpfs tmpfs /dev/shm
-::sysinit:/bin/mount -t tmpfs tmpfs /run
-::sysinit:/bin/mount -o remount,rw /
-::sysinit:/bin/mount -t squashfs -o ro /dev/vdb /.modloop
-::sysinit:/bin/mount --bind /.modloop/modules /lib/modules
-::sysinit:/bin/hostname -F /etc/hostname
-::sysinit:/sbin/ifconfig lo up
-::sysinit:/sbin/ifconfig eth0 up
-::sysinit:/sbin/udhcpc -b -q -n -t 5 -i eth0 -s /usr/share/udhcpc/default.script
+::sysinit:/usr/sbin/ishplus-init
 ::respawn:/usr/sbin/ishplus-console hvc0
 ::respawn:/usr/sbin/ishplus-console hvc1
 ::respawn:/usr/sbin/ishplus-console hvc2
@@ -78,6 +65,28 @@ cat > "$stage/rootfs/etc/inittab" <<'EOF'
 ::ctrlaltdel:/sbin/reboot
 ::shutdown:/bin/umount -a -r
 EOF
+# Boot setup. The initramfs has already mounted /proc, /sys and /dev, so only
+# mount what is missing (mounting them again fails with "Resource busy").
+cat > "$stage/rootfs/usr/sbin/ishplus-init" <<'INIT'
+#!/bin/sh
+mnt() { mountpoint -q "$3" || mount -t "$1" "$2" "$3"; }
+mnt proc proc /proc
+mnt sysfs sysfs /sys
+mnt devtmpfs devtmpfs /dev
+mkdir -p /dev/pts /dev/shm /run
+mnt devpts devpts /dev/pts
+mnt tmpfs tmpfs /dev/shm
+mnt tmpfs tmpfs /run
+mount -o remount,rw /
+# Kernel modules live on the second disk (Alpine's modloop)
+mountpoint -q /.modloop || mount -t squashfs -o ro /dev/vdb /.modloop
+mountpoint -q /lib/modules || mount --bind /.modloop/modules /lib/modules
+hostname -F /etc/hostname
+ifconfig lo up
+ifconfig eth0 up
+udhcpc -b -q -n -t 5 -i eth0 -s /usr/share/udhcpc/default.script >/dev/null 2>&1
+INIT
+chmod 755 "$stage/rootfs/usr/sbin/ishplus-init"
 # A root shell on one iSH+ session's console, logged in automatically like
 # iSH; consoles the app did not attach wait quietly instead of making init
 # respawn a failing getty forever.

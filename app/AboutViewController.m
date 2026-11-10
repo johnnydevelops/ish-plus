@@ -6,6 +6,7 @@
 //
 
 #import "AboutViewController.h"
+#import "iSHSwift.h"
 #import "AppDelegate.h"
 #import "CurrentRoot.h"
 #import "AppGroup.h"
@@ -19,6 +20,7 @@
 @property (weak, nonatomic) IBOutlet UITableViewCell *themeCell;
 @property (weak, nonatomic) IBOutlet UISwitch *disableDimmingSwitch;
 @property (weak, nonatomic) IBOutlet UISwitch *keepAliveSwitch;
+@property (weak, nonatomic) IBOutlet UITableViewCell *jitSetupCell;
 
 @property (weak, nonatomic) IBOutlet UITableViewCell *openGithub;
 @property (weak, nonatomic) IBOutlet UITableViewCell *openFediverse;
@@ -89,7 +91,10 @@
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
-    if (cell == self.openGithub) {
+    if (cell == self.jitSetupCell) {
+        ISHOnboardingViewController *onboarding = [[ISHOnboardingViewController alloc] initWithCompletion:^{}];
+        [self presentViewController:onboarding animated:YES completion:nil];
+    } else if (cell == self.openGithub) {
         [UIApplication openURL:@"https://github.com/ish-app/ish"];
     } else if (cell == self.openFediverse) {
         [UIApplication openURL:@"https://publ.ish.app/ish"];

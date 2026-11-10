@@ -328,7 +328,8 @@ public final class VirtualMachine: NSObject {
         ]
         for i in 0..<VirtualMachine.consoleCount {
             args += ["-chardev", "socket,id=con\(i),path=\(socketPath(i)),server=on,wait=off",
-                     "-device", "virtconsole,chardev=con\(i)"]
+                     // Named, because Alpine's initramfs reads each port's name
+                     "-device", "virtconsole,chardev=con\(i),name=org.ishplus.console.\(i)"]
         }
         return args
     }

@@ -107,6 +107,10 @@ public final class JITViewController: UIViewController {
         detailLabel.text = "The Linux VM needs JIT to run at full speed. Make sure LocalDevVPN is connected and StikDebug (or another JIT enabler) is set up, then tap Try Again. You can also run QEMU interpreted, which works without JIT but is much slower."
         var choices: [UIButton] = [
             makeButton("Try Again", prominent: true) { [weak self] in self?.enableJIT() },
+            makeButton("Set Up JIT…", prominent: false) { [weak self] in
+                let onboarding = OnboardingViewController { self?.enableJIT() }
+                self?.present(onboarding, animated: true)
+            },
         ]
         if VirtualMachine.interpreterAvailable {
             choices.append(makeButton("Run QEMU Interpreted", prominent: false) { [weak self] in self?.finish(.interpreted) })

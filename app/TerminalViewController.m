@@ -177,8 +177,17 @@
         self.pendingJITScreen = YES;
         return;
     }
-    self.showingJITScreen = YES;
     __weak typeof(self) weakSelf = self;
+    if (!ISHOnboarding.completed) {
+        self.showingJITScreen = YES;
+        ISHOnboardingViewController *onboarding = [[ISHOnboardingViewController alloc] initWithCompletion:^{
+            weakSelf.showingJITScreen = NO;
+            [weakSelf presentJITScreenThenStartSession];
+        }];
+        [self presentViewController:onboarding animated:NO completion:nil];
+        return;
+    }
+    self.showingJITScreen = YES;
     ISHJITViewController *jit = [[ISHJITViewController alloc] initWithCompletion:^(ISHJITChoice choice) {
         weakSelf.showingJITScreen = NO;
         switch (choice) {
