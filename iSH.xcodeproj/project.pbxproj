@@ -21,6 +21,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		0613F6CA23E90E7A579F3A42 /* JITViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97EA159F635965A28FE3E83 /* JITViewController.swift */; };
 		09F32ACB38D3F055A800DD26 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 9A7A2BABFDF81E1D59AE6598 /* SwiftTerm */; };
 		0FC2383C2991FBA6004C09EC /* mmx.c in Sources */ = {isa = PBXBuildFile; fileRef = 0FC2383B2991FB82004C09EC /* mmx.c */; };
 		20BD3774A997C864D7D2E0A9 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = A64B20771684513C8DC55D08 /* SwiftTerm */; };
@@ -107,7 +108,10 @@
 		497F6D5C254E609700C82F46 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = BB7D93822087C2890008DA78 /* main.c */; };
 		497F6D87254E62E100C82F46 /* libish.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BB13F7DC200AD81D003D1C4D /* libish.a */; };
 		49FF844B2A06249F00850B7A /* ExceptionExfiltrator.m in Sources */ = {isa = PBXBuildFile; fileRef = 49FF844A2A06249F00850B7A /* ExceptionExfiltrator.m */; };
+		54051DB41170AF9C3C0E2C5C /* VirtualMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08EFD7D513BBE4A4DB86DC3E /* VirtualMachine.swift */; };
+		63A76CAC87E1FE87EACBF434 /* libqemu-system-aarch64.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = DF4620D19DC63C97C4EDA00A /* libqemu-system-aarch64.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9733E8CE21472D45B00A773E /* TerminalSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6391F54F532F3E4928D350AA /* TerminalSurface.swift */; };
+		A82BC7B8C19D56921BE50B4F /* VirtualMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08EFD7D513BBE4A4DB86DC3E /* VirtualMachine.swift */; };
 		B27B9DE9EC0CC2F5EC805584 /* SwiftLinkage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A891C9AEEDBFA1130B28128 /* SwiftLinkage.swift */; };
 		B8CB880AFB753ED85FA15B2D /* TerminalSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6391F54F532F3E4928D350AA /* TerminalSurface.swift */; };
 		BB0F552E239F8A790032A2A1 /* Icons.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB0F552D239F8A790032A2A1 /* Icons.plist */; };
@@ -242,6 +246,8 @@
 		BBFB2CEC2590296B00545EAB /* libish_emu.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BBFB2C5B2590257E00545EAB /* libish_emu.a */; };
 		BBFB55662158644C00DFE6DE /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = BBFB55652158644C00DFE6DE /* libresolv.tbd */; };
 		E06E1BD62396B4106039C4AB /* SwiftLinkage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A891C9AEEDBFA1130B28128 /* SwiftLinkage.swift */; };
+		E4ABA6762629329C8F07E452 /* libqemu-system-aarch64-tci.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = 477E1313748964CA68B92D2A /* libqemu-system-aarch64-tci.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		F7970F0CB69DAF46C8F92D41 /* JITViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97EA159F635965A28FE3E83 /* JITViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -399,6 +405,18 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
+		767EFDC68AE49204D31FC005 /* Embed QEMU */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				63A76CAC87E1FE87EACBF434 /* libqemu-system-aarch64.dylib in Embed QEMU */,
+				E4ABA6762629329C8F07E452 /* libqemu-system-aarch64-tci.dylib in Embed QEMU */,
+			);
+			name = "Embed QEMU";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BB88F4A32154760800A341FD /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -424,10 +442,12 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		08EFD7D513BBE4A4DB86DC3E /* VirtualMachine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VirtualMachine.swift; sourceTree = "<group>"; };
 		0A891C9AEEDBFA1130B28128 /* SwiftLinkage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwiftLinkage.swift; sourceTree = "<group>"; };
 		0FC2383B2991FB82004C09EC /* mmx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mmx.c; sourceTree = "<group>"; };
 		408A2639236440F8008A4E81 /* iOSFS.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = iOSFS.m; sourceTree = "<group>"; };
 		408A263B23644102008A4E81 /* iOSFS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = iOSFS.h; sourceTree = "<group>"; };
+		477E1313748964CA68B92D2A /* libqemu-system-aarch64-tci.dylib */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = "compiled.mach-o.dylib"; name = "libqemu-system-aarch64-tci.dylib"; path = "build-qemu/sysroot-ios-arm64/lib/libqemu-system-aarch64-tci.dylib"; sourceTree = SOURCE_ROOT; };
 		49087C13295DF0490058075B /* hook.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = hook.h; sourceTree = "<group>"; };
 		49087C14295DF0490058075B /* hook.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = hook.c; sourceTree = "<group>"; };
 		49087C26295DF1350058075B /* mach_exc.defs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.mig; name = mach_exc.defs; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/mach/mach_exc.defs; sourceTree = DEVELOPER_DIR; };
@@ -745,7 +765,9 @@
 		BBFB557E21587B6800DFE6DE /* ArrowBarButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArrowBarButton.h; sourceTree = "<group>"; };
 		BBFB557F21587B6800DFE6DE /* ArrowBarButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArrowBarButton.m; sourceTree = "<group>"; };
 		D657DA6CA639A3C79F8158C0 /* BackgroundKeepAlive.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = BackgroundKeepAlive.h; sourceTree = "<group>"; };
+		D97EA159F635965A28FE3E83 /* JITViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = JITViewController.swift; sourceTree = "<group>"; };
 		DADA01E465A18DDFDE1C066B /* BackgroundKeepAlive.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = BackgroundKeepAlive.m; sourceTree = "<group>"; };
+		DF4620D19DC63C97C4EDA00A /* libqemu-system-aarch64.dylib */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = "compiled.mach-o.dylib"; name = "libqemu-system-aarch64.dylib"; path = "build-qemu/sysroot-ios-arm64/lib/libqemu-system-aarch64.dylib"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -870,6 +892,15 @@
 				497F6C3A254E5C4F00C82F46 /* bits.S */,
 			);
 			path = "gadgets-aarch64";
+			sourceTree = "<group>";
+		};
+		5CB7ECD3CEB111ACDD8647D7 /* QEMU */ = {
+			isa = PBXGroup;
+			children = (
+				DF4620D19DC63C97C4EDA00A /* libqemu-system-aarch64.dylib */,
+				477E1313748964CA68B92D2A /* libqemu-system-aarch64-tci.dylib */,
+			);
+			name = QEMU;
 			sourceTree = "<group>";
 		};
 		BB0B848D2586A4B100208600 /* Configs */ = {
@@ -1028,6 +1059,7 @@
 				BB18B27F1F97F2590059FCD8 /* Scripts */,
 				BB792B511F96D90D00FFB7A4 /* Products */,
 				BB792B7D1F96E32B00FFB7A4 /* Frameworks */,
+				5CB7ECD3CEB111ACDD8647D7 /* QEMU */,
 			);
 			sourceTree = "<group>";
 			usesTabs = 0;
@@ -1089,6 +1121,8 @@
 				0A891C9AEEDBFA1130B28128 /* SwiftLinkage.swift */,
 				D657DA6CA639A3C79F8158C0 /* BackgroundKeepAlive.h */,
 				DADA01E465A18DDFDE1C066B /* BackgroundKeepAlive.m */,
+				08EFD7D513BBE4A4DB86DC3E /* VirtualMachine.swift */,
+				D97EA159F635965A28FE3E83 /* JITViewController.swift */,
 			);
 			path = app;
 			sourceTree = "<group>";
@@ -1500,6 +1534,7 @@
 				BB034E8C263643C10000A498 /* Generate APK Repositories File */,
 				BB792B4E1F96D90D00FFB7A4 /* Resources */,
 				BB88F4A32154760800A341FD /* Embed Foundation Extensions */,
+				767EFDC68AE49204D31FC005 /* Embed QEMU */,
 			);
 			buildRules = (
 			);
@@ -2244,6 +2279,8 @@
 				BB123ACC26C9EFD900419CDA /* LinuxTTY.c in Sources */,
 				BBEEA9EA277DAB400069495B /* LinuxPTY.c in Sources */,
 				9733E8CE21472D45B00A773E /* TerminalSurface.swift in Sources */,
+				54051DB41170AF9C3C0E2C5C /* VirtualMachine.swift in Sources */,
+				F7970F0CB69DAF46C8F92D41 /* JITViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2288,6 +2325,8 @@
 				BB28C7B826896CE600BDC834 /* ArrowBarButton.m in Sources */,
 				B8CB880AFB753ED85FA15B2D /* TerminalSurface.swift in Sources */,
 				37988EFDAF0D0747A964C9B9 /* BackgroundKeepAlive.m in Sources */,
+				A82BC7B8C19D56921BE50B4F /* VirtualMachine.swift in Sources */,
+				0613F6CA23E90E7A579F3A42 /* JITViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

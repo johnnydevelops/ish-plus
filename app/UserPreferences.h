@@ -57,6 +57,8 @@ extern NSString *const kThemeBackgroundColor;
 @property BOOL shouldDisableDimming;
 // Keep iSH+ (and everything running in it) alive while the app is in the background.
 @property BOOL keepAliveInBackground;
+// New sessions run in the Linux VM (QEMU, real kernel) instead of iSH's own kernel.
+@property BOOL useLinuxVM;
 @property (null_resettable) NSString *fontFamily;
 @property (readonly) NSString *fontFamilyUserFacingName;
 @property (readonly) UIFont *approximateFont;

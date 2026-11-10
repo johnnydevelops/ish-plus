@@ -21,6 +21,7 @@ static NSString *const kPreferenceFontSizeKey = @"Font Size";
 static NSString *const kPreferenceThemeKey = @"ModernTheme";
 static NSString *const kPreferenceDisableDimmingKey = @"Disable Dimming";
 static NSString *const kPreferenceKeepAliveKey = @"Keep Alive In Background";
+static NSString *const kPreferenceUseLinuxVMKey = @"Use Linux VM";
 NSString *const kPreferenceLaunchCommandKey = @"Init Command";
 NSString *const kPreferenceBootCommandKey = @"Boot Command";
 static NSString *const kPreferenceCursorStyleKey = @"Cursor Style";
@@ -162,6 +163,7 @@ bool (*remove_user_default)(const char *name);
             kPreferenceOverrideControlSpaceKey: @(NO),
             kPreferenceDisableDimmingKey: @(NO),
             kPreferenceKeepAliveKey: @(YES),
+            kPreferenceUseLinuxVMKey: @(NO),
             kPreferenceLaunchCommandKey: @[@"/bin/login", @"-f", @"root"],
             kPreferenceBootCommandKey: @[@"/sbin/init"],
             kPreferenceBlinkCursorKey: @(NO),
@@ -197,6 +199,7 @@ bool (*remove_user_default)(const char *name);
             @"font_size": kPreferenceFontSizeKey,
             @"disable_dimming": kPreferenceDisableDimmingKey,
             @"keep_alive_in_background": kPreferenceKeepAliveKey,
+            @"use_linux_vm": kPreferenceUseLinuxVMKey,
             @"launch_command": kPreferenceLaunchCommandKey,
             @"boot_command": kPreferenceBootCommandKey,
             @"cursor_style": kPreferenceCursorStyleKey,
@@ -223,6 +226,7 @@ bool (*remove_user_default)(const char *name);
             kPreferenceFontSizeKey: property(fontSize),
             kPreferenceDisableDimmingKey: property(shouldDisableDimming),
             kPreferenceKeepAliveKey: property(keepAliveInBackground),
+            kPreferenceUseLinuxVMKey: property(useLinuxVM),
             kPreferenceLaunchCommandKey: property(launchCommand),
             kPreferenceBootCommandKey: property(bootCommand),
             kPreferenceCursorStyleKey: property(cursorStyle),
@@ -433,6 +437,19 @@ bool (*remove_user_default)(const char *name);
 }
 
 - (BOOL)validateKeepAliveInBackground:(id *)value error:(NSError **)error {
+    return [*value isKindOfClass:NSNumber.class];
+}
+
+// MARK: useLinuxVM
+- (BOOL)useLinuxVM {
+    return [_defaults boolForKey:kPreferenceUseLinuxVMKey];
+}
+
+- (void)setUseLinuxVM:(BOOL)useLinuxVM {
+    [_defaults setBool:useLinuxVM forKey:kPreferenceUseLinuxVMKey];
+}
+
+- (BOOL)validateUseLinuxVM:(id *)value error:(NSError **)error {
     return [*value isKindOfClass:NSNumber.class];
 }
 

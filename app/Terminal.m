@@ -191,6 +191,12 @@ static NSMapTable<NSUUID *, Terminal *> *terminalsByUUID;
 #endif
 
 - (void)sendInput:(NSData *)input {
+    void (^inputHandler)(NSData *) = self.inputHandler;
+    if (inputHandler != nil) {
+        inputHandler(input);
+        [self.scrollToBottomTask schedule];
+        return;
+    }
     if (self.tty == NULL)
         return;
 #if !ISH_LINUX
@@ -283,6 +289,10 @@ static NSMapTable<NSUUID *, Terminal *> *terminalsByUUID;
 }
 
 - (void)destroy {
+    void (^destroyHandler)(void) = self.destroyHandler;
+    self.destroyHandler = nil;
+    if (destroyHandler != nil)
+        destroyHandler();
     tty_t tty = self.tty;
     if (tty != NULL) {
 #if !ISH_LINUX

@@ -19,6 +19,7 @@
 @property (weak, nonatomic) IBOutlet UITableViewCell *themeCell;
 @property (weak, nonatomic) IBOutlet UISwitch *disableDimmingSwitch;
 @property (weak, nonatomic) IBOutlet UISwitch *keepAliveSwitch;
+@property (weak, nonatomic) IBOutlet UISwitch *useLinuxVMSwitch;
 @property (weak, nonatomic) IBOutlet UITextField *launchCommandField;
 @property (weak, nonatomic) IBOutlet UITextField *bootCommandField;
 
@@ -93,6 +94,7 @@
     NSAssert(NSThread.isMainThread, @"This method needs to be called on the main thread");
     self.disableDimmingSwitch.on = UserPreferences.shared.shouldDisableDimming;
     self.keepAliveSwitch.on = UserPreferences.shared.keepAliveInBackground;
+    self.useLinuxVMSwitch.on = UserPreferences.shared.useLinuxVM;
     self.launchCommandField.text = [UserPreferences.shared.launchCommand componentsJoinedByString:@" "];
     self.bootCommandField.text = [UserPreferences.shared.bootCommand componentsJoinedByString:@" "];
 
@@ -154,6 +156,10 @@
 
 - (IBAction)keepAliveChanged:(id)sender {
     UserPreferences.shared.keepAliveInBackground = self.keepAliveSwitch.on;
+}
+
+- (IBAction)useLinuxVMChanged:(id)sender {
+    UserPreferences.shared.useLinuxVM = self.useLinuxVMSwitch.on;
 }
 
 - (IBAction)textBoxSubmit:(id)sender {

@@ -15,6 +15,7 @@
 #import "CurrentRoot.h"
 #import "NSObject+SaneKVO.h"
 #import "LinuxInterop.h"
+#import "iSHSwift.h"
 #include "kernel/init.h"
 #include "kernel/task.h"
 #include "kernel/calls.h"
@@ -59,6 +60,8 @@
 @property (nonatomic) TerminalSession *currentSession;
 @property int nextSessionNumber;
 @property UIButton *sessionsButton;
+@property BOOL showingJITScreen;
+@property BOOL pendingJITScreen;
 @property (readonly) int sessionPid;
 @property (readonly, nonatomic) Terminal *sessionTerminal;
 
@@ -161,6 +164,37 @@
 - (void)viewDidAppear:(BOOL)animated {
     [AppDelegate maybePresentStartupMessageOnViewController:self];
     [super viewDidAppear:animated];
+    if (self.pendingJITScreen) {
+        self.pendingJITScreen = NO;
+        [self presentJITScreenThenStartSession];
+    }
+}
+
+// "Enabling JIT…", then start the session the way the user chose.
+- (void)presentJITScreenThenStartSession {
+    if (self.showingJITScreen)
+        return;
+    if (self.view.window == nil || self.presentedViewController != nil) {
+        self.pendingJITScreen = YES;
+        return;
+    }
+    self.showingJITScreen = YES;
+    __weak typeof(self) weakSelf = self;
+    ISHJITViewController *jit = [[ISHJITViewController alloc] initWithCompletion:^(ISHJITChoice choice) {
+        weakSelf.showingJITScreen = NO;
+        switch (choice) {
+            case ISHJITChoiceInterpreted:
+                ISHVirtualMachine.shared.interpreted = YES;
+                break;
+            case ISHJITChoiceBuiltinEngine:
+                UserPreferences.shared.useLinuxVM = NO;
+                break;
+            case ISHJITChoiceJit:
+                break;
+        }
+        [weakSelf startNewSession];
+    }];
+    [self presentViewController:jit animated:NO completion:nil];
 }
 
 - (void)startNewSession {
@@ -338,7 +372,67 @@
     return self.terminal.uuid;
 }
 
+// Terminal numbers for Linux VM consoles; any unused tty major works as the key.
+#define VM_CONSOLE_MAJOR 250
+static int nextVMTerminalNumber;
+
+// A session on one of the Linux VM's consoles. The guest's getty keeps running
+// when the session is closed, so the shell is still there next time.
+- (int)startVMSession {
+    ISHVirtualMachine *vm = ISHVirtualMachine.shared;
+    if (!vm.isRunning && !vm.interpreted && !ISHVirtualMachine.jitAvailable) {
+        [self presentJITScreenThenStartSession];
+        return 0;
+    }
+    Terminal *terminal = [Terminal terminalWithType:VM_CONSOLE_MAJOR number:nextVMTerminalNumber++];
+    __weak Terminal *weakTerminal = terminal;
+    __weak typeof(self) weakSelf = self;
+    NSError *error = nil;
+    ISHVirtualMachineConsole *console = [ISHVirtualMachine.shared openConsoleWithOutput:^(NSData *data) {
+        [weakTerminal sendOutput:data.bytes length:(int) data.length];
+    } closed:^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [weakSelf vmConsoleClosedForTerminal:weakTerminal];
+        });
+    } error:&error];
+    if (console == nil) {
+        [self showMessage:@"Could not start the Linux VM" subtitle:error.localizedDescription];
+        [terminal destroy];
+        return 0;
+    }
+    terminal.inputHandler = ^(NSData *data) {
+        [console send:data];
+    };
+    terminal.destroyHandler = ^{
+        [console close];
+    };
+    [self addSessionWithTerminal:terminal pid:0];
+    return 0;
+}
+
+- (void)vmConsoleClosedForTerminal:(Terminal *)terminal {
+    TerminalSession *ended = nil;
+    for (TerminalSession *session in self.sessions) {
+        if (session.terminal == terminal)
+            ended = session;
+    }
+    if (ended == nil)
+        return;
+    [ended.terminal destroy];
+    NSUInteger index = [self.sessions indexOfObject:ended];
+    [self.sessions removeObject:ended];
+    if (self.sessions.count == 0) {
+        [self startNewSession];
+    } else if (ended == self.currentSession) {
+        self.currentSession = self.sessions[MIN(index, self.sessions.count - 1)];
+    } else {
+        [self _updateSessionsButton];
+    }
+}
+
 - (int)startSession {
+    if (UserPreferences.shared.useLinuxVM)
+        return [self startVMSession];
     NSArray<NSString *> *command = UserPreferences.shared.launchCommand;
 
 #if !ISH_LINUX

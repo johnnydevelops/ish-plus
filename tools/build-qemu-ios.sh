@@ -8,7 +8,7 @@
 # for techniques only; its code and patches are not used.
 #
 # Usage: tools/build-qemu-ios.sh [stage...]
-#   stages: fetch deps qemu (default: all three)
+#   stages: fetch deps qemu qemu-tci (default: all)
 #
 # Requires Homebrew meson, ninja, pkg-config, glib (for glib-mkenums).
 set -euo pipefail
@@ -142,12 +142,11 @@ stage_deps() {
     mesonb "$SRC/libucontext-1.5.2" darwin -Ddefault_library=static -Dfreestanding=true
 }
 
-stage_qemu() {
-    local build="$WORK/qemu-build"
-    log "Building QEMU (deps/qemu)"
+configure_qemu() { # build-dir prefix target-list extra-args...
+    local build="$1" prefix="$2" targets="$3"; shift 3
     mkdir -p "$build"
-    (cd "$build" && "$QEMU_DIR/configure" --prefix="$PREFIX" --cross-prefix="" \
-        --target-list=aarch64-softmmu,x86_64-softmmu \
+    (cd "$build" && "$QEMU_DIR/configure" --prefix="$prefix" --cross-prefix="" \
+        --target-list="$targets" "$@" \
         -Dembedded=true --with-coroutine=libucontext \
         --enable-tcg --enable-slirp --disable-slirp-smbd \
         --disable-hvf --disable-cocoa --disable-sdl --disable-gtk --disable-coreaudio \
@@ -160,7 +159,21 @@ stage_qemu() {
         make -j"$NCPU" && make install)
 }
 
+# JIT build: libqemu-system-{aarch64,x86_64}.dylib
+stage_qemu() {
+    log "Building QEMU (deps/qemu)"
+    configure_qemu "$WORK/qemu-build" "$PREFIX" aarch64-softmmu,x86_64-softmmu
+}
+
+# Interpreter build for when JIT cannot be enabled: libqemu-system-aarch64-tci.dylib
+stage_qemu-tci() {
+    log "Building QEMU with the TCG interpreter"
+    configure_qemu "$WORK/qemu-build-tci" "$WORK/tci-install" aarch64-softmmu --enable-tcg-interpreter
+    cp "$WORK/tci-install/lib/libqemu-system-aarch64.dylib" "$PREFIX/lib/libqemu-system-aarch64-tci.dylib"
+    install_name_tool -id @rpath/libqemu-system-aarch64-tci.dylib "$PREFIX/lib/libqemu-system-aarch64-tci.dylib"
+}
+
 stages=("$@")
-[ ${#stages[@]} -eq 0 ] && stages=(fetch deps qemu)
+[ ${#stages[@]} -eq 0 ] && stages=(fetch deps qemu qemu-tci)
 for s in "${stages[@]}"; do "stage_$s"; done
 log "Done: $PREFIX"

@@ -26,6 +26,12 @@ struct tty;
 - (int)sendOutput:(const void *)buf length:(int)len;
 - (void)sendInput:(NSData *)input;
 
+// For terminals that are not backed by an iSH tty, such as the consoles of the
+// Linux VM: inputHandler receives what the user types (instead of a tty), and
+// destroyHandler runs when the terminal is destroyed (its session closed).
+@property (copy) void (^inputHandler)(NSData *data);
+@property (copy) void (^destroyHandler)(void);
+
 - (NSString *)arrow:(char)direction;
 
 // Make this terminal no longer be the singleton terminal with its type and number. Will happen eventually if all references go away, but sometimes you want it to happen now.
