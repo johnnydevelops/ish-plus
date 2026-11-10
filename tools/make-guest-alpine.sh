@@ -88,6 +88,14 @@ syslogd -s 512 -b 1
 ifconfig lo up
 ifconfig eth0 up
 udhcpc -b -q -n -t 5 -i eth0 -s /usr/share/udhcpc/default.script >/dev/null 2>&1
+# iSH+'s support disk (FEX for x86_64 programs, helper commands), built
+# by tools/make-guest-support.sh; updatable without rebuilding this disk.
+for serial in /sys/block/vd*/serial; do
+    [ "$(cat "$serial" 2>/dev/null)" = ishplus-support ] || continue
+    mkdir -p /opt/ishplus
+    mountpoint -q /opt/ishplus || mount -t squashfs -o ro "/dev/$(basename "$(dirname "$serial")")" /opt/ishplus
+    [ -x /opt/ishplus/init.sh ] && /opt/ishplus/init.sh
+done
 # Developer hook: run a script the app attached as a disk (serial
 # "ishplus-autorun"), with its output on the serial port (serial.log).
 for serial in /sys/block/vd*/serial; do

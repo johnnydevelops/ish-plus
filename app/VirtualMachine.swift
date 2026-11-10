@@ -391,6 +391,11 @@ public final class VirtualMachine: NSObject {
             "-serial", "file:\(file("serial.log"))",
             "-d", "guest_errors,unimp", "-D", file("qemu-debug.log"),
         ]
+        // iSH+'s support disk: FEX (x86_64 programs) and helper commands
+        if FileManager.default.fileExists(atPath: file("support.img")) {
+            args += ["-drive", "if=none,file=\(file("support.img")),format=raw,id=support,readonly=on",
+                     "-device", "virtio-blk-pci,drive=support,serial=ishplus-support"]
+        }
         // Developer hook: the guest runs Documents/VM/autorun.sh at boot,
         // with its output in serial.log.
         // (An empty file disables it, since devicectl cannot delete files.)
