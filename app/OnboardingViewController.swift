@@ -102,7 +102,13 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
 
         let content = UIStackView(arrangedSubviews: [symbolView, titleLabel, textLabel, statusLabel])
         content.axis = .vertical
-        content.alignment = .center
+        // Fill, so multi-line labels wrap at the full width instead of being
+        // truncated; the symbol stays centered via its content mode.
+        content.alignment = .fill
+        symbolView.contentMode = .center
+        for label in [titleLabel, textLabel, statusLabel] {
+            label.setContentCompressionResistancePriority(.required, for: .vertical)
+        }
         content.spacing = 16
         content.setCustomSpacing(24, after: symbolView)
 
@@ -122,6 +128,20 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
             statusLabel.widthAnchor.constraint(equalTo: content.widthAnchor),
         ])
         show(0, animated: false)
+    }
+
+    public override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Multi-line labels in stack views need their real width to size
+        // their height; otherwise the text gets truncated.
+        var changed = false
+        for label in [titleLabel, textLabel, statusLabel] where label.bounds.width > 0 && label.preferredMaxLayoutWidth != label.bounds.width {
+            label.preferredMaxLayoutWidth = label.bounds.width
+            changed = true
+        }
+        if changed {
+            view.setNeedsLayout()
+        }
     }
 
     // MARK: Steps

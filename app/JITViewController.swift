@@ -57,7 +57,11 @@ public final class JITViewController: UIViewController {
 
         let stack = UIStackView(arrangedSubviews: [symbol, spinner, titleLabel, detailLabel, buttons])
         stack.axis = .vertical
-        stack.alignment = .center
+        stack.alignment = .fill
+        symbol.contentMode = .center
+        for label in [titleLabel, detailLabel] {
+            label.setContentCompressionResistancePriority(.required, for: .vertical)
+        }
         stack.spacing = 16
         stack.setCustomSpacing(28, after: detailLabel)
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -74,6 +78,18 @@ public final class JITViewController: UIViewController {
 
         NotificationCenter.default.addObserver(self, selector: #selector(check),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
+    }
+
+    public override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        var changed = false
+        for label in [titleLabel, detailLabel] where label.bounds.width > 0 && label.preferredMaxLayoutWidth != label.bounds.width {
+            label.preferredMaxLayoutWidth = label.bounds.width
+            changed = true
+        }
+        if changed {
+            view.setNeedsLayout()
+        }
     }
 
     public override func viewDidAppear(_ animated: Bool) {
