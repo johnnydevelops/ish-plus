@@ -6,9 +6,9 @@
 //
 
 #import <UIKit/UIKit.h>
-#import <WebKit/WebKit.h>
 
 struct tty;
+@class ISHTerminalSurface;
 
 @interface Terminal : NSObject
 
@@ -31,9 +31,10 @@ struct tty;
 // Make this terminal no longer be the singleton terminal with its type and number. Will happen eventually if all references go away, but sometimes you want it to happen now.
 - (void)destroy;
 
-@property (readonly) WKWebView *webView;
+// The native terminal that renders this session. Created on first use; main thread only.
+@property (readonly) ISHTerminalSurface *surface;
 @property (nonatomic) BOOL enableVoiceOverAnnounce;
-// Use KVO on this
+// Always YES now that the terminal is native; kept for KVO compatibility.
 @property (readonly) BOOL loaded;
 
 @end

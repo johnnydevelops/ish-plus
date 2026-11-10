@@ -14,7 +14,9 @@ enum OverrideAppearance {
     OverrideAppearanceDark,
 };
 
-@interface TerminalView : UIView <UITextInput, WKScriptMessageHandler, UIScrollViewDelegate>
+// Hosts the native terminal surface of the current Terminal session and
+// forwards focus, input accessory and styling to it.
+@interface TerminalView : UIView
 
 @property IBInspectable (nonatomic) BOOL canBecomeFirstResponder;
 
@@ -24,9 +26,12 @@ enum OverrideAppearance {
 
 @property (nonatomic) UIKeyboardAppearance keyboardAppearance;
 
-@property (weak) IBOutlet UIInputView *inputAccessoryView;
-@property (weak) IBOutlet UIButton *controlKey;
+@property (weak, nonatomic) IBOutlet UIInputView *inputAccessoryView;
+@property (weak, nonatomic) IBOutlet UIButton *controlKey;
 
 @property (nonatomic) Terminal *terminal;
+
+// Types text into the terminal as if from the keyboard (honours the Ctrl key).
+- (void)insertText:(NSString *)text;
 
 @end

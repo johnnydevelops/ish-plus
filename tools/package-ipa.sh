@@ -43,8 +43,7 @@ $2
 </plist>
 EOF
 }
-ent "$WORK/app.entitlements" "	<key>com.apple.developer.user-fonts</key>
-	<array><string>app-usage</string></array>"
+ent "$WORK/app.entitlements" ""
 ent "$WORK/appex.entitlements" ""
 
 sign() {

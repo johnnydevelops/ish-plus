@@ -21,7 +21,9 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		09F32ACB38D3F055A800DD26 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 9A7A2BABFDF81E1D59AE6598 /* SwiftTerm */; };
 		0FC2383C2991FBA6004C09EC /* mmx.c in Sources */ = {isa = PBXBuildFile; fileRef = 0FC2383B2991FB82004C09EC /* mmx.c */; };
+		20BD3774A997C864D7D2E0A9 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = A64B20771684513C8DC55D08 /* SwiftTerm */; };
 		491B31E62883BF22008EEFB0 /* ThemeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 491B31E52883BF22008EEFB0 /* ThemeViewController.m */; };
 		49302D8E277669D300C9885A /* ish.c in Sources */ = {isa = PBXBuildFile; fileRef = 49302D8D277669D300C9885A /* ish.c */; };
 		496C7AB227CC697E005D7613 /* Theme.m in Sources */ = {isa = PBXBuildFile; fileRef = 491C4C1E27C8FB65008B1DFA /* Theme.m */; };
@@ -104,6 +106,9 @@
 		497F6D5C254E609700C82F46 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = BB7D93822087C2890008DA78 /* main.c */; };
 		497F6D87254E62E100C82F46 /* libish.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BB13F7DC200AD81D003D1C4D /* libish.a */; };
 		49FF844B2A06249F00850B7A /* ExceptionExfiltrator.m in Sources */ = {isa = PBXBuildFile; fileRef = 49FF844A2A06249F00850B7A /* ExceptionExfiltrator.m */; };
+		9733E8CE21472D45B00A773E /* TerminalSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6391F54F532F3E4928D350AA /* TerminalSurface.swift */; };
+		B27B9DE9EC0CC2F5EC805584 /* SwiftLinkage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A891C9AEEDBFA1130B28128 /* SwiftLinkage.swift */; };
+		B8CB880AFB753ED85FA15B2D /* TerminalSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6391F54F532F3E4928D350AA /* TerminalSurface.swift */; };
 		BB0F552E239F8A790032A2A1 /* Icons.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB0F552D239F8A790032A2A1 /* Icons.plist */; };
 		BB10E5C9248DBAAC009C7A74 /* libarchive.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BB10E5C8248DBAA1009C7A74 /* libarchive.a */; };
 		BB10E5D0248DC21D009C7A74 /* Roots.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = BB10E5CF248DC21D009C7A74 /* Roots.storyboard */; };
@@ -120,7 +125,6 @@
 		BB28C79526896B1F00BDC834 /* TerminalViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = BB792B571F96D90D00FFB7A4 /* TerminalViewController.m */; };
 		BB28C79626896B1F00BDC834 /* ProgressReportViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = BBAEE33B249BDADC0069EBB5 /* ProgressReportViewController.m */; };
 		BB28C79726896B1F00BDC834 /* TerminalView.m in Sources */ = {isa = PBXBuildFile; fileRef = BB78AB2A1FAD22440013E782 /* TerminalView.m */; };
-		BB28C79826896B1F00BDC834 /* ScrollbarView.m in Sources */ = {isa = PBXBuildFile; fileRef = BB23F58C231E1D1400585522 /* ScrollbarView.m */; };
 		BB28C79926896B1F00BDC834 /* DelayedUITask.m in Sources */ = {isa = PBXBuildFile; fileRef = BB455E101FB37F6600AFB48B /* DelayedUITask.m */; };
 		BB28C79A26896B1F00BDC834 /* Terminal.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0FC5911F980A6B00803272 /* Terminal.m */; };
 		BB28C79B26896B1F00BDC834 /* FontPickerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = BB101B372364CF57000A93BC /* FontPickerViewController.m */; };
@@ -142,10 +146,6 @@
 		BB28C7BB268975AE00BDC834 /* LocationDevice.m in Sources */ = {isa = PBXBuildFile; fileRef = BB235533235D488400139E00 /* LocationDevice.m */; };
 		BB28C7BC268975B000BDC834 /* PasteboardDevice.m in Sources */ = {isa = PBXBuildFile; fileRef = 650B337322EA235C00B4C03E /* PasteboardDevice.m */; };
 		BB28C7BF2689799800BDC834 /* Roots.m in Sources */ = {isa = PBXBuildFile; fileRef = BB10E5CD248DBE66009C7A74 /* Roots.m */; };
-		BB2B4DAC231D94C300CB578B /* hterm_all.js in Resources */ = {isa = PBXBuildFile; fileRef = BB2B4DAB231D94C300CB578B /* hterm_all.js */; };
-		BB2B4DAD231D998300CB578B /* term.js in Resources */ = {isa = PBXBuildFile; fileRef = BB4A539C1FAA490C00A72ACE /* term.js */; };
-		BB2B4DAE231D998300CB578B /* term.css in Resources */ = {isa = PBXBuildFile; fileRef = BB4A53AF1FAA787900A72ACE /* term.css */; };
-		BB2B4DAF231D998300CB578B /* term.html in Resources */ = {isa = PBXBuildFile; fileRef = BB4A53A91FAA496700A72ACE /* term.html */; };
 		BB38597827BCEC70000A1082 /* circular.png in Resources */ = {isa = PBXBuildFile; fileRef = BB38597627BCEC70000A1082 /* circular.png */; };
 		BB38597D27BCEC78000A1082 /* dollarblock1.png in Resources */ = {isa = PBXBuildFile; fileRef = BB38597927BCEC78000A1082 /* dollarblock1.png */; };
 		BB38597F27BCEC78000A1082 /* dollarblock2.png in Resources */ = {isa = PBXBuildFile; fileRef = BB38597A27BCEC78000A1082 /* dollarblock2.png */; };
@@ -228,22 +228,19 @@
 		BBEF1988268066D1001225BD /* iinhash.png in Resources */ = {isa = PBXBuildFile; fileRef = BBC8298024EDACBB009D042C /* iinhash.png */; };
 		BBEF1989268066D1001225BD /* pydann2.png in Resources */ = {isa = PBXBuildFile; fileRef = BB0F553523A0ACFC0032A2A1 /* pydann2.png */; };
 		BBEF198A268066D1001225BD /* ihash1.png in Resources */ = {isa = PBXBuildFile; fileRef = BB0F553323A0AC760032A2A1 /* ihash1.png */; };
-		BBEF198B268066D1001225BD /* term.html in Resources */ = {isa = PBXBuildFile; fileRef = BB4A53A91FAA496700A72ACE /* term.html */; };
 		BBEF198C268066D1001225BD /* notsurewhatthisis.png in Resources */ = {isa = PBXBuildFile; fileRef = BB0B88202589734A00208600 /* notsurewhatthisis.png */; };
 		BBEF198D268066D1001225BD /* reworked.png in Resources */ = {isa = PBXBuildFile; fileRef = BB0B88172589662A00208600 /* reworked.png */; };
 		BBEF198E268066D1001225BD /* Roots.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = BB10E5CF248DC21D009C7A74 /* Roots.storyboard */; };
 		BBEF198F268066D1001225BD /* idollarhash.png in Resources */ = {isa = PBXBuildFile; fileRef = BBC8297D24EDAC11009D042C /* idollarhash.png */; };
-		BBEF1990268066D1001225BD /* hterm_all.js in Resources */ = {isa = PBXBuildFile; fileRef = BB2B4DAB231D94C300CB578B /* hterm_all.js */; };
 		BBEF1991268066D1001225BD /* icon1337.png in Resources */ = {isa = PBXBuildFile; fileRef = BB4A922D24EDA461002F5A96 /* icon1337.png */; };
 		BBEF1992268066D1001225BD /* rgb.png in Resources */ = {isa = PBXBuildFile; fileRef = BB0B88052589661A00208600 /* rgb.png */; };
-		BBEF1993268066D1001225BD /* term.css in Resources */ = {isa = PBXBuildFile; fileRef = BB4A53AF1FAA787900A72ACE /* term.css */; };
-		BBEF1994268066D1001225BD /* term.js in Resources */ = {isa = PBXBuildFile; fileRef = BB4A539C1FAA490C00A72ACE /* term.js */; };
 		BBEF1995268066D1001225BD /* sprite64.png in Resources */ = {isa = PBXBuildFile; fileRef = BB0B880E2589662200208600 /* sprite64.png */; };
 		BBEF1996268066D1001225BD /* icon.png in Resources */ = {isa = PBXBuildFile; fileRef = BB1B9A4223A5E96900414052 /* icon.png */; };
 		BBF06F6C2CC4C134009F5DB5 /* fchdir.c in Sources */ = {isa = PBXBuildFile; fileRef = BB0DF6F22CC4B01000EFECAE /* fchdir.c */; };
 		BBFB2C7E259026C200545EAB /* libish_emu.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BBFB2C5B2590257E00545EAB /* libish_emu.a */; };
 		BBFB2CEC2590296B00545EAB /* libish_emu.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BBFB2C5B2590257E00545EAB /* libish_emu.a */; };
 		BBFB55662158644C00DFE6DE /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = BBFB55652158644C00DFE6DE /* libresolv.tbd */; };
+		E06E1BD62396B4106039C4AB /* SwiftLinkage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A891C9AEEDBFA1130B28128 /* SwiftLinkage.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -426,6 +423,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0A891C9AEEDBFA1130B28128 /* SwiftLinkage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwiftLinkage.swift; sourceTree = "<group>"; };
 		0FC2383B2991FB82004C09EC /* mmx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mmx.c; sourceTree = "<group>"; };
 		408A2639236440F8008A4E81 /* iOSFS.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = iOSFS.m; sourceTree = "<group>"; };
 		408A263B23644102008A4E81 /* iOSFS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = iOSFS.h; sourceTree = "<group>"; };
@@ -588,6 +586,7 @@
 		497F6D47254E605F00C82F46 /* ish */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ish; sourceTree = BUILT_PRODUCTS_DIR; };
 		49FF844A2A06249F00850B7A /* ExceptionExfiltrator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ExceptionExfiltrator.m; sourceTree = "<group>"; };
 		49FF844C2A0624AF00850B7A /* ExceptionExfiltrator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ExceptionExfiltrator.h; sourceTree = "<group>"; };
+		6391F54F532F3E4928D350AA /* TerminalSurface.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
 		650B337222EA235C00B4C03E /* PasteboardDevice.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PasteboardDevice.h; sourceTree = "<group>"; };
 		650B337322EA235C00B4C03E /* PasteboardDevice.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PasteboardDevice.m; sourceTree = "<group>"; };
 		8632A7BD219A59FB00F02325 /* UserPreferences.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UserPreferences.h; sourceTree = "<group>"; };
@@ -641,14 +640,11 @@
 		BB235533235D488400139E00 /* LocationDevice.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LocationDevice.m; sourceTree = "<group>"; };
 		BB235535235D489400139E00 /* LocationDevice.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LocationDevice.h; sourceTree = "<group>"; };
 		BB235536235D49B300139E00 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
-		BB23F58B231E1D1400585522 /* ScrollbarView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ScrollbarView.h; sourceTree = "<group>"; };
-		BB23F58C231E1D1400585522 /* ScrollbarView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ScrollbarView.m; sourceTree = "<group>"; };
 		BB267FA423A48F1500ED7CAF /* AltIconViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AltIconViewController.h; sourceTree = "<group>"; };
 		BB267FA523A48F1500ED7CAF /* AltIconViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AltIconViewController.m; sourceTree = "<group>"; };
 		BB28C7522689522700BDC834 /* ProjectReleaseLinux.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = ProjectReleaseLinux.xcconfig; sourceTree = "<group>"; };
 		BB28C7532689522C00BDC834 /* ProjectDebugLinux.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = ProjectDebugLinux.xcconfig; sourceTree = "<group>"; };
 		BB28C755268956C900BDC834 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS15.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
-		BB2B4DAB231D94C300CB578B /* hterm_all.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; name = hterm_all.js; path = ../../deps/libapps/hterm/dist/js/hterm_all.js; sourceTree = "<group>"; };
 		BB38597627BCEC70000A1082 /* circular.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = circular.png; sourceTree = "<group>"; };
 		BB38597927BCEC78000A1082 /* dollarblock1.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = dollarblock1.png; sourceTree = "<group>"; };
 		BB38597A27BCEC78000A1082 /* dollarblock2.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = dollarblock2.png; sourceTree = "<group>"; };
@@ -660,9 +656,6 @@
 		BB415920255EF9E300E0950C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BB455E0F1FB37F6600AFB48B /* DelayedUITask.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DelayedUITask.h; sourceTree = "<group>"; };
 		BB455E101FB37F6600AFB48B /* DelayedUITask.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DelayedUITask.m; sourceTree = "<group>"; };
-		BB4A539C1FAA490C00A72ACE /* term.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = term.js; sourceTree = "<group>"; };
-		BB4A53A91FAA496700A72ACE /* term.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = term.html; sourceTree = "<group>"; };
-		BB4A53AF1FAA787900A72ACE /* term.css */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.css; path = term.css; sourceTree = "<group>"; };
 		BB4A922D24EDA461002F5A96 /* icon1337.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon1337.png; sourceTree = "<group>"; };
 		BB4A922F24EDA55C002F5A96 /* colontildehash.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = colontildehash.png; sourceTree = "<group>"; };
 		BB4A923124EDA560002F5A96 /* 3d.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = 3d.png; sourceTree = "<group>"; };
@@ -753,6 +746,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		34E8DC560D04764493200CB7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				09F32ACB38D3F055A800DD26 /* SwiftTerm in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		497F6D44254E605F00C82F46 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -811,6 +812,14 @@
 				BBEF1976268066D1001225BD /* libbz2.tbd in Frameworks */,
 				BBEF1977268066D1001225BD /* libiconv.tbd in Frameworks */,
 				BBEF1978268066D1001225BD /* libresolv.tbd in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FACEA1969F237E43FAA8BB14 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				20BD3774A997C864D7D2E0A9 /* SwiftTerm in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1003,10 +1012,6 @@
 		BB4A53991FAA40FD00A72ACE /* terminal */ = {
 			isa = PBXGroup;
 			children = (
-				BB4A53A91FAA496700A72ACE /* term.html */,
-				BB4A539C1FAA490C00A72ACE /* term.js */,
-				BB4A53AF1FAA787900A72ACE /* term.css */,
-				BB2B4DAB231D94C300CB578B /* hterm_all.js */,
 			);
 			path = terminal;
 			sourceTree = "<group>";
@@ -1061,8 +1066,6 @@
 				BB78AB2A1FAD22440013E782 /* TerminalView.m */,
 				BB0FC5901F980A6B00803272 /* Terminal.h */,
 				BB0FC5911F980A6B00803272 /* Terminal.m */,
-				BB23F58B231E1D1400585522 /* ScrollbarView.h */,
-				BB23F58C231E1D1400585522 /* ScrollbarView.m */,
 				BBECF39C2691312500DEC937 /* LinuxInterop */,
 				BB4A53991FAA40FD00A72ACE /* terminal */,
 				BB235532235D472F00139E00 /* Devices */,
@@ -1079,6 +1082,8 @@
 				BB88F4A4215476BA00A341FD /* iSH.entitlements */,
 				BB88F4912154760800A341FD /* FileProvider */,
 				BB41591D255EF9E300E0950C /* UITests */,
+				6391F54F532F3E4928D350AA /* TerminalSurface.swift */,
+				0A891C9AEEDBFA1130B28128 /* SwiftLinkage.swift */,
 			);
 			path = app;
 			sourceTree = "<group>";
@@ -1396,6 +1401,7 @@
 			buildConfigurationList = 497F6CEA254E5E4C00C82F46 /* Build configuration list for PBXNativeTarget "MakeXcodeAutoCompleteWork" */;
 			buildPhases = (
 				497F6CE0254E5E4C00C82F46 /* Sources */,
+				355FFD820CE24F581F791A8A /* Resources */,
 			);
 			buildRules = (
 			);
@@ -1413,6 +1419,7 @@
 				497F6D43254E605F00C82F46 /* Sources */,
 				497F6D44254E605F00C82F46 /* Frameworks */,
 				497F6D45254E605F00C82F46 /* CopyFiles */,
+				5FDF0EF91B2EC83B7D82B0FC /* Resources */,
 			);
 			buildRules = (
 			);
@@ -1429,6 +1436,8 @@
 			buildConfigurationList = BB13F7E2200AD81E003D1C4D /* Build configuration list for PBXNativeTarget "libish" */;
 			buildPhases = (
 				BB13F813200AEFAC003D1C4D /* ShellScript */,
+				C8A0EB5BCC61CA29FDD290A8 /* Resources */,
+				F52CAF650C02F3A09D48BE78 /* Sources */,
 			);
 			buildRules = (
 			);
@@ -1445,6 +1454,8 @@
 			buildConfigurationList = BB21A16A2689041500BD19B4 /* Build configuration list for PBXNativeTarget "libfakefs" */;
 			buildPhases = (
 				BB21A1692689041500BD19B4 /* ShellScript */,
+				864EAFFCA01D1DF2272E41FF /* Resources */,
+				CE71B84B4257E8D7B6A7723B /* Sources */,
 			);
 			buildRules = (
 			);
@@ -1482,7 +1493,6 @@
 				BB792B4D1F96D90D00FFB7A4 /* Frameworks */,
 				BBF1248B1FA7BF530088FB50 /* Download Root */,
 				BB034E8C263643C10000A498 /* Generate APK Repositories File */,
-				BB4A53AC1FAA49CA00A72ACE /* Compile JavaScript */,
 				BB792B4E1F96D90D00FFB7A4 /* Resources */,
 				BB88F4A32154760800A341FD /* Embed Foundation Extensions */,
 			);
@@ -1522,6 +1532,7 @@
 			buildConfigurationList = BBBDDF8A2CE00F6A0071F1F3 /* Build configuration list for PBXNativeTarget "libiSHLinuxUser" */;
 			buildPhases = (
 				BBBDDF832CE00F6A0071F1F3 /* Sources */,
+				46ADF557B91134CD9AF5E15E /* Resources */,
 			);
 			buildRules = (
 			);
@@ -1538,6 +1549,8 @@
 			buildConfigurationList = BBECF3A82691314C00DEC937 /* Build configuration list for PBXNativeTarget "libiSHLinux" */;
 			buildPhases = (
 				BBECF39E2691314C00DEC937 /* Sources */,
+				FD639A70F614B9A71978A267 /* Resources */,
+				34E8DC560D04764493200CB7 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -1545,6 +1558,9 @@
 				BBECF3BE2691417C00DEC937 /* PBXTargetDependency */,
 			);
 			name = libiSHLinux;
+			packageProductDependencies = (
+				9A7A2BABFDF81E1D59AE6598 /* SwiftTerm */,
+			);
 			productName = iSHLinux;
 			productReference = BBECF3A22691314C00DEC937 /* libiSHLinux.a */;
 			productType = "com.apple.product-type.library.static";
@@ -1554,6 +1570,8 @@
 			buildConfigurationList = BBECF3B3269136E100DEC937 /* Build configuration list for PBXNativeTarget "liblinux" */;
 			buildPhases = (
 				BBECF3B2269136E100DEC937 /* ShellScript */,
+				F0BB832B2B88DF87CDBD8692 /* Resources */,
+				109CAB058F2C8363CB3C11F1 /* Sources */,
 			);
 			buildRules = (
 			);
@@ -1570,6 +1588,8 @@
 			buildConfigurationList = BBEF192626806364001225BD /* Build configuration list for PBXNativeTarget "libiSHApp" */;
 			buildPhases = (
 				BBEF191A26806364001225BD /* Sources */,
+				AC2C7EC334292C0BFF74D796 /* Resources */,
+				FACEA1969F237E43FAA8BB14 /* Frameworks */,
 			);
 			buildRules = (
 				497A08BE29633FC100B323CF /* PBXBuildRule */,
@@ -1577,6 +1597,9 @@
 			dependencies = (
 			);
 			name = libiSHApp;
+			packageProductDependencies = (
+				A64B20771684513C8DC55D08 /* SwiftTerm */,
+			);
 			productName = libiSH;
 			productReference = BBEF191E26806364001225BD /* libiSHApp.a */;
 			productType = "com.apple.product-type.library.static";
@@ -1589,7 +1612,6 @@
 				BBEF196F268066D1001225BD /* Frameworks */,
 				BBEF1979268066D1001225BD /* Download Root */,
 				BBEF197A268066D1001225BD /* Generate APK Repositories File */,
-				BBEF197B268066D1001225BD /* Compile JavaScript */,
 				BBEF197C268066D1001225BD /* Resources */,
 				BBEF1997268066D1001225BD /* Embed Foundation Extensions */,
 			);
@@ -1610,6 +1632,8 @@
 			buildConfigurationList = BBFB2C582590257E00545EAB /* Build configuration list for PBXNativeTarget "libish_emu" */;
 			buildPhases = (
 				BBFB2C572590257E00545EAB /* ShellScript */,
+				D3E1EEB4B3AD88A3697219BF /* Resources */,
+				130785B17D3606B8D7B3F92F /* Sources */,
 			);
 			buildRules = (
 			);
@@ -1694,6 +1718,9 @@
 				Base,
 			);
 			mainGroup = BB792B451F96D8E000FFB7A4;
+			packageReferences = (
+				A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "SwiftTerm" */,
+			);
 			productRefGroup = BB792B511F96D90D00FFB7A4 /* Products */;
 			projectDirPath = "";
 			projectReferences = (
@@ -1735,6 +1762,41 @@
 /* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
+		355FFD820CE24F581F791A8A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		46ADF557B91134CD9AF5E15E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5FDF0EF91B2EC83B7D82B0FC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		864EAFFCA01D1DF2272E41FF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AC2C7EC334292C0BFF74D796 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BB41591A255EF9E300E0950C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1765,14 +1827,10 @@
 				BB38599427BCEE6B000A1082 /* pydann1.png in Resources */,
 				BB0F552E239F8A790032A2A1 /* Icons.plist in Resources */,
 				BB38599527BCEE6B000A1082 /* pydann2.png in Resources */,
-				BB2B4DAF231D998300CB578B /* term.html in Resources */,
 				BB3859A027BCEE6B000A1082 /* 3d.png in Resources */,
 				BB10E5D0248DC21D009C7A74 /* Roots.storyboard in Resources */,
-				BB2B4DAC231D94C300CB578B /* hterm_all.js in Resources */,
 				BB3859A327BCEE6B000A1082 /* ihash1.png in Resources */,
-				BB2B4DAE231D998300CB578B /* term.css in Resources */,
 				BB38599827BCEE6B000A1082 /* metal.png in Resources */,
-				BB2B4DAD231D998300CB578B /* term.js in Resources */,
 				BB38599A27BCEE6B000A1082 /* is.png in Resources */,
 				BB38599E27BCEE6B000A1082 /* circular.png in Resources */,
 				BB38599F27BCEE6B000A1082 /* icon1337.png in Resources */,
@@ -1808,22 +1866,46 @@
 				BBEF1988268066D1001225BD /* iinhash.png in Resources */,
 				BBEF1989268066D1001225BD /* pydann2.png in Resources */,
 				BBEF198A268066D1001225BD /* ihash1.png in Resources */,
-				BBEF198B268066D1001225BD /* term.html in Resources */,
 				BBEF198C268066D1001225BD /* notsurewhatthisis.png in Resources */,
 				BBEF198D268066D1001225BD /* reworked.png in Resources */,
 				BBEF198E268066D1001225BD /* Roots.storyboard in Resources */,
 				BBEF198F268066D1001225BD /* idollarhash.png in Resources */,
 				BB3859A827BCEE6C000A1082 /* is.png in Resources */,
 				BB38597F27BCEC78000A1082 /* dollarblock2.png in Resources */,
-				BBEF1990268066D1001225BD /* hterm_all.js in Resources */,
 				BB38597827BCEC70000A1082 /* circular.png in Resources */,
 				BBEF1991268066D1001225BD /* icon1337.png in Resources */,
 				BBEF1992268066D1001225BD /* rgb.png in Resources */,
-				BBEF1993268066D1001225BD /* term.css in Resources */,
-				BBEF1994268066D1001225BD /* term.js in Resources */,
 				BBEF1995268066D1001225BD /* sprite64.png in Resources */,
 				BBEF1996268066D1001225BD /* icon.png in Resources */,
 				BB38598127BCEC78000A1082 /* freeiosterminal.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C8A0EB5BCC61CA29FDD290A8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D3E1EEB4B3AD88A3697219BF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F0BB832B2B88DF87CDBD8692 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FD639A70F614B9A71978A267 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1883,23 +1965,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "mkdir -p \"$CONFIGURATION_BUILD_DIR\"\nln -sf \"$MESON_BUILD_DIR/$PRODUCT_NAME.a\" \"$CONFIGURATION_BUILD_DIR\"\n";
-		};
-		BB4A53AC1FAA49CA00A72ACE /* Compile JavaScript */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "Compile JavaScript";
-			outputPaths = (
-				"$(SRCROOT)/deps/hterm/dist/js/hterm_all.js",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = "/bin/sh -e";
-			shellScript = "cd $SRCROOT/deps/libapps\n./hterm/bin/mkdist\n";
-			showEnvVarsInLog = 0;
 		};
 		BB4A922A24ED9421002F5A96 /* Add icons to Info.plist */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -1974,23 +2039,6 @@
 			shellPath = "/bin/sh -e";
 			shellScript = "python3 $SRCROOT/app/gen_apk_repositories.py\n";
 		};
-		BBEF197B268066D1001225BD /* Compile JavaScript */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "Compile JavaScript";
-			outputPaths = (
-				"$(SRCROOT)/deps/hterm/dist/js/hterm_all.js",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = "/bin/sh -e";
-			shellScript = "cd $SRCROOT/deps/libapps\n./hterm/bin/mkdist\n";
-			showEnvVarsInLog = 0;
-		};
 		BBF1248B1FA7BF530088FB50 /* Download Root */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -2026,6 +2074,20 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		109CAB058F2C8363CB3C11F1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		130785B17D3606B8D7B3F92F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		497F6CE0254E5E4C00C82F46 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -2120,6 +2182,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BBF06F6C2CC4C134009F5DB5 /* fchdir.c in Sources */,
+				E06E1BD62396B4106039C4AB /* SwiftLinkage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2130,6 +2193,7 @@
 				BB28C7BB268975AE00BDC834 /* LocationDevice.m in Sources */,
 				BB28C7BA268975AA00BDC834 /* iOSFS.m in Sources */,
 				BB28C7BC268975B000BDC834 /* PasteboardDevice.m in Sources */,
+				B27B9DE9EC0CC2F5EC805584 /* SwiftLinkage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2174,6 +2238,7 @@
 				BBEEA9E8277D25090069495B /* LinuxRoot.c in Sources */,
 				BB123ACC26C9EFD900419CDA /* LinuxTTY.c in Sources */,
 				BBEEA9EA277DAB400069495B /* LinuxPTY.c in Sources */,
+				9733E8CE21472D45B00A773E /* TerminalSurface.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2193,7 +2258,6 @@
 				BB28C79626896B1F00BDC834 /* ProgressReportViewController.m in Sources */,
 				BB28C79726896B1F00BDC834 /* TerminalView.m in Sources */,
 				497A08BF29633FF400B323CF /* mach_exc.defs in Sources */,
-				BB28C79826896B1F00BDC834 /* ScrollbarView.m in Sources */,
 				BB28C79926896B1F00BDC834 /* DelayedUITask.m in Sources */,
 				497A08C029633FFA00B323CF /* hook.c in Sources */,
 				BB28C7BF2689799800BDC834 /* Roots.m in Sources */,
@@ -2217,6 +2281,21 @@
 				496C7AB327CC734D005D7613 /* ThemesViewController.m in Sources */,
 				BB77636726E486A7008DB44A /* fakefs.c in Sources */,
 				BB28C7B826896CE600BDC834 /* ArrowBarButton.m in Sources */,
+				B8CB880AFB753ED85FA15B2D /* TerminalSurface.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CE71B84B4257E8D7B6A7723B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F52CAF650C02F3A09D48BE78 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2501,6 +2580,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
+				SWIFT_VERSION = 5.0;
 			};
 			name = "Debug-ApplePleaseFixFB19282108";
 		};
@@ -2508,6 +2588,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -2523,6 +2604,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
+				SWIFT_VERSION = 5.0;
 			};
 			name = DebugLinux;
 		};
@@ -2530,6 +2612,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
+				SWIFT_VERSION = 5.0;
 			};
 			name = DebugLinux;
 		};
@@ -2537,6 +2620,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BBEF192C26806546001225BD /* AppLib.xcconfig */;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				SWIFT_OBJC_INTERFACE_HEADER_NAME = iSHSwift.h;
+				SWIFT_VERSION = 5.0;
 			};
 			name = DebugLinux;
 		};
@@ -2677,6 +2763,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BBECF3BA2691379100DEC937 /* StaticLibLinux.xcconfig */;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				SWIFT_OBJC_INTERFACE_HEADER_NAME = iSHSwift.h;
+				SWIFT_VERSION = 5.0;
 			};
 			name = "Debug-ApplePleaseFixFB19282108";
 		};
@@ -2684,6 +2773,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BBECF3BA2691379100DEC937 /* StaticLibLinux.xcconfig */;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				SWIFT_OBJC_INTERFACE_HEADER_NAME = iSHSwift.h;
+				SWIFT_VERSION = 5.0;
 			};
 			name = DebugLinux;
 		};
@@ -2691,6 +2783,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BBECF3BA2691379100DEC937 /* StaticLibLinux.xcconfig */;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				SWIFT_OBJC_INTERFACE_HEADER_NAME = iSHSwift.h;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -2698,6 +2793,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BBECF3BA2691379100DEC937 /* StaticLibLinux.xcconfig */;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				SWIFT_OBJC_INTERFACE_HEADER_NAME = iSHSwift.h;
+				SWIFT_VERSION = 5.0;
 			};
 			name = ReleaseLinux;
 		};
@@ -2733,6 +2831,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BBEF192C26806546001225BD /* AppLib.xcconfig */;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				SWIFT_OBJC_INTERFACE_HEADER_NAME = iSHSwift.h;
+				SWIFT_VERSION = 5.0;
 			};
 			name = "Debug-ApplePleaseFixFB19282108";
 		};
@@ -2740,6 +2841,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BBEF192C26806546001225BD /* AppLib.xcconfig */;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				SWIFT_OBJC_INTERFACE_HEADER_NAME = iSHSwift.h;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -2747,6 +2851,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
+				SWIFT_VERSION = 5.0;
 			};
 			name = "Debug-ApplePleaseFixFB19282108";
 		};
@@ -2754,6 +2859,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -2769,6 +2875,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
+				SWIFT_VERSION = 5.0;
 			};
 			name = ReleaseLinux;
 		};
@@ -2776,6 +2883,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
+				SWIFT_VERSION = 5.0;
 			};
 			name = ReleaseLinux;
 		};
@@ -2783,6 +2891,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BBEF192C26806546001225BD /* AppLib.xcconfig */;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				SWIFT_OBJC_INTERFACE_HEADER_NAME = iSHSwift.h;
+				SWIFT_VERSION = 5.0;
 			};
 			name = ReleaseLinux;
 		};
@@ -3067,6 +3178,26 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = deps/SwiftTerm;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9A7A2BABFDF81E1D59AE6598 /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
+		};
+		A64B20771684513C8DC55D08 /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = BB792B461F96D8E000FFB7A4 /* Project object */;
 }
