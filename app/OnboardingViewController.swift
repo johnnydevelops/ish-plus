@@ -2,7 +2,7 @@
 //  OnboardingViewController.swift
 //  iSH+
 //
-//  First-launch setup for JIT: Developer Mode, LocalDevVPN and pairing iSH+
+//  First-launch setup for JIT: LocalDevVPN and pairing iSH+
 //  with this device, so its built-in JIT enabler can attach to itself (like
 //  Madeira), without StikDebug.
 //
@@ -42,9 +42,6 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
         Step(symbol: "cpu",
              title: "Welcome to iSH+",
              text: "iSH+ runs a real Linux kernel in a virtual machine. To run it at full speed it needs JIT, which iSH+ can enable for itself once it is paired with this device. This takes a few minutes, once."),
-        Step(symbol: "hammer",
-             title: "Turn On Developer Mode",
-             text: "Open Settings → Privacy & Security → Developer Mode and turn it on. Your device restarts; come back to iSH+ afterwards."),
         Step(symbol: "network.badge.shield.half.filled",
              title: "Connect LocalDevVPN",
              text: "iSH+ talks to this device's developer services through LocalDevVPN. Install it from the App Store and connect it. It only routes traffic to this device and must be connected whenever iSH+ enables JIT."),
@@ -166,7 +163,7 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
 
     private func updateStatus() {
         statusLabel.isHidden = true
-        if index == 3 && Onboarding.hasPairing {
+        if index == 2 && Onboarding.hasPairing {
             statusLabel.isHidden = false
             statusLabel.textColor = .systemGreen
             statusLabel.text = "Paired. A pairing file is installed."
@@ -181,15 +178,10 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
                     makeButton("Skip for Now", prominent: false) { [weak self] in self?.finish() }]
         case 1:
             return [next,
-                    makeButton("Open Settings", prominent: false) {
-                        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
-                    }]
-        case 2:
-            return [next,
                     makeButton("Get LocalDevVPN", prominent: false) {
                         if let url = URL(string: "itms-apps://apps.apple.com/search?term=LocalDevVPN") { UIApplication.shared.open(url) }
                     }]
-        case 3:
+        case 2:
             var list = [makeButton("Import Pairing File…", prominent: !Onboarding.hasPairing) { [weak self] in self?.importPairingFile() },
                         makeButton("Pair With This Device", prominent: false) { [weak self] in self?.pairOnDevice() }]
             if Onboarding.hasPairing {
