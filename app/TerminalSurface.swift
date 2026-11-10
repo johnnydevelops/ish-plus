@@ -125,6 +125,23 @@ public final class TerminalSurface: TerminalView, TerminalViewDelegate {
         return SwiftTerm.Color(red: c(r), green: c(g), blue: c(b))
     }
 
+    // MARK: Focus
+
+    /// Called after the surface gains or loses keyboard focus.
+    @objc public var focusChanged: ((Bool) -> Void)?
+
+    public override func becomeFirstResponder() -> Bool {
+        let result = super.becomeFirstResponder()
+        focusChanged?(isFirstResponder)
+        return result
+    }
+
+    public override func resignFirstResponder() -> Bool {
+        let result = super.resignFirstResponder()
+        focusChanged?(isFirstResponder)
+        return result
+    }
+
     // MARK: Keyboard
 
     public override func insertText(_ text: String) {

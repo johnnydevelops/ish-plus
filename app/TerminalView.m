@@ -12,6 +12,7 @@
 
 @interface TerminalView ()
 @property (nonatomic) ISHTerminalSurface *surface;
+@property (nonatomic) UIButton *focusButton;
 @end
 
 @implementation TerminalView
@@ -63,14 +64,20 @@
     surface.controlKey = self.controlKey;
     surface.accessoryView = self.inputAccessoryView;
     surface.keyboardAppearance = self.keyboardAppearance;
+    __weak typeof(self) weakSelf = self;
+    surface.focusChanged = ^(BOOL focused) {
+        [weakSelf _updateFocusButton];
+    };
     self.surface = surface;
-    [self addSubview:surface];
+    [self insertSubview:surface atIndex:0];
+    [self _updateFocusButton];
     self.opaque = NO;
     [self _updateKeyboardPreferences];
     [self _updateStyle];
 }
 
 - (void)uninstallSurface {
+    self.surface.focusChanged = nil;
     if (self.surface.superview == self)
         [self.surface removeFromSuperview];
     self.surface = nil;
@@ -79,6 +86,7 @@
 - (void)setUserInteractionEnabled:(BOOL)userInteractionEnabled {
     [super setUserInteractionEnabled:userInteractionEnabled];
     self.surface.userInteractionEnabled = userInteractionEnabled;
+    [self _updateFocusButton];
 }
 
 - (void)setControlKey:(UIButton *)controlKey {
@@ -125,6 +133,67 @@
 
 - (IBAction)loseFocus:(id)sender {
     [self resignFirstResponder];
+}
+
+#pragma mark Focus button
+
+// A small button in the bottom left corner that brings the keyboard back. It is only
+// shown while the terminal is not focused, because with mouse tracking applications a
+// tap is a click and no longer focuses the terminal.
+- (UIButton *)focusButton {
+    if (_focusButton == nil) {
+        UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightMedium];
+        UIImage *image = [UIImage systemImageNamed:@"keyboard" withConfiguration:symbol];
+        UIButtonConfiguration *config;
+        if (@available(iOS 26.0, *)) {
+            config = [UIButtonConfiguration glassButtonConfiguration];
+        } else {
+            config = [UIButtonConfiguration grayButtonConfiguration];
+        }
+        config.image = image;
+        config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        config.contentInsets = NSDirectionalEdgeInsetsMake(8, 8, 8, 8);
+        UIButton *button = [UIButton buttonWithConfiguration:config primaryAction:nil];
+        [button addTarget:self action:@selector(focusButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
+        button.accessibilityLabel = @"Show Keyboard";
+        button.pointerInteractionEnabled = YES;
+        button.translatesAutoresizingMaskIntoConstraints = NO;
+        button.hidden = YES;
+        [self addSubview:button];
+        UILayoutGuide *safe = self.safeAreaLayoutGuide;
+        [NSLayoutConstraint activateConstraints:@[
+            [button.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:8],
+            [button.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor constant:-8],
+            [button.widthAnchor constraintEqualToConstant:36],
+            [button.heightAnchor constraintEqualToConstant:36],
+        ]];
+        _focusButton = button;
+    }
+    return _focusButton;
+}
+
+- (void)focusButtonPressed:(id)sender {
+    [self becomeFirstResponder];
+}
+
+- (void)_updateFocusButton {
+    BOOL show = self.surface != nil && self.canBecomeFirstResponder && self.userInteractionEnabled && !self.surface.isFirstResponder;
+    if (!show && _focusButton == nil)
+        return;
+    UIButton *button = self.focusButton;
+    if (button.hidden == !show)
+        return;
+    [self bringSubviewToFront:button];
+    if (show) {
+        button.alpha = 0;
+        button.hidden = NO;
+    }
+    [UIView animateWithDuration:0.2 animations:^{
+        button.alpha = show ? 1 : 0;
+    } completion:^(BOOL finished) {
+        if (!show && finished)
+            button.hidden = YES;
+    }];
 }
 
 #pragma mark Input
