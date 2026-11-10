@@ -40,6 +40,8 @@
     self.terminal = nil;
 }
 
+static const CGFloat kTerminalPadding = 4;
+
 #pragma mark Hosting the surface
 
 - (void)setTerminal:(Terminal *)terminal {
@@ -58,7 +60,9 @@
     ISHTerminalSurface *surface = self.terminal.surface;
     if (surface.superview != nil && surface.superview != self)
         [surface removeFromSuperview];
-    surface.frame = self.bounds;
+    // A small margin around the text, as iSH had (hterm's screen padding).
+    // The surface is transparent, so it shows the theme's background.
+    surface.frame = CGRectInset(self.bounds, kTerminalPadding, kTerminalPadding);
     surface.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     surface.userInteractionEnabled = self.userInteractionEnabled;
     surface.controlKey = self.controlKey;
