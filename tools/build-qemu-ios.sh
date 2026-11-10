@@ -143,19 +143,20 @@ stage_deps() {
 }
 
 stage_qemu() {
-    local dir="$SRC/qemu-10.0.12-utm"
-    log "Building QEMU"
-    (cd "$dir" && ./configure --prefix="$PREFIX" --cross-prefix="" \
+    local build="$WORK/qemu-build"
+    log "Building QEMU (deps/qemu)"
+    mkdir -p "$build"
+    (cd "$build" && "$QEMU_DIR/configure" --prefix="$PREFIX" --cross-prefix="" \
         --target-list=aarch64-softmmu,x86_64-softmmu \
-        --enable-shared-lib --enable-ucontext --with-coroutine=libucontext \
-        --disable-hvf --disable-cocoa --disable-sdl --disable-coreaudio --disable-gtk \
-        --disable-vnc --disable-spice --disable-opengl --disable-curses \
-        --disable-slirp-smbd --enable-slirp --enable-tcg \
+        -Dembedded=true --with-coroutine=libucontext \
+        --enable-tcg --enable-slirp --disable-slirp-smbd \
+        --disable-hvf --disable-cocoa --disable-sdl --disable-gtk --disable-coreaudio \
+        --disable-vmnet --disable-vnc --disable-spice --disable-opengl --disable-curses \
         --disable-tools --disable-guest-agent --disable-docs --disable-debug-info \
         --disable-gnutls --disable-nettle --disable-gcrypt --disable-curl --disable-libssh \
         --disable-libusb --disable-usb-redir --disable-smartcard --disable-capstone \
         --disable-zstd --disable-bzip2 --disable-lzo --disable-snappy --disable-png \
-        --disable-plugins &&
+        --disable-plugins --disable-keyring --disable-rust &&
         make -j"$NCPU" && make install)
 }
 
