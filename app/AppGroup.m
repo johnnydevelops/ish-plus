@@ -102,6 +102,16 @@ NSArray<NSString *> *CurrentAppGroups(void) {
 }
 
 NSURL *ContainerURL(void) {
-    NSString *appGroup = CurrentAppGroups()[0];
-    return [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:appGroup];
+    NSArray<NSString *> *appGroups = CurrentAppGroups();
+    NSURL *container = nil;
+    if (appGroups.count > 0)
+        container = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:appGroups[0]];
+    if (container == nil) {
+        // No usable app group: unsigned simulator builds, or a sideloader that stripped
+        // or renamed the entitlement. Fall back to the app's own container so iSH+ still
+        // boots; only the Files app integration needs the shared group.
+        container = [NSFileManager.defaultManager URLsForDirectory:NSApplicationSupportDirectory
+                                                         inDomains:NSUserDomainMask].firstObject;
+    }
+    return container;
 }
