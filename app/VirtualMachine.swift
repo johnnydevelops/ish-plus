@@ -334,17 +334,41 @@ public final class VirtualMachine: NSObject {
         lock.unlock()
     }
 
+    /// Performance (big) cores; all cores on chips without the distinction.
+    static var performanceCores: Int {
+        var value: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        if sysctlbyname("hw.perflevel0.logicalcpu", &value, &size, nil, 0) == 0, value > 0 {
+            return Int(value)
+        }
+        return ProcessInfo.processInfo.activeProcessorCount
+    }
+
     private func makeArguments() -> [String] {
         let guest = VirtualMachine.guestDirectory
         func file(_ name: String) -> String { guest.appendingPathComponent(name).path }
-        let cpus = max(1, min(ProcessInfo.processInfo.activeProcessorCount, 4))
+        // One vCPU per performance core: vCPUs on efficiency cores slow the
+        // others down (cross-CPU TLB flushes wait for them), which made
+        // starting processes ~35% slower on an A13 (2 performance cores)
+        // with 4 vCPUs than with 2, for little gain in parallel work.
+        var cpus = max(1, min(VirtualMachine.performanceCores, 4))
+        // Developer overrides, for comparing settings without rebuilding:
+        // Documents/VM/cpu (a -cpu value) and Documents/VM/smp (a count).
+        func override(_ name: String) -> String? {
+            (try? String(contentsOfFile: file(name), encoding: .utf8))?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .nonEmpty
+        }
+        if let smp = override("smp").flatMap(Int.init), smp > 0 { cpus = min(smp, 8) }
+        // max: ARMv8.x features (FEX needs v8.2+ and LSE). Pointer
+        // authentication and SVE are off: emulating them only costs time
+        // (pauth runs on every function call in the guest kernel).
+        let cpu = override("cpu") ?? "max,pauth=off,sve=off,sme=off"
         var args = [
             "qemu-system-aarch64",
             "-nodefaults", "-no-user-config",
             "-M", "virt",
-            // max: ARMv8.x features (FEX needs v8.2+ and LSE). pauth-impdef:
-            // a cheap pointer authentication algorithm instead of QARMA.
-            "-cpu", "max,pauth-impdef=on",
+            "-cpu", cpu,
             // split-wx: JIT code through a second, executable mapping (iOS)
             "-accel", interpreted ? "tcg,thread=multi,tb-size=256" : "tcg,thread=multi,tb-size=256,split-wx=on",
             "-smp", "\(cpus)",
@@ -367,6 +391,13 @@ public final class VirtualMachine: NSObject {
             "-serial", "file:\(file("serial.log"))",
             "-d", "guest_errors,unimp", "-D", file("qemu-debug.log"),
         ]
+        // Developer hook: the guest runs Documents/VM/autorun.sh at boot,
+        // with its output in serial.log.
+        // (An empty file disables it, since devicectl cannot delete files.)
+        if let size = try? FileManager.default.attributesOfItem(atPath: file("autorun.sh"))[.size] as? Int, size > 0 {
+            args += ["-drive", "if=none,file=\(file("autorun.sh")),format=raw,id=autorun,readonly=on",
+                     "-device", "virtio-blk-pci,drive=autorun,serial=ishplus-autorun"]
+        }
         for i in 0..<VirtualMachine.consoleCount {
             args += ["-chardev", "socket,id=con\(i),path=\(socketPath(i)),server=on,wait=off",
                      // Named, because Alpine's initramfs reads each port's name
@@ -436,3 +467,7 @@ private func ish_csops(_ pid: pid_t, _ ops: UInt32, _ useraddr: UnsafeMutableRaw
 
 @_silgen_name("jit_probe_run")
 private func jit_probe_run()
+
+private extension String {
+    var nonEmpty: String? { isEmpty ? nil : self }
+}

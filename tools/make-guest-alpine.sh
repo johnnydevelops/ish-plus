@@ -88,6 +88,13 @@ syslogd -s 512 -b 1
 ifconfig lo up
 ifconfig eth0 up
 udhcpc -b -q -n -t 5 -i eth0 -s /usr/share/udhcpc/default.script >/dev/null 2>&1
+# Developer hook: run a script the app attached as a disk (serial
+# "ishplus-autorun"), with its output on the serial port (serial.log).
+for serial in /sys/block/vd*/serial; do
+    [ "$(cat "$serial" 2>/dev/null)" = ishplus-autorun ] || continue
+    dev=/dev/$(basename "$(dirname "$serial")")
+    (sleep 2; sh "$dev" > /dev/ttyAMA0 2>&1) &
+done
 INIT
 chmod 755 "$stage/rootfs/usr/sbin/ishplus-init"
 # A root shell on one iSH+ session's console, logged in automatically like
