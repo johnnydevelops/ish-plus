@@ -310,8 +310,18 @@ void NetworkReachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReach
 
 - (void)application:(UIApplication *)application didDiscardSceneSessions:(NSSet<UISceneSession *> *)sceneSessions API_AVAILABLE(ios(13.0)) {
     for (UISceneSession *sceneSession in sceneSessions) {
-        NSString *terminalUUID = sceneSession.stateRestorationActivity.userInfo[@"TerminalUUID"];
-        [[Terminal terminalWithUUID:[[NSUUID alloc] initWithUUIDString:terminalUUID]] destroy];
+        NSDictionary *userInfo = sceneSession.stateRestorationActivity.userInfo;
+        NSString *terminalUUID = userInfo[@"TerminalUUID"];
+        if (terminalUUID != nil)
+            [[Terminal terminalWithUUID:[[NSUUID alloc] initWithUUIDString:terminalUUID]] destroy];
+        NSArray *sessions = userInfo[@"TerminalSessions"];
+        if ([sessions isKindOfClass:NSArray.class]) {
+            for (NSDictionary *session in sessions) {
+                if (![session isKindOfClass:NSDictionary.class] || ![session[@"uuid"] isKindOfClass:NSString.class])
+                    continue;
+                [[Terminal terminalWithUUID:[[NSUUID alloc] initWithUUIDString:session[@"uuid"]]] destroy];
+            }
+        }
     }
 }
 

@@ -17,6 +17,7 @@ TerminalViewController *currentTerminalViewController = NULL;
 @end
 
 static NSString *const TerminalUUID = @"TerminalUUID";
+static NSString *const TerminalSessions = @"TerminalSessions";
 
 @implementation SceneDelegate
 
@@ -34,9 +35,11 @@ static NSString *const TerminalUUID = @"TerminalUUID";
     if (session.stateRestorationActivity == nil) {
         [vc startNewSession];
     } else {
-        self.terminalUUID = session.stateRestorationActivity.userInfo[TerminalUUID];
-        [vc reconnectSessionFromTerminalUUID:
-         [[NSUUID alloc] initWithUUIDString:self.terminalUUID]];
+        NSDictionary *userInfo = session.stateRestorationActivity.userInfo;
+        self.terminalUUID = userInfo[TerminalUUID];
+        NSArray *saved = userInfo[TerminalSessions];
+        [vc reconnectSessions:[saved isKindOfClass:NSArray.class] ? saved : @[]
+                  currentUUID:self.terminalUUID ? [[NSUUID alloc] initWithUUIDString:self.terminalUUID] : nil];
     }
 }
 
@@ -48,6 +51,7 @@ static NSString *const TerminalUUID = @"TerminalUUID";
         if (self.terminalUUID != nil) {
             [activity addUserInfoEntriesFromDictionary:@{TerminalUUID: self.terminalUUID}];
         }
+        [activity addUserInfoEntriesFromDictionary:@{TerminalSessions: vc.savedSessions}];
     }
     return activity;
 }

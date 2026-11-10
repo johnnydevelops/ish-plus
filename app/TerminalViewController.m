@@ -20,6 +20,15 @@
 #include "kernel/calls.h"
 #include "fs/devices.h"
 
+// One shell running in its own pseudo terminal. A window can hold several.
+@interface TerminalSession : NSObject
+@property Terminal *terminal;
+@property int pid;
+@property int number; // shown to the user, stable for the life of the session
+@end
+@implementation TerminalSession
+@end
+
 @interface TerminalViewController () <UIGestureRecognizerDelegate>
 
 @property UITapGestureRecognizer *tapRecognizer;
@@ -46,8 +55,12 @@
 @property (weak, nonatomic) IBOutlet UIButton *pasteButton;
 @property (weak, nonatomic) IBOutlet UIButton *hideKeyboardButton;
 
-@property int sessionPid;
-@property (nonatomic) Terminal *sessionTerminal;
+@property NSMutableArray<TerminalSession *> *sessions;
+@property (nonatomic) TerminalSession *currentSession;
+@property int nextSessionNumber;
+@property UIButton *sessionsButton;
+@property (readonly) int sessionPid;
+@property (readonly, nonatomic) Terminal *sessionTerminal;
 
 @property BOOL ignoreKeyboardMotion;
 @property (nonatomic) BOOL hasExternalKeyboard;
@@ -115,6 +128,7 @@
         [self.escapeKey setImage:[UIImage systemImageNamed:@"escape"] forState:UIControlStateNormal];
     }
     
+    [self _setupSessionsButton];
     [UserPreferences.shared observe:@[@"hideStatusBar"] options:0 owner:self usingBlock:^(typeof(self) self) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self setNeedsStatusBarAppearanceUpdate];
@@ -157,10 +171,167 @@
     }
 }
 
-- (void)reconnectSessionFromTerminalUUID:(NSUUID *)uuid {
-    self.sessionTerminal = [Terminal terminalWithUUID:uuid];
-    if (self.sessionTerminal == nil)
+- (void)reconnectSessions:(NSArray<NSDictionary *> *)savedSessions currentUUID:(NSUUID *)currentUUID {
+    TerminalSession *toShow = nil;
+    for (NSDictionary *saved in savedSessions) {
+        if (![saved isKindOfClass:NSDictionary.class] || ![saved[@"uuid"] isKindOfClass:NSString.class])
+            continue;
+        NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:saved[@"uuid"]];
+        Terminal *terminal = uuid ? [Terminal terminalWithUUID:uuid] : nil;
+        if (terminal == nil)
+            continue;
+        TerminalSession *session = [self addSessionWithTerminal:terminal pid:[saved[@"pid"] intValue]];
+        if ([uuid isEqual:currentUUID])
+            toShow = session;
+    }
+    if (self.sessions.count == 0) {
+        // Older saved state only had the current terminal.
+        Terminal *terminal = currentUUID ? [Terminal terminalWithUUID:currentUUID] : nil;
+        if (terminal != nil)
+            [self addSessionWithTerminal:terminal pid:0];
+    }
+    if (self.sessions.count == 0) {
         [self startNewSession];
+        return;
+    }
+    if (toShow != nil)
+        self.currentSession = toShow;
+}
+
+- (void)reconnectSessionFromTerminalUUID:(NSUUID *)uuid {
+    [self reconnectSessions:@[] currentUUID:uuid];
+}
+
+- (NSArray<NSDictionary *> *)savedSessions {
+    NSMutableArray *saved = [NSMutableArray new];
+    for (TerminalSession *session in self.sessions) {
+        [saved addObject:@{@"uuid": session.terminal.uuid.UUIDString, @"pid": @(session.pid)}];
+    }
+    return saved;
+}
+
+#pragma mark Sessions
+
+- (TerminalSession *)addSessionWithTerminal:(Terminal *)terminal pid:(int)pid {
+    if (self.sessions == nil)
+        self.sessions = [NSMutableArray new];
+    TerminalSession *session = [TerminalSession new];
+    session.terminal = terminal;
+    session.pid = pid;
+    session.number = ++self.nextSessionNumber;
+    [self.sessions addObject:session];
+    self.currentSession = session;
+    return session;
+}
+
+- (Terminal *)sessionTerminal {
+    return self.currentSession.terminal;
+}
+
+- (int)sessionPid {
+    return self.currentSession.pid;
+}
+
+- (void)setCurrentSession:(TerminalSession *)currentSession {
+    BOOL showingSession = _terminal == nil || _terminal == _currentSession.terminal;
+    _currentSession = currentSession;
+    if (showingSession)
+        self.terminal = currentSession.terminal;
+    [self _updateSessionsButton];
+}
+
+- (void)switchToSessionAtOffset:(NSInteger)offset {
+    NSInteger count = (NSInteger) self.sessions.count;
+    if (count < 2)
+        return;
+    NSInteger index = (NSInteger) [self.sessions indexOfObject:self.currentSession];
+    if (index == NSNotFound)
+        index = 0;
+    index = ((index + offset) % count + count) % count;
+    self.currentSession = self.sessions[index];
+}
+
+- (void)newSession:(id)sender {
+    [self startNewSession];
+}
+
+- (void)nextSession:(id)sender {
+    [self switchToSessionAtOffset:1];
+}
+
+- (void)previousSession:(id)sender {
+    [self switchToSessionAtOffset:-1];
+}
+
+- (void)closeSession:(TerminalSession *)session {
+    // Hanging up the terminal sends SIGHUP to the shell; processExited: cleans up.
+    [session.terminal destroy];
+}
+
+- (NSString *)titleForSession:(TerminalSession *)session {
+    return [NSString stringWithFormat:@"Session %d", session.number];
+}
+
+- (NSArray<UIMenuElement *> *)sessionsMenuElements {
+    __weak typeof(self) weakSelf = self;
+    NSMutableArray<UIMenuElement *> *sessionItems = [NSMutableArray new];
+    for (TerminalSession *session in self.sessions) {
+        UIAction *action = [UIAction actionWithTitle:[self titleForSession:session]
+                                               image:[UIImage systemImageNamed:@"terminal"]
+                                          identifier:nil
+                                             handler:^(UIAction *action) {
+            weakSelf.currentSession = session;
+        }];
+        action.state = session == self.currentSession ? UIMenuElementStateOn : UIMenuElementStateOff;
+        [sessionItems addObject:action];
+    }
+    UIAction *new = [UIAction actionWithTitle:@"New Session"
+                                        image:[UIImage systemImageNamed:@"plus"]
+                                   identifier:nil
+                                      handler:^(UIAction *action) {
+        [weakSelf startNewSession];
+    }];
+    UIAction *close = [UIAction actionWithTitle:@"Close Session"
+                                          image:[UIImage systemImageNamed:@"xmark"]
+                                     identifier:nil
+                                        handler:^(UIAction *action) {
+        [weakSelf closeSession:weakSelf.currentSession];
+    }];
+    close.attributes = UIMenuElementAttributesDestructive;
+    return @[
+        [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:sessionItems],
+        [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[new, close]],
+    ];
+}
+
+- (void)_setupSessionsButton {
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    __weak typeof(self) weakSelf = self;
+    button.menu = [UIMenu menuWithChildren:@[[UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
+        completion(weakSelf.sessionsMenuElements ?: @[]);
+    }]]];
+    button.showsMenuAsPrimaryAction = YES;
+    button.accessibilityLabel = @"Sessions";
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    NSUInteger infoIndex = [self.bar.arrangedSubviews indexOfObject:self.infoButton.superview];
+    if (infoIndex == NSNotFound)
+        infoIndex = self.bar.arrangedSubviews.count;
+    [self.bar insertArrangedSubview:button atIndex:infoIndex];
+    [button.widthAnchor constraintEqualToAnchor:self.pasteButton.widthAnchor].active = YES;
+    self.barControls = [self.barControls arrayByAddingObject:button];
+    self.sessionsButton = button;
+    [self _updateSessionsButton];
+}
+
+- (void)_updateSessionsButton {
+    NSUInteger count = self.sessions.count;
+    UIImage *image = nil;
+    if (count > 1 && count <= 50)
+        image = [UIImage systemImageNamed:[NSString stringWithFormat:@"%lu.square", (unsigned long) count]];
+    if (image == nil)
+        image = [UIImage systemImageNamed:@"square.on.square"];
+    [self.sessionsButton setImage:image forState:UIControlStateNormal];
+    self.sessionsButton.accessibilityValue = [NSString stringWithFormat:@"%lu sessions", (unsigned long) count];
 }
 
 - (NSUUID *)sessionTerminalUUID {
@@ -175,13 +346,12 @@
     if (err < 0)
         return err;
     struct tty *tty;
-    self.sessionTerminal = nil;
     Terminal *terminal = [Terminal createPseudoTerminal:&tty];
     if (terminal == nil) {
         NSAssert(IS_ERR(tty), @"tty should be error");
         return (int) PTR_ERR(tty);
     }
-    self.sessionTerminal = terminal;
+    TerminalSession *session = [self addSessionWithTerminal:terminal pid:0];
     NSString *stdioFile = [NSString stringWithFormat:@"/dev/pts/%d", tty->num];
     err = create_stdio(stdioFile.fileSystemRepresentation, TTY_PSEUDO_SLAVE_MAJOR, tty->num);
     if (err < 0)
@@ -194,7 +364,7 @@
     err = do_execve(command[0].UTF8String, command.count, argv, envp);
     if (err < 0)
         return err;
-    self.sessionPid = current->pid;
+    session.pid = current->pid;
     task_start(current);
 #else
     const char *argv_arr[command.count + 1];
@@ -222,8 +392,7 @@
     NSAssert(err <= 0, @"session start did not finish??");
     if (err < 0)
         return err;
-    self.sessionTerminal = terminal;
-    self.sessionPid = sessionPid;
+    [self addSessionWithTerminal:terminal pid:sessionPid];
 #endif
     return 0;
 }
@@ -231,10 +400,26 @@
 #if !ISH_LINUX
 - (void)processExited:(NSNotification *)notif {
     int pid = [notif.userInfo[@"pid"] intValue];
-    if (pid != self.sessionPid)
+    TerminalSession *exited = nil;
+    for (TerminalSession *session in self.sessions) {
+        if (session.pid == pid)
+            exited = session;
+    }
+    if (exited == nil)
         return;
-
-    [self.sessionTerminal destroy];
+    [exited.terminal destroy];
+    if (self.sessions.count > 1) {
+        // Other sessions remain: drop this one and show a neighbour.
+        NSUInteger index = [self.sessions indexOfObject:exited];
+        [self.sessions removeObject:exited];
+        if (exited == self.currentSession)
+            self.currentSession = self.sessions[MIN(index, self.sessions.count - 1)];
+        else
+            [self _updateSessionsButton];
+        current = NULL; // it's been freed
+        return;
+    }
+    [self.sessions removeObject:exited];
     // On iOS 13, there are multiple windows, so just close this one.
     if (@available(iOS 13, *)) {
         // On iPhone, destroying scenes will fail, but the error doesn't actually go to the error handler, which is really stupid. Apple doesn't fix bugs, so I'm forced to just add a check here.
@@ -509,6 +694,12 @@
                              modifierFlags:UIKeyModifierCommand
                                     action:@selector(showAbout:)
                       discoverabilityTitle:@"Settings"]];
+        [commands addObject:[UIKeyCommand commandWithTitle:@"New Session" image:nil action:@selector(newSession:)
+                                                     input:@"t" modifierFlags:UIKeyModifierCommand propertyList:nil]];
+        [commands addObject:[UIKeyCommand commandWithTitle:@"Next Session" image:nil action:@selector(nextSession:)
+                                                     input:@"]" modifierFlags:UIKeyModifierCommand|UIKeyModifierShift propertyList:nil]];
+        [commands addObject:[UIKeyCommand commandWithTitle:@"Previous Session" image:nil action:@selector(previousSession:)
+                                                     input:@"[" modifierFlags:UIKeyModifierCommand|UIKeyModifierShift propertyList:nil]];
     }
     return commands;
 }
@@ -518,11 +709,6 @@
     self.termView.terminal = self.terminal;
 }
 
-- (void)setSessionTerminal:(Terminal *)sessionTerminal {
-    if (_terminal == _sessionTerminal)
-        self.terminal = sessionTerminal;
-    _sessionTerminal = sessionTerminal;
-}
 
 @end
 
