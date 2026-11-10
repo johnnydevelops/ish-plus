@@ -395,6 +395,10 @@ static int nextVMTerminalNumber;
 // when the session is closed, so the shell is still there next time.
 - (int)startVMSession {
     ISHVirtualMachine *vm = ISHVirtualMachine.shared;
+    if (!vm.isRunning && !ISHDistroManager.shared.hasBootableDistro) {
+        [self presentDistroChooserThenStartSession];
+        return 0;
+    }
     if (!vm.isRunning && !vm.interpreted && !ISHVirtualMachine.jitAvailable) {
         [self presentJITScreenThenStartSession];
         return 0;
@@ -426,6 +430,20 @@ static int nextVMTerminalNumber;
     };
     [self addSessionWithTerminal:terminal pid:0];
     return 0;
+}
+
+- (void)presentDistroChooserThenStartSession {
+    if (self.showingJITScreen)
+        return;
+    self.showingJITScreen = YES;
+    __weak typeof(self) weakSelf = self;
+    ISHDistrosViewController *distros = [[ISHDistrosViewController alloc] initWithFirstRunWithReady:^{
+        weakSelf.showingJITScreen = NO;
+        [weakSelf startSession];
+    }];
+    UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:distros];
+    navigation.modalPresentationStyle = UIModalPresentationFormSheet;
+    [self presentViewController:navigation animated:YES completion:nil];
 }
 
 - (void)vmConsoleClosedForTerminal:(Terminal *)terminal {

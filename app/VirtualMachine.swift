@@ -20,7 +20,7 @@ public enum VirtualMachineError: Int, LocalizedError, CustomStringConvertible {
         case .noJIT:
             return "JIT is not enabled. Start iSH+ from a JIT enabler (StikDebug, SideStore, or a debugger) and try again."
         case .missingGuest:
-            return "No Linux guest installed. Copy vmlinuz, initramfs, modloop and rootfs.img to iSH+/VM in the Files app."
+            return "No Linux distribution is installed. Choose one in Settings > Distributions."
         case .missingLibrary:
             return "This build of iSH+ does not include the QEMU engine."
         case .alreadyStopped:
@@ -169,7 +169,15 @@ public final class VirtualMachine: NSObject {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("VM")
     }
 
-    private static let guestFiles = ["vmlinuz", "initramfs", "modloop", "rootfs.img"]
+    /// The kernel side, shared by every distribution: bundled with the app
+    /// (tools/make-guest-kernel.sh, make-guest-support.sh). Copies in
+    /// Documents/VM/dev replace them, for testing.
+    private static func kernelFile(_ name: String) -> URL? {
+        let dev = guestDirectory.appendingPathComponent("dev/\(name)")
+        if FileManager.default.fileExists(atPath: dev.path) { return dev }
+        return Bundle.main.url(forResource: name, withExtension: nil, subdirectory: "Guest")
+    }
+    private static let kernelFiles = ["vmlinuz", "initramfs", "modloop", "support.img"]
 
     private static func library(interpreted: Bool) -> URL {
         Bundle.main.privateFrameworksURL!.appendingPathComponent(
@@ -182,8 +190,12 @@ public final class VirtualMachine: NSObject {
     }
 
     @objc public static var guestInstalled: Bool {
-        guestFiles.allSatisfy { FileManager.default.fileExists(atPath: guestDirectory.appendingPathComponent($0).path) }
+        kernelFiles.allSatisfy { kernelFile($0) != nil } && DistroManager.shared.hasBootableDistro
     }
+
+    /// The distribution this VM boots, and whether it gets installed first.
+    private var distro: Distro?
+    private var installing = false
 
     /// True when the process may create executable memory, i.e. a debugger
     /// attached at some point (CS_DEBUGGED). QEMU's JIT needs this on iOS.
@@ -224,7 +236,11 @@ public final class VirtualMachine: NSObject {
             interpreted = true
         }
         guard interpreted || VirtualMachine.jitAvailable else { throw VirtualMachineError.noJIT }
-        guard VirtualMachine.guestInstalled else { throw VirtualMachineError.missingGuest }
+        guard VirtualMachine.guestInstalled, let distro = DistroManager.shared.active else {
+            throw VirtualMachineError.missingGuest
+        }
+        self.distro = distro
+        installing = !distro.installed
 
         let library = VirtualMachine.library(interpreted: interpreted)
         guard let handle = dlopen(library.path, RTLD_NOW | RTLD_LOCAL),
@@ -284,6 +300,7 @@ public final class VirtualMachine: NSObject {
         thread.start()
         isRunning = true
         scheduleDiagnostics()
+        if installing { watchInstallation() }
     }
 
     /// Asks QEMU's monitor for the VM state and every vCPU's registers a few
@@ -344,9 +361,32 @@ public final class VirtualMachine: NSObject {
         return ProcessInfo.processInfo.activeProcessorCount
     }
 
+    /// The guest reports on the serial port when it has unpacked a new
+    /// distribution; then the archive is no longer needed.
+    private func watchInstallation() {
+        let log = VirtualMachine.guestDirectory.appendingPathComponent("serial.log")
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            for _ in 0..<(2 * 60 * 60 / 2) {
+                sleep(2)
+                guard let self, let distro = self.distro, self.isRunning else { return }
+                guard let text = try? String(contentsOf: log, encoding: .utf8) else { continue }
+                if text.contains("ishplus: installed") {
+                    vmLog("\(distro.title) installed")
+                    DistroManager.shared.markInstalled(distro)
+                    return
+                }
+                if text.contains("ishplus: boot failed") {
+                    vmLog("\(distro.title) failed to install or boot")
+                    return
+                }
+            }
+        }
+    }
+
     private func makeArguments() -> [String] {
         let guest = VirtualMachine.guestDirectory
         func file(_ name: String) -> String { guest.appendingPathComponent(name).path }
+        func kernel(_ name: String) -> String { VirtualMachine.kernelFile(name)!.path }
         // One vCPU per performance core: vCPUs on efficiency cores slow the
         // others down (cross-CPU TLB flushes wait for them), which made
         // starting processes ~35% slower on an A13 (2 performance cores)
@@ -373,13 +413,17 @@ public final class VirtualMachine: NSObject {
             "-accel", interpreted ? "tcg,thread=multi,tb-size=256" : "tcg,thread=multi,tb-size=256,split-wx=on",
             "-smp", "\(cpus)",
             "-m", "1024",
-            "-kernel", file("vmlinuz"),
-            "-initrd", file("initramfs"),
-            "-append", "root=/dev/vda rootfstype=ext4 modules=virtio_blk,ext4,squashfs earlycon=pl011,0x9000000 console=ttyAMA0 console=hvc0 loglevel=4",
-            "-drive", "if=none,file=\(file("rootfs.img")),format=raw,id=root,cache=writeback,discard=unmap",
-            "-device", "virtio-blk-pci,drive=root",
-            "-drive", "if=none,file=\(file("modloop")),format=raw,id=modloop,readonly=on",
-            "-device", "virtio-blk-pci,drive=modloop",
+            "-kernel", kernel("vmlinuz"),
+            "-initrd", kernel("initramfs"),
+            // iSH+'s initramfs finds its disks by their serial (see
+            // tools/guest/boot/init); boot messages go to the first session.
+            "-append", "earlycon=pl011,0x9000000 console=ttyAMA0 console=hvc0 loglevel=4",
+            "-drive", "if=none,file=\(distro!.diskURL.path),format=raw,id=root,cache=writeback,discard=unmap",
+            "-device", "virtio-blk-pci,drive=root,serial=ishplus-root",
+            "-drive", "if=none,file=\(kernel("modloop")),format=raw,id=modloop,readonly=on",
+            "-device", "virtio-blk-pci,drive=modloop,serial=ishplus-modloop",
+            "-drive", "if=none,file=\(kernel("support.img")),format=raw,id=support,readonly=on",
+            "-device", "virtio-blk-pci,drive=support,serial=ishplus-support",
             "-netdev", "user,id=net",
             "-device", "virtio-net-pci,netdev=net,romfile=",
             "-device", "virtio-rng-pci",
@@ -391,10 +435,11 @@ public final class VirtualMachine: NSObject {
             "-serial", "file:\(file("serial.log"))",
             "-d", "guest_errors,unimp", "-D", file("qemu-debug.log"),
         ]
-        // iSH+'s support disk: FEX (x86_64 programs) and helper commands
-        if FileManager.default.fileExists(atPath: file("support.img")) {
-            args += ["-drive", "if=none,file=\(file("support.img")),format=raw,id=support,readonly=on",
-                     "-device", "virtio-blk-pci,drive=support,serial=ishplus-support"]
+        // A new distribution's root filesystem archive, unpacked by the guest
+        if installing, let distro,
+           let size = try? FileManager.default.attributesOfItem(atPath: distro.archiveURL.path)[.size] as? Int {
+            args += ["-drive", "if=none,file=\(distro.archiveURL.path),format=raw,id=install,readonly=on",
+                     "-device", "virtio-blk-pci,drive=install,serial=inst:\(size)"]
         }
         // Developer hook: the guest runs Documents/VM/autorun.sh at boot,
         // with its output in serial.log.
@@ -405,7 +450,6 @@ public final class VirtualMachine: NSObject {
         }
         for i in 0..<VirtualMachine.consoleCount {
             args += ["-chardev", "socket,id=con\(i),path=\(socketPath(i)),server=on,wait=off",
-                     // Named, because Alpine's initramfs reads each port's name
                      "-device", "virtconsole,id=vcon\(i),chardev=con\(i),name=org.ishplus.console.\(i)"]
         }
         return args

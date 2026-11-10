@@ -21,6 +21,7 @@
 @property (weak, nonatomic) IBOutlet UISwitch *disableDimmingSwitch;
 @property (weak, nonatomic) IBOutlet UISwitch *keepAliveSwitch;
 @property (weak, nonatomic) IBOutlet UITableViewCell *jitSetupCell;
+@property (weak, nonatomic) IBOutlet UITableViewCell *distrosCell;
 
 @property (weak, nonatomic) IBOutlet UITableViewCell *openGithub;
 @property (weak, nonatomic) IBOutlet UITableViewCell *openFediverse;
@@ -100,7 +101,10 @@
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
-    if (cell == self.jitSetupCell) {
+    if (cell == self.distrosCell) {
+        [tableView deselectRowAtIndexPath:indexPath animated:YES];
+        [self.navigationController pushViewController:[ISHDistrosViewController new] animated:YES];
+    } else if (cell == self.jitSetupCell) {
         __weak typeof(self) weakSelf = self;
         ISHOnboardingViewController *onboarding = [[ISHOnboardingViewController alloc] initWithCompletion:^{
             [weakSelf updateJITSetupCell];
