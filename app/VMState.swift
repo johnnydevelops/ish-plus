@@ -2,11 +2,17 @@
 //  VMState.swift
 //  iSH+
 //
-//  Instant resume: when iSH+ goes to the background without "Keep Running
-//  in Background", Linux is paused and its state saved to a file (QEMU
-//  migration, mapped-ram: only the memory in use is written). If iOS ends
-//  iSH+ meanwhile, the next launch restores that state instead of booting,
-//  so shells and programs are where they were; if not, Linux continues.
+//  Instant resume. When iSH+ goes to the background, Linux's state is saved
+//  to a file (QEMU migration, mapped-ram: only the memory in use is written)
+//  with a checkpoint of its disk (an APFS clone: instant, and only blocks
+//  changed later take space), so the two match. If iOS ends iSH+, the next
+//  launch can restore them instead of booting: shells and programs are
+//  where they were.
+//  - Without "Keep Running in Background", Linux stays paused after saving,
+//    so nothing is lost; back in the foreground it continues.
+//  - With it, Linux keeps running after each save (when going to the
+//    background, then every 10 minutes), since iOS may end iSH+ anyway;
+//    resuming then loses what Linux changed after the last save.
 //
 //  QEMU cannot save a VM while a 9p share is mounted, so the guest unmounts
 //  the iOS share first (boot/suspend.sh) and mounts it again, with the
@@ -24,12 +30,20 @@ public final class VMState: NSObject {
         let distro: String
         let fingerprint: String
         let date: Date
+        /// Linux kept running after the save (Keep Running in Background)
+        let continued: Bool?
     }
+
+    /// How often to save while running in the background.
+    private static let checkpointInterval: TimeInterval = 10 * 60
+    private var checkpointTimer: DispatchSourceTimer?
 
     private let queue = DispatchQueue(label: "app.ishplus.vmstate")
     private var directory: URL { VirtualMachine.guestDirectory.appendingPathComponent("state") }
     private var stateURL: URL { directory.appendingPathComponent("vm.state") }
     private var infoURL: URL { directory.appendingPathComponent("state.json") }
+    /// The disk as it was when the state was saved
+    private var diskURL: URL { directory.appendingPathComponent("disk.img") }
     /// Linux is paused and saved, and the app is still running.
     private var paused = false
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
@@ -61,17 +75,23 @@ public final class VMState: NSObject {
 
     /// When the saved state was made, if there is one this VM can resume
     /// (states for another configuration are discarded).
-    @objc public var savedDate: Date? {
+    @objc public var savedDate: Date? { usableSaved?.date }
+
+    /// Linux kept running after it was saved: resuming loses what it did since.
+    @objc public var savedWhileRunning: Bool { usableSaved?.continued ?? false }
+
+    private var usableSaved: Saved? {
         guard let distro = DistroManager.shared.active,
               let data = try? Data(contentsOf: infoURL),
               let saved = try? JSONDecoder().decode(Saved.self, from: data),
-              FileManager.default.fileExists(atPath: stateURL.path) else { return nil }
+              FileManager.default.fileExists(atPath: stateURL.path),
+              FileManager.default.fileExists(atPath: diskURL.path) else { return nil }
         guard saved.distro == distro.id, saved.fingerprint == fingerprint(distro: distro) else {
             vmLog("discarding a saved state made for another configuration")
             discard()
             return nil
         }
-        return saved.date
+        return saved
     }
 
     /// Start Linux afresh instead of resuming.
@@ -82,6 +102,14 @@ public final class VMState: NSObject {
     /// Whether to start QEMU waiting for a saved state (adds -incoming).
     func prepareRestore(distro: Distro) -> Bool {
         guard savedDate != nil else { return false }
+        // The disk as it was then, before QEMU opens it
+        do {
+            _ = try FileManager.default.replaceItemAt(distro.diskURL, withItemAt: diskURL)
+        } catch {
+            vmLog("not resuming: could not restore the disk (\(error))")
+            discard()
+            return false
+        }
         restoring = true
         return true
     }
@@ -116,22 +144,34 @@ public final class VMState: NSObject {
     }
 
     private func enteredBackground() {
-        guard VirtualMachine.shared.isRunning, !keepsRunningInBackground, !restoring, !paused else { return }
+        guard VirtualMachine.shared.isRunning, !restoring, !paused else { return }
+        let keepRunning = keepsRunningInBackground
         backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Save Linux") { [weak self] in
             self?.endBackgroundTask()
         }
         queue.async { [self] in
-            paused = save()
+            let saved = save(continueAfter: keepRunning)
+            paused = saved && !keepRunning
             DispatchQueue.main.async { self.endBackgroundTask() }
+            // Running in the background: save again now and then
+            if keepRunning {
+                let timer = DispatchSource.makeTimerSource(queue: queue)
+                timer.schedule(deadline: .now() + Self.checkpointInterval, repeating: Self.checkpointInterval)
+                timer.setEventHandler { [weak self] in _ = self?.save(continueAfter: true) }
+                checkpointTimer = timer
+                timer.resume()
+            }
         }
     }
 
     private func enteringForeground() {
         queue.async { [self] in
+            checkpointTimer?.cancel()
+            checkpointTimer = nil
+            // Still running: the saved state is not needed
+            discard()
             guard paused else { return }
             paused = false
-            // Still running: no need for the saved state
-            discard()
             _ = QEMUMonitor.run("cont")
             resumeGuest()
         }
@@ -144,8 +184,9 @@ public final class VMState: NSObject {
         }
     }
 
-    /// Pauses Linux and saves it. On failure Linux keeps running.
-    private func save() -> Bool {
+    /// Pauses Linux and saves it with a checkpoint of its disk; continues it
+    /// after if asked. On failure Linux keeps running.
+    private func save(continueAfter: Bool) -> Bool {
         guard let distro = DistroManager.shared.active else { return false }
         let start = Date()
         let (status, output) = runInGuest("sh /opt/ishplus/boot/suspend.sh", timeout: 15)
@@ -166,9 +207,24 @@ public final class VMState: NSObject {
             resumeGuest()
             return false
         }
-        let saved = Saved(distro: distro.id, fingerprint: fingerprint(distro: distro), date: Date())
+        // The disk now, while Linux is paused (stop flushed QEMU's writes)
+        do {
+            try FileManager.default.copyItem(at: distro.diskURL, to: diskURL)
+        } catch {
+            vmLog("could not save Linux's disk: \(error)")
+            discard()
+            _ = QEMUMonitor.run("cont")
+            resumeGuest()
+            return false
+        }
+        let saved = Saved(distro: distro.id, fingerprint: fingerprint(distro: distro), date: Date(),
+                          continued: continueAfter)
         try? JSONEncoder().encode(saved).write(to: infoURL, options: .atomic)
         vmLog(String(format: "saved Linux in %.1f s", Date().timeIntervalSince(start)))
+        if continueAfter {
+            _ = QEMUMonitor.run("cont")
+            resumeGuest()
+        }
         return true
     }
 
@@ -177,6 +233,7 @@ public final class VMState: NSObject {
     private func discard() {
         try? FileManager.default.removeItem(at: infoURL)
         try? FileManager.default.removeItem(at: stateURL)
+        try? FileManager.default.removeItem(at: diskURL)
     }
 
     private func resumeGuest() {

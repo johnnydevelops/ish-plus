@@ -37,7 +37,9 @@ public final class ResumeViewController: UIViewController {
         title.numberOfLines = 0
         let detail = UILabel()
         let when = RelativeDateTimeFormatter().localizedString(for: savedDate, relativeTo: Date())
-        detail.text = "Linux was saved \(when), when iOS closed iSH+. Resume it with your sessions and programs as they were, or start Linux again."
+        detail.text = VMState.shared.savedWhileRunning
+            ? "Linux was last saved \(when), before iOS closed iSH+. Resume it with your sessions and programs as they were then: changes Linux made to its files after that are lost. Start Fresh keeps the files as they are now."
+            : "Linux was saved \(when), when iOS closed iSH+. Resume it with your sessions and programs as they were, or start Linux again."
         detail.font = .preferredFont(forTextStyle: .body)
         detail.textColor = .secondaryLabel
         detail.textAlignment = .center
