@@ -64,6 +64,8 @@ if [ -d /mnt/ios/.ishplus-dev ]; then
         done
     ) &
 fi
+# Reports the ports servers listen on, so iSH+ forwards them
+$S/bin/ishplus-agent </dev/null >/dev/null 2>&1 &
 # Commands sent by iSH+ (Shortcuts)
 $B sh $S/boot/exec-agent.sh &
 # Developer hook: run a script attached as a disk (serial "ishplus-autorun"),

@@ -22,6 +22,7 @@
 
 /* Begin PBXBuildFile section */
 		0613F6CA23E90E7A579F3A42 /* JITViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97EA159F635965A28FE3E83 /* JITViewController.swift */; };
+		1494D14E49F6CD364E9BCDDC /* PortForwarder.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF79ECEFDBB2821EB483E54D /* PortForwarder.swift */; };
 		2352FD9E3A32D954A010933D /* StikJIT.xcframework in Embed QEMU */ = {isa = PBXBuildFile; fileRef = 81BD35790524254A633600D3 /* StikJIT.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		313F8C227740F07613B9E6D9 /* DNSProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F7EDF01267B0CE2AB2DC08 /* DNSProxy.swift */; };
 		37988EFDAF0D0747A964C9B9 /* BackgroundKeepAlive.m in Sources */ = {isa = PBXBuildFile; fileRef = DADA01E465A18DDFDE1C066B /* BackgroundKeepAlive.m */; };
@@ -306,6 +307,7 @@
 		DADA01E465A18DDFDE1C066B /* BackgroundKeepAlive.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = BackgroundKeepAlive.m; sourceTree = "<group>"; };
 		DF4620D19DC63C97C4EDA00A /* libqemu-aarch64-softmmu.dylib */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = "compiled.mach-o.dylib"; name = "libqemu-aarch64-softmmu.dylib"; path = "build-qemu/sysroot-ios-arm64/lib/libqemu-aarch64-softmmu.dylib"; sourceTree = SOURCE_ROOT; };
 		E6D2D852F3D9B73E99D70407 /* DistroSetupViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DistroSetupViewController.swift; sourceTree = "<group>"; };
+		EF79ECEFDBB2821EB483E54D /* PortForwarder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortForwarder.swift; sourceTree = "<group>"; };
 		FF2EB9ACBD43D9BA161EE2A8 /* RunCommandIntent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RunCommandIntent.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -513,6 +515,7 @@
 				5B62450DCAB3F80C9FC06E4B /* GuestServices.swift */,
 				FF2EB9ACBD43D9BA161EE2A8 /* RunCommandIntent.swift */,
 				B9F7EDF01267B0CE2AB2DC08 /* DNSProxy.swift */,
+				EF79ECEFDBB2821EB483E54D /* PortForwarder.swift */,
 			);
 			path = app;
 			sourceTree = "<group>";
@@ -941,6 +944,7 @@
 				611DBAE48BB21E277E429F6A /* OnDevicePairing.swift in Sources */,
 				F832E7EDE71419B080DCC704 /* GuestServices.swift in Sources */,
 				313F8C227740F07613B9E6D9 /* DNSProxy.swift in Sources */,
+				1494D14E49F6CD364E9BCDDC /* PortForwarder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -310,50 +310,9 @@ public final class VirtualMachine: NSObject {
         thread.start()
         isRunning = true
         GuestServices.shared.start()
-        scheduleDiagnostics()
         if installing { watchInstallation() }
     }
 
-    /// Asks QEMU's monitor for the VM state and every vCPU's registers a few
-    /// seconds into the boot, twice, and logs the answers: if the PCs move the
-    /// guest is running (if slowly); if not, the vCPUs are stuck.
-    private func scheduleDiagnostics() {
-        let path = socketDirectory.appendingPathComponent("mon").path
-        DispatchQueue.global(qos: .utility).async {
-            for delay: UInt32 in [6, 8] {
-                sleep(delay)
-                let fd = socket(AF_UNIX, SOCK_STREAM, 0)
-                var address = sockaddr_un()
-                address.sun_family = sa_family_t(AF_UNIX)
-                withUnsafeMutableBytes(of: &address.sun_path) { raw in
-                    _ = path.withCString { strlcpy(raw.baseAddress!.assumingMemoryBound(to: CChar.self), $0, raw.count) }
-                }
-                let ok = withUnsafePointer(to: &address) {
-                    $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                        Darwin.connect(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size))
-                    }
-                } == 0
-                guard ok else { vmLog("monitor: cannot connect"); Darwin.close(fd); continue }
-                let commands = "info status\ninfo registers -a\n"
-                _ = commands.withCString { write(fd, $0, strlen($0)) }
-                usleep(1_500_000)
-                var output = Data()
-                var buffer = [UInt8](repeating: 0, count: 65536)
-                var flags = fcntl(fd, F_GETFL); flags |= O_NONBLOCK; _ = fcntl(fd, F_SETFL, flags)
-                while true {
-                    let n = read(fd, &buffer, buffer.count)
-                    if n <= 0 { break }
-                    output.append(contentsOf: buffer[0..<n])
-                }
-                Darwin.close(fd)
-                let text = String(decoding: output, as: UTF8.self)
-                    .split(separator: "\n")
-                    .filter { $0.contains("status") || $0.contains("PC=") || $0.contains("CPU#") }
-                    .joined(separator: "\n")
-                vmLog("monitor after \(delay)s:\n\(text)")
-            }
-        }
-    }
 
     private func markStopped() {
         lock.lock()

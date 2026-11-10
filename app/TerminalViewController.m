@@ -324,10 +324,27 @@
         [weakSelf closeSession:weakSelf.currentSession];
     }];
     close.attributes = UIMenuElementAttributesDestructive;
-    return @[
+    NSMutableArray<UIMenuElement *> *menu = [NSMutableArray arrayWithArray:@[
         [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:sessionItems],
         [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[new, close]],
-    ];
+    ]];
+    // Servers running in Linux, forwarded to the iPad
+    NSMutableArray<UIMenuElement *> *portItems = [NSMutableArray new];
+    for (ISHForwardedPort *port in ISHPortForwarder.shared.ports) {
+        NSString *title = [NSString stringWithFormat:@"localhost:%ld", (long) port.hostPort];
+        UIAction *open = [UIAction actionWithTitle:title
+                                             image:[UIImage systemImageNamed:@"safari"]
+                                        identifier:nil
+                                           handler:^(UIAction *action) {
+            [UIApplication.sharedApplication openURL:port.url options:@{} completionHandler:nil];
+        }];
+        if (port.hostPort != port.guestPort)
+            open.subtitle = [NSString stringWithFormat:@"Port %ld in Linux", (long) port.guestPort];
+        [portItems addObject:open];
+    }
+    if (portItems.count > 0)
+        [menu addObject:[UIMenu menuWithTitle:@"Open in Safari" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:portItems]];
+    return menu;
 }
 
 - (void)_setupSessionsButton {
