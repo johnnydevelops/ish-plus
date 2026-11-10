@@ -69,20 +69,14 @@ extern NSString *const kThemeBackgroundColor;
 @property (readonly) NSString *htermCursorShape;
 @property BOOL blinkCursor;
 @property (readonly) UIStatusBarStyle statusBarStyle;
-@property NSArray<NSString *> *launchCommand;
-@property NSArray<NSString *> *bootCommand;
-@property NSString *hostnameOverride;
 // Same as above but returns nil if the user has never set the hostname
 @property (readonly) NSString *_hostnameOverride;
 
 + (instancetype)shared;
 
-- (BOOL)hasChangedLaunchCommand;
 
 @end
 
-extern NSString *const kPreferenceLaunchCommandKey;
-extern NSString *const kPreferenceBootCommandKey;
 extern NSString *const kHostnameOverrideKey;
 
 NS_ASSUME_NONNULL_END

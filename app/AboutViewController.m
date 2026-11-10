@@ -24,7 +24,6 @@
 
 @property (weak, nonatomic) IBOutlet UITableViewCell *openGithub;
 @property (weak, nonatomic) IBOutlet UITableViewCell *openFediverse;
-@property (weak, nonatomic) IBOutlet UITableViewCell *openDiscord;
 
 
 @property (weak, nonatomic) IBOutlet UILabel *versionLabel;
@@ -115,11 +114,10 @@
         [self presentViewController:onboarding animated:YES completion:nil];
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
     } else if (cell == self.openGithub) {
-        [UIApplication openURL:@"https://github.com/ish-app/ish"];
+        [UIApplication openURL:@"https://github.com/johnnydevelops/ish-plus"];
     } else if (cell == self.openFediverse) {
-        [UIApplication openURL:@"https://publ.ish.app/ish"];
-    } else if (cell == self.openDiscord) {
-        [UIApplication openURL:@"https://discord.gg/HFAXj44"];
+        // "Based on iSH"
+        [UIApplication openURL:@"https://github.com/ish-app/ish"];
     }
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 }

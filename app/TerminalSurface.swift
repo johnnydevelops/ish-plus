@@ -30,6 +30,9 @@ public final class TerminalSurface: TerminalView, TerminalViewDelegate {
     @objc public weak var controlKey: UIButton?
 
     @objc public var backtickMapsEscape = false
+    /// What Caps Lock does with an external keyboard: 0 nothing special,
+    /// 1 Control (letters typed with it on are control keys), 2 Escape.
+    @objc public var capsLockMapping = 0
     @objc public var overrideControlSpace = false
     @objc public var optionSendsEscape: Bool {
         get { optionAsMetaKey }
@@ -193,6 +196,21 @@ public final class TerminalSurface: TerminalView, TerminalViewDelegate {
                 send([0])
                 return
             }
+            if capsLockMapping == 2 && key.keyCode == .keyboardCapsLock {
+                send([0x1b])
+                return
+            }
+            // Caps Lock on, as Control or Escape: not a capital letter
+            if capsLockMapping != 0, key.modifierFlags.contains(.alphaShift), mods.subtracting(.shift).isEmpty,
+               let letter = key.charactersIgnoringModifiers.lowercased().utf8.first,
+               letter >= UInt8(ascii: "a") && letter <= UInt8(ascii: "z") {
+                if capsLockMapping == 1 {
+                    send([letter - 0x60]) // Control-letter
+                } else {
+                    send([mods.contains(.shift) ? letter - 0x20 : letter])
+                }
+                return
+            }
         }
         super.pressesBegan(presses, with: event)
     }
@@ -219,6 +237,15 @@ public final class TerminalSurface: TerminalView, TerminalViewDelegate {
 
     public func requestOpenLink(source: TerminalView, request: TerminalLinkRequest) {
         host?.surfaceOpenLink(request.link)
+    }
+
+    /// The terminal bell: a brief flash (iPads have no haptics).
+    public func bell(source: TerminalView) {
+        let flash = UIView(frame: bounds.offsetBy(dx: contentOffset.x, dy: contentOffset.y))
+        flash.backgroundColor = UIColor.label.withAlphaComponent(0.15)
+        flash.isUserInteractionEnabled = false
+        addSubview(flash)
+        UIView.animate(withDuration: 0.25, animations: { flash.alpha = 0 }) { _ in flash.removeFromSuperview() }
     }
 
     public func clipboardCopy(source: TerminalView, content: Data) {

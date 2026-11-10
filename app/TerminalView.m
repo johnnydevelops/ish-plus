@@ -22,7 +22,7 @@
 - (void)awakeFromNib {
     [super awakeFromNib];
     UserPreferences *prefs = UserPreferences.shared;
-    [prefs observe:@[@"optionMapping", @"backtickMapEscape", @"overrideControlSpace"]
+    [prefs observe:@[@"optionMapping", @"backtickMapEscape", @"overrideControlSpace", @"capsLockMapping"]
            options:0 owner:self usingBlock:^(typeof(self) self) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self _updateKeyboardPreferences];
@@ -231,6 +231,7 @@ static const CGFloat kTerminalPadding = 4;
     self.surface.optionSendsEscape = prefs.optionMapping == OptionMapEsc;
     self.surface.backtickMapsEscape = prefs.backtickMapEscape;
     self.surface.overrideControlSpace = prefs.overrideControlSpace;
+    self.surface.capsLockMapping = prefs.capsLockMapping;
 }
 
 #pragma mark Styling

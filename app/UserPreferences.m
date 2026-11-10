@@ -20,8 +20,6 @@ static NSString *const kPreferenceFontSizeKey = @"Font Size";
 static NSString *const kPreferenceThemeKey = @"ModernTheme";
 static NSString *const kPreferenceDisableDimmingKey = @"Disable Dimming";
 static NSString *const kPreferenceKeepAliveKey = @"Keep Alive In Background";
-NSString *const kPreferenceLaunchCommandKey = @"Init Command";
-NSString *const kPreferenceBootCommandKey = @"Boot Command";
 static NSString *const kPreferenceCursorStyleKey = @"Cursor Style";
 static NSString *const kPreferenceBlinkCursorKey = @"Blink Cursor";
 NSString *const kPreferenceHideStatusBarKey = @"Status Bar";
@@ -70,8 +68,6 @@ static NSString *const kSystemMonospacedFontName = @"ui-monospace";
             kPreferenceOverrideControlSpaceKey: @(NO),
             kPreferenceDisableDimmingKey: @(NO),
             kPreferenceKeepAliveKey: @(YES),
-            kPreferenceLaunchCommandKey: @[@"/bin/login", @"-f", @"root"],
-            kPreferenceBootCommandKey: @[@"/sbin/init"],
             kPreferenceBlinkCursorKey: @(NO),
             kPreferenceCursorStyleKey: @(CursorStyleBlock),
             kPreferenceHideStatusBarKey: @(NO),
@@ -99,14 +95,11 @@ static NSString *const kSystemMonospacedFontName = @"ui-monospace";
             @"font_size": kPreferenceFontSizeKey,
             @"disable_dimming": kPreferenceDisableDimmingKey,
             @"keep_alive_in_background": kPreferenceKeepAliveKey,
-            @"launch_command": kPreferenceLaunchCommandKey,
-            @"boot_command": kPreferenceBootCommandKey,
             @"cursor_style": kPreferenceCursorStyleKey,
             @"blink_cursor": kPreferenceBlinkCursorKey,
             @"hide_status_bar": kPreferenceHideStatusBarKey,
             @"color_scheme": kPreferenceColorSchemeKey,
             @"theme": kPreferenceThemeKey,
-            @"hostname_override": kHostnameOverrideKey,
         };
         NSMutableDictionary <NSString *, NSString *> *reverseMapping = [NSMutableDictionary new];
         for (NSString *key in friendlyPreferenceMapping) {
@@ -125,8 +118,6 @@ static NSString *const kSystemMonospacedFontName = @"ui-monospace";
             kPreferenceFontSizeKey: property(fontSize),
             kPreferenceDisableDimmingKey: property(shouldDisableDimming),
             kPreferenceKeepAliveKey: property(keepAliveInBackground),
-            kPreferenceLaunchCommandKey: property(launchCommand),
-            kPreferenceBootCommandKey: property(bootCommand),
             kPreferenceCursorStyleKey: property(cursorStyle),
             kPreferenceBlinkCursorKey: property(blinkCursor),
             kPreferenceHideStatusBarKey: property(hideStatusBar),
@@ -336,53 +327,6 @@ static NSString *const kSystemMonospacedFontName = @"ui-monospace";
 
 - (BOOL)validateKeepAliveInBackground:(id *)value error:(NSError **)error {
     return [*value isKindOfClass:NSNumber.class];
-}
-
-// MARK: launchCommand
-- (NSArray<NSString *> *)launchCommand {
-    return [_defaults stringArrayForKey:kPreferenceLaunchCommandKey];
-}
-
-- (void)setLaunchCommand:(NSArray<NSString *> *)launchCommand {
-    [_defaults setObject:launchCommand forKey:kPreferenceLaunchCommandKey];
-}
-
-- (BOOL)validateLaunchCommand:(id *)value error:(NSError **)error {
-    if (![*value isKindOfClass:NSArray.class]) {
-        return NO;
-    }
-    for (id element in (NSArray *)(*value)) {
-        if (![element isKindOfClass:NSString.class]) {
-            return NO;
-        }
-    }
-    return YES;
-}
-
-- (BOOL)hasChangedLaunchCommand {
-    NSArray *defaultLaunchCommand = [[[NSUserDefaults alloc] initWithSuiteName:NSRegistrationDomain] stringArrayForKey:kPreferenceLaunchCommandKey];
-    return ![self.launchCommand isEqual:defaultLaunchCommand];
-}
-
-// MARK: bootCommand
-- (NSArray<NSString *> *)bootCommand {
-    return [_defaults stringArrayForKey:kPreferenceBootCommandKey];
-}
-
-- (void)setBootCommand:(NSArray<NSString *> *)bootCommand {
-    [_defaults setObject:bootCommand forKey:kPreferenceBootCommandKey];
-}
-
-- (BOOL)validateBootCommand:(id *)value error:(NSError **)error {
-    if (![*value isKindOfClass:NSArray.class]) {
-        return NO;
-    }
-    for (id element in (NSArray *)(*value)) {
-        if (![element isKindOfClass:NSString.class]) {
-            return NO;
-        }
-    }
-    return YES;
 }
 
 // MARK: cursorStyle
