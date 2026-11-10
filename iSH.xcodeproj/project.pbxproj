@@ -24,6 +24,7 @@
 		0613F6CA23E90E7A579F3A42 /* JITViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97EA159F635965A28FE3E83 /* JITViewController.swift */; };
 		1494D14E49F6CD364E9BCDDC /* PortForwarder.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF79ECEFDBB2821EB483E54D /* PortForwarder.swift */; };
 		2352FD9E3A32D954A010933D /* StikJIT.xcframework in Embed QEMU */ = {isa = PBXBuildFile; fileRef = 81BD35790524254A633600D3 /* StikJIT.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		2FCDBB311EEF90C0F19D14E4 /* VMState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A847B6DB669F691BF9EE320 /* VMState.swift */; };
 		313F8C227740F07613B9E6D9 /* DNSProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F7EDF01267B0CE2AB2DC08 /* DNSProxy.swift */; };
 		37988EFDAF0D0747A964C9B9 /* BackgroundKeepAlive.m in Sources */ = {isa = PBXBuildFile; fileRef = DADA01E465A18DDFDE1C066B /* BackgroundKeepAlive.m */; };
 		491B31E62883BF22008EEFB0 /* ThemeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 491B31E52883BF22008EEFB0 /* ThemeViewController.m */; };
@@ -37,6 +38,7 @@
 		62A737F846F8EF35046F8491 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 599290A47C2DDDD7A435DFA3 /* Foundation.framework */; };
 		63A76CAC87E1FE87EACBF434 /* libqemu-aarch64-softmmu.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = DF4620D19DC63C97C4EDA00A /* libqemu-aarch64-softmmu.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		68FD8AD22DA4B3320B7ECE3A /* JITHelperLauncher.m in Sources */ = {isa = PBXBuildFile; fileRef = 9607608D73FBB17969CF5E8A /* JITHelperLauncher.m */; };
+		6A324D1B6387562B1AC3D4D0 /* QEMUMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7D8B35C99F9EE30F670C46 /* QEMUMonitor.swift */; };
 		72C57F7F9E45D97A8548D5C9 /* RunCommandIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF2EB9ACBD43D9BA161EE2A8 /* RunCommandIntent.swift */; };
 		784C9DF67E7B174BEBE3CD79 /* VMSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90303182AD42E61C3CBBC32 /* VMSettingsViewController.swift */; };
 		7C170B0049C15E6B6456497A /* DistroSetupViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D2D852F3D9B73E99D70407 /* DistroSetupViewController.swift */; };
@@ -98,6 +100,7 @@
 		BBFB55662158644C00DFE6DE /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = BBFB55652158644C00DFE6DE /* libresolv.tbd */; };
 		C5BA678EA73D1B1E22A34A86 /* JITHelperHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6234104F5D7ECA6A9B59D3 /* JITHelperHandler.swift */; };
 		E4ABA6762629329C8F07E452 /* libqemu-aarch64-softmmu-tci.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = 477E1313748964CA68B92D2A /* libqemu-aarch64-softmmu-tci.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		F1ACF3EEC304BB68445CE94E /* ResumeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB7B4901B1A2E1D8686C0BF /* ResumeViewController.swift */; };
 		F832E7EDE71419B080DCC704 /* GuestServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B62450DCAB3F80C9FC06E4B /* GuestServices.swift */; };
 /* End PBXBuildFile section */
 
@@ -192,6 +195,7 @@
 		497F6D47254E605F00C82F46 /* ish */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ish; sourceTree = BUILT_PRODUCTS_DIR; };
 		49FF844A2A06249F00850B7A /* ExceptionExfiltrator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ExceptionExfiltrator.m; sourceTree = "<group>"; };
 		49FF844C2A0624AF00850B7A /* ExceptionExfiltrator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ExceptionExfiltrator.h; sourceTree = "<group>"; };
+		4B7D8B35C99F9EE30F670C46 /* QEMUMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QEMUMonitor.swift; sourceTree = "<group>"; };
 		501900BEC8B43D848CF2FB04 /* VMSettings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VMSettings.swift; sourceTree = "<group>"; };
 		599290A47C2DDDD7A435DFA3 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		5B62450DCAB3F80C9FC06E4B /* GuestServices.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GuestServices.swift; sourceTree = "<group>"; };
@@ -205,9 +209,11 @@
 		9607608D73FBB17969CF5E8A /* JITHelperLauncher.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = JITHelperLauncher.m; sourceTree = "<group>"; };
 		9A28E4E8219A8B670073D200 /* AboutAppearanceViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AboutAppearanceViewController.h; sourceTree = "<group>"; };
 		9A28E4E9219A8B670073D200 /* AboutAppearanceViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AboutAppearanceViewController.m; sourceTree = "<group>"; };
+		9A847B6DB669F691BF9EE320 /* VMState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VMState.swift; sourceTree = "<group>"; };
 		A650484A8360D2669C1C3344 /* DistrosViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DistrosViewController.swift; sourceTree = "<group>"; };
 		A90303182AD42E61C3CBBC32 /* VMSettingsViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VMSettingsViewController.swift; sourceTree = "<group>"; };
 		AE31D69ABEE4B7F9683187EC /* iSHJITHelper.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = iSHJITHelper.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		AEB7B4901B1A2E1D8686C0BF /* ResumeViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResumeViewController.swift; sourceTree = "<group>"; };
 		AF98129378181E7CF436D4BC /* JITHelperLauncher.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = JITHelperLauncher.h; sourceTree = "<group>"; };
 		B9F7EDF01267B0CE2AB2DC08 /* DNSProxy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DNSProxy.swift; sourceTree = "<group>"; };
 		BB0B848E2586A4CF00208600 /* XcodeDefault.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = XcodeDefault.xcconfig; sourceTree = "<group>"; };
@@ -522,6 +528,9 @@
 				EF79ECEFDBB2821EB483E54D /* PortForwarder.swift */,
 				501900BEC8B43D848CF2FB04 /* VMSettings.swift */,
 				A90303182AD42E61C3CBBC32 /* VMSettingsViewController.swift */,
+				4B7D8B35C99F9EE30F670C46 /* QEMUMonitor.swift */,
+				9A847B6DB669F691BF9EE320 /* VMState.swift */,
+				AEB7B4901B1A2E1D8686C0BF /* ResumeViewController.swift */,
 			);
 			path = app;
 			sourceTree = "<group>";
@@ -953,6 +962,9 @@
 				1494D14E49F6CD364E9BCDDC /* PortForwarder.swift in Sources */,
 				51742885E6B98072A4138516 /* VMSettings.swift in Sources */,
 				784C9DF67E7B174BEBE3CD79 /* VMSettingsViewController.swift in Sources */,
+				6A324D1B6387562B1AC3D4D0 /* QEMUMonitor.swift in Sources */,
+				2FCDBB311EEF90C0F19D14E4 /* VMState.swift in Sources */,
+				F1ACF3EEC304BB68445CE94E /* ResumeViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

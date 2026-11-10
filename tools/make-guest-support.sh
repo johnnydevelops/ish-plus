@@ -86,7 +86,8 @@ for p in e2fsprogs-libs libcom_err libblkid libuuid libeconf; do
     find "$(apk_fetch $p)" -name "*.so.*" -exec cp -L {} "$stage/lib/musl/" \;
 done
 cp "$ROOT/tools/guest/boot/main.sh" "$ROOT/tools/guest/boot/shell.sh" "$ROOT/tools/guest/boot/udhcpc.script" \
-   "$ROOT/tools/guest/boot/port.sh" "$ROOT/tools/guest/boot/exec-agent.sh" "$stage/boot/"
+   "$ROOT/tools/guest/boot/port.sh" "$ROOT/tools/guest/boot/exec-agent.sh" \
+   "$ROOT/tools/guest/boot/suspend.sh" "$ROOT/tools/guest/boot/resume.sh" "$stage/boot/"
 # The iOS clipboard (like macOS's commands), through iSH+
 cat > "$stage/commands/pbcopy" <<'EOF'
 #!/bin/sh

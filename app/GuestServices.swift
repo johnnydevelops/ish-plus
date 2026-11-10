@@ -193,7 +193,7 @@ final class GuestServices {
     }
 
     /// Runs a command in the guest, as the user its sessions log in as.
-    func run(_ command: String, completion: @escaping (Int32, String) -> Void) {
+    func run(_ command: String, asRoot: Bool = false, completion: @escaping (Int32, String) -> Void) {
         execQueue.async { [self] in
             guard let exec, exec.connect() else {
                 return completion(-1, "The Linux VM is not running.")
@@ -217,7 +217,7 @@ final class GuestServices {
             let id = nextID
             nextID += 1
             let body = Data(command.utf8)
-            guard exec.write(Data("\(id) \(body.count)\n".utf8) + body) else {
+            guard exec.write(Data("\(id) \(body.count)\(asRoot ? " root" : "")\n".utf8) + body) else {
                 exec.disconnect()
                 return completion(-1, "Could not send the command.")
             }

@@ -278,7 +278,11 @@ public final class VirtualMachine: NSObject {
         if freopen(logURL.path, "a", stderr) != nil {
             setvbuf(stderr, nil, _IONBF, 0)
         }
-        let arguments = makeArguments()
+        var arguments = makeArguments()
+        // Instant resume: start from the state saved when iOS ended iSH+
+        if VMState.shared.prepareRestore(distro: distro) {
+            arguments += ["-incoming", "defer"]
+        }
         vmLog("starting \(interpreted ? "interpreted" : "with JIT"): \(arguments.joined(separator: " "))")
 
         // QEMU's main loop runs on its own thread with a large stack; QEMU keeps
@@ -299,6 +303,7 @@ public final class VirtualMachine: NSObject {
             let status = qemuInit(Int32(arguments.count), &argv, &envp)
             vmLog("qemu_init returned \(status)")
             self?.qemuInitialized()
+            VMState.shared.restoreAfterInit()
             qemuMainLoop()
             qemuCleanup()
             vmLog("QEMU stopped")

@@ -58,6 +58,8 @@
 @property BOOL pendingJITScreen;
 // A session to start once the view is on screen (to present setup first)
 @property BOOL pendingStart;
+// Resuming a saved Linux, or not, was decided
+@property BOOL resumeDecided;
 @property (readonly) int sessionPid;
 @property (readonly, nonatomic) Terminal *sessionTerminal;
 
@@ -401,6 +403,11 @@ static int nextVMTerminalNumber;
         [self presentJITScreenThenStartSession];
         return 0;
     }
+    // Linux was saved when iOS closed iSH+: resume it, or start afresh?
+    if (!vm.isRunning && !self.resumeDecided && ISHVMState.shared.savedDate != nil) {
+        [self presentResumeChoiceThenStartSession];
+        return 0;
+    }
     Terminal *terminal = [Terminal terminalWithType:VM_CONSOLE_MAJOR number:nextVMTerminalNumber++];
     __weak Terminal *weakTerminal = terminal;
     __weak typeof(self) weakSelf = self;
@@ -440,6 +447,21 @@ static int nextVMTerminalNumber;
         [weakSelf startSession];
     }];
     [self presentViewController:onboarding animated:NO completion:nil];
+}
+
+- (void)presentResumeChoiceThenStartSession {
+    if (self.showingJITScreen || ![self canPresentNow])
+        return;
+    self.showingJITScreen = YES;
+    __weak typeof(self) weakSelf = self;
+    ISHResumeViewController *resume = [[ISHResumeViewController alloc] initWithSavedDate:ISHVMState.shared.savedDate completion:^(BOOL resumeIt) {
+        weakSelf.showingJITScreen = NO;
+        weakSelf.resumeDecided = YES;
+        if (!resumeIt)
+            [ISHVMState.shared discardSavedState];
+        [weakSelf startSession];
+    }];
+    [self presentViewController:resume animated:NO completion:nil];
 }
 
 - (void)presentDistroChooserThenStartSession {
