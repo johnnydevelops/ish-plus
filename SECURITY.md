@@ -1,7 +1,19 @@
-# iSH is not a security boundary!
+# Security
 
-The goal of this project is to support a Linux shell on iOS. As such, its security model assumes that the app is running in another sandbox and is used by a single user. The project is focused on compatibility, and very little thought has been put into internal security. Permissions are only loosely checked. Memory corruption in edge cases is common. Please do not use iSH for any sort of secure containerization or production use case.
+iSH+ runs a Linux virtual machine inside an iOS app. Linux inside it is an
+ordinary Linux system, with its own users and permissions, but the VM is not
+meant as a security boundary between you and the programs you run in it:
+they can use the network, your shared folder (Files > iSH+ > Shared) and the
+iOS clipboard (`pbcopy`, `pbpaste`).
 
-As such, most types of bugs that are security issues in most projects are not security issues in iSH. Insufficient permission checks, memory corruption, and thread safety issues are generally considered correctness bugs and would be best filed as GitHub issues. We will prioritize bugs encountered by real programs in typical use.
+Things that are security issues for iSH+:
 
-In our security model, we expect real security bugs to be very rare. It's not completely impossible, e.g. a bug allowing remote code execution without user consent would be a security bug. If you think you found one, you can send it to security@ish.app. We'll work with you to resolve it appropriately.
+- a way for something outside the VM (a website, another app, another
+  device on the network) to run code in it or read its files without you
+  starting it;
+- iSH+ exposing your pairing file, which lets software use your device's
+  developer services.
+
+Please report those privately, with GitHub's
+[security advisories](../../security/advisories/new) for this repository,
+not in a public issue. Other bugs are welcome as issues.
