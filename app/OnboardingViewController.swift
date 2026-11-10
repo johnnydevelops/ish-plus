@@ -247,12 +247,18 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
         guard let url = urls.first else { return }
         do {
             let data = try Data(contentsOf: url)
-            // A pairing record is a property list with these keys.
-            guard let plist = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
-                  plist["HostPrivateKey"] != nil || plist["DeviceCertificate"] != nil else {
-                showAlert("Not a Pairing File", "That file does not look like a pairing file for this device.")
+            // Two formats exist: classic lockdown pairing records (HostPrivateKey,
+            // DeviceCertificate...) and RemotePairing files (iOS 17+, e.g. from
+            // StikPair's rp_pairing_file.plist). Both are dictionaries with key
+            // material; accept either.
+            guard let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+                  !plist.isEmpty,
+                  plist.keys.contains(where: { $0.lowercased().contains("key") || $0.lowercased().contains("certificate") }) else {
+                showAlert("Not a Pairing File", "That file does not look like a pairing file. Use a pairing file made for this device, for example rp_pairing_file.plist from StikPair.")
                 return
             }
+            let kind = plist["HostPrivateKey"] != nil ? "lockdown" : "remotepairing"
+            UserDefaults.standard.set(kind, forKey: "Pairing File Kind")
             let destination = Onboarding.pairingFileURL
             try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: destination, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
