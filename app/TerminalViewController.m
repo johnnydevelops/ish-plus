@@ -16,6 +16,7 @@
 #import "NSObject+SaneKVO.h"
 #import "LinuxInterop.h"
 #import "iSHSwift.h"
+#import "JITHelperLauncher.h"
 #include "kernel/init.h"
 #include "kernel/task.h"
 #include "kernel/calls.h"
@@ -199,6 +200,15 @@
         }
         [weakSelf startNewSession];
     }];
+    jit.launchEnabler = ^(void (^done)(NSString *)) {
+        NSData *pairing = [NSData dataWithContentsOfURL:ISHOnboarding.pairingFileURL];
+        if (pairing == nil)
+            return done(@"No pairing file is installed.");
+        [ISHJITHelperLauncher enableJITWithPairingData:pairing completion:^(NSString *error, NSArray<NSString *> *log) {
+            NSLog(@"iSH+ JIT helper finished: %@\n%@", error ?: @"ok", [log componentsJoinedByString:@"\n"]);
+            done(error);
+        }];
+    };
     [self presentViewController:jit animated:NO completion:nil];
 }
 

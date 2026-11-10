@@ -25,6 +25,7 @@
 		09F32ACB38D3F055A800DD26 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 9A7A2BABFDF81E1D59AE6598 /* SwiftTerm */; };
 		0FC2383C2991FBA6004C09EC /* mmx.c in Sources */ = {isa = PBXBuildFile; fileRef = 0FC2383B2991FB82004C09EC /* mmx.c */; };
 		20BD3774A997C864D7D2E0A9 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = A64B20771684513C8DC55D08 /* SwiftTerm */; };
+		2352FD9E3A32D954A010933D /* StikJIT.xcframework in Embed QEMU */ = {isa = PBXBuildFile; fileRef = 81BD35790524254A633600D3 /* StikJIT.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		37988EFDAF0D0747A964C9B9 /* BackgroundKeepAlive.m in Sources */ = {isa = PBXBuildFile; fileRef = DADA01E465A18DDFDE1C066B /* BackgroundKeepAlive.m */; };
 		491B31E62883BF22008EEFB0 /* ThemeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 491B31E52883BF22008EEFB0 /* ThemeViewController.m */; };
 		49302D8E277669D300C9885A /* ish.c in Sources */ = {isa = PBXBuildFile; fileRef = 49302D8D277669D300C9885A /* ish.c */; };
@@ -109,8 +110,13 @@
 		497F6D87254E62E100C82F46 /* libish.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BB13F7DC200AD81D003D1C4D /* libish.a */; };
 		49FF844B2A06249F00850B7A /* ExceptionExfiltrator.m in Sources */ = {isa = PBXBuildFile; fileRef = 49FF844A2A06249F00850B7A /* ExceptionExfiltrator.m */; };
 		54051DB41170AF9C3C0E2C5C /* VirtualMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08EFD7D513BBE4A4DB86DC3E /* VirtualMachine.swift */; };
+		62A737F846F8EF35046F8491 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 599290A47C2DDDD7A435DFA3 /* Foundation.framework */; };
 		63A76CAC87E1FE87EACBF434 /* libqemu-aarch64-softmmu.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = DF4620D19DC63C97C4EDA00A /* libqemu-aarch64-softmmu.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		68FD8AD22DA4B3320B7ECE3A /* JITHelperLauncher.m in Sources */ = {isa = PBXBuildFile; fileRef = 9607608D73FBB17969CF5E8A /* JITHelperLauncher.m */; };
 		7A67DAF30E47B250F7CBA2ED /* JITProbe.c in Sources */ = {isa = PBXBuildFile; fileRef = A1D5D57A854E74B275EE46AB /* JITProbe.c */; };
+		7F6B04E33974E1CD992CBE28 /* StikJIT.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 81BD35790524254A633600D3 /* StikJIT.xcframework */; };
+		8414365EE62A93141BDB2151 /* iSHJITHelper.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AE31D69ABEE4B7F9683187EC /* iSHJITHelper.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8A0FD347EA7F03E65B2E8C73 /* JITHelperLauncher.m in Sources */ = {isa = PBXBuildFile; fileRef = 9607608D73FBB17969CF5E8A /* JITHelperLauncher.m */; };
 		8EE3B89ADE65613EDFE64710 /* OnboardingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31C1FD4EDA1E80CCD8B66426 /* OnboardingViewController.swift */; };
 		9733E8CE21472D45B00A773E /* TerminalSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6391F54F532F3E4928D350AA /* TerminalSurface.swift */; };
 		A82BC7B8C19D56921BE50B4F /* VirtualMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08EFD7D513BBE4A4DB86DC3E /* VirtualMachine.swift */; };
@@ -247,6 +253,7 @@
 		BBFB2C7E259026C200545EAB /* libish_emu.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BBFB2C5B2590257E00545EAB /* libish_emu.a */; };
 		BBFB2CEC2590296B00545EAB /* libish_emu.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BBFB2C5B2590257E00545EAB /* libish_emu.a */; };
 		BBFB55662158644C00DFE6DE /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = BBFB55652158644C00DFE6DE /* libresolv.tbd */; };
+		C5BA678EA73D1B1E22A34A86 /* JITHelperHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6234104F5D7ECA6A9B59D3 /* JITHelperHandler.swift */; };
 		C876B13D90AE2041533295F4 /* OnboardingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31C1FD4EDA1E80CCD8B66426 /* OnboardingViewController.swift */; };
 		DBED49CEC16EC9FC22DE2A12 /* JITProbe.c in Sources */ = {isa = PBXBuildFile; fileRef = A1D5D57A854E74B275EE46AB /* JITProbe.c */; };
 		E06E1BD62396B4106039C4AB /* SwiftLinkage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A891C9AEEDBFA1130B28128 /* SwiftLinkage.swift */; };
@@ -397,6 +404,13 @@
 			remoteGlobalIDString = BB13F7D0200ACCA2003D1C4D;
 			remoteInfo = Ninja;
 		};
+		FC6BA6715EE88C20670762DB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BB792B461F96D8E000FFB7A4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CA28DC2F2F2A4C6C4480B630;
+			remoteInfo = iSHJITHelper;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -417,6 +431,7 @@
 			files = (
 				63A76CAC87E1FE87EACBF434 /* libqemu-aarch64-softmmu.dylib in Embed QEMU */,
 				E4ABA6762629329C8F07E452 /* libqemu-aarch64-softmmu-tci.dylib in Embed QEMU */,
+				2352FD9E3A32D954A010933D /* StikJIT.xcframework in Embed QEMU */,
 			);
 			name = "Embed QEMU";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -428,6 +443,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				BB88F49F2154760800A341FD /* iSHFileProvider.appex in Embed Foundation Extensions */,
+				8414365EE62A93141BDB2151 /* iSHJITHelper.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -449,6 +465,7 @@
 		08EFD7D513BBE4A4DB86DC3E /* VirtualMachine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VirtualMachine.swift; sourceTree = "<group>"; };
 		0A891C9AEEDBFA1130B28128 /* SwiftLinkage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwiftLinkage.swift; sourceTree = "<group>"; };
 		0FC2383B2991FB82004C09EC /* mmx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mmx.c; sourceTree = "<group>"; };
+		23DF1BE7C23E37EB249CD436 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		31C1FD4EDA1E80CCD8B66426 /* OnboardingViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingViewController.swift; sourceTree = "<group>"; };
 		408A2639236440F8008A4E81 /* iOSFS.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = iOSFS.m; sourceTree = "<group>"; };
 		408A263B23644102008A4E81 /* iOSFS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = iOSFS.h; sourceTree = "<group>"; };
@@ -612,14 +629,20 @@
 		497F6D47254E605F00C82F46 /* ish */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ish; sourceTree = BUILT_PRODUCTS_DIR; };
 		49FF844A2A06249F00850B7A /* ExceptionExfiltrator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ExceptionExfiltrator.m; sourceTree = "<group>"; };
 		49FF844C2A0624AF00850B7A /* ExceptionExfiltrator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ExceptionExfiltrator.h; sourceTree = "<group>"; };
+		599290A47C2DDDD7A435DFA3 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		6391F54F532F3E4928D350AA /* TerminalSurface.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
 		650B337222EA235C00B4C03E /* PasteboardDevice.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PasteboardDevice.h; sourceTree = "<group>"; };
 		650B337322EA235C00B4C03E /* PasteboardDevice.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PasteboardDevice.m; sourceTree = "<group>"; };
+		6A6234104F5D7ECA6A9B59D3 /* JITHelperHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = JITHelperHandler.swift; sourceTree = "<group>"; };
+		81BD35790524254A633600D3 /* StikJIT.xcframework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.xcframework; name = StikJIT.xcframework; path = deps/StikJIT/StikJIT.xcframework; sourceTree = SOURCE_ROOT; };
 		8632A7BD219A59FB00F02325 /* UserPreferences.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UserPreferences.h; sourceTree = "<group>"; };
 		8632A7BE219A59FB00F02325 /* UserPreferences.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UserPreferences.m; sourceTree = "<group>"; };
+		9607608D73FBB17969CF5E8A /* JITHelperLauncher.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = JITHelperLauncher.m; sourceTree = "<group>"; };
 		9A28E4E8219A8B670073D200 /* AboutAppearanceViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AboutAppearanceViewController.h; sourceTree = "<group>"; };
 		9A28E4E9219A8B670073D200 /* AboutAppearanceViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AboutAppearanceViewController.m; sourceTree = "<group>"; };
 		A1D5D57A854E74B275EE46AB /* JITProbe.c */ = {isa = PBXFileReference; includeInIndex = 1; path = JITProbe.c; sourceTree = "<group>"; };
+		AE31D69ABEE4B7F9683187EC /* iSHJITHelper.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = iSHJITHelper.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		AF98129378181E7CF436D4BC /* JITHelperLauncher.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = JITHelperLauncher.h; sourceTree = "<group>"; };
 		BB0B848E2586A4CF00208600 /* XcodeDefault.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = XcodeDefault.xcconfig; sourceTree = "<group>"; };
 		BB0B859B2586F13200208600 /* XcodeDebug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = XcodeDebug.xcconfig; sourceTree = "<group>"; };
 		BB0B859C2586F19000208600 /* XcodeRelease.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = XcodeRelease.xcconfig; sourceTree = "<group>"; };
@@ -795,6 +818,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AE2FAC9D4341389905E60CDC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				62A737F846F8EF35046F8491 /* Foundation.framework in Frameworks */,
+				7F6B04E33974E1CD992CBE28 /* StikJIT.xcframework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BB415919255EF9E300E0950C /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -906,8 +938,27 @@
 			children = (
 				DF4620D19DC63C97C4EDA00A /* libqemu-aarch64-softmmu.dylib */,
 				477E1313748964CA68B92D2A /* libqemu-aarch64-softmmu-tci.dylib */,
+				81BD35790524254A633600D3 /* StikJIT.xcframework */,
 			);
 			name = QEMU;
+			sourceTree = "<group>";
+		};
+		797C890FD180223396F75229 /* JITHelper */ = {
+			isa = PBXGroup;
+			children = (
+				6A6234104F5D7ECA6A9B59D3 /* JITHelperHandler.swift */,
+				23DF1BE7C23E37EB249CD436 /* Info.plist */,
+			);
+			name = JITHelper;
+			path = app/JITHelper;
+			sourceTree = "<group>";
+		};
+		8FFCB76572612C76C4F8C730 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				599290A47C2DDDD7A435DFA3 /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 		BB0B848D2586A4B100208600 /* Configs */ = {
@@ -1067,6 +1118,7 @@
 				BB792B511F96D90D00FFB7A4 /* Products */,
 				BB792B7D1F96E32B00FFB7A4 /* Frameworks */,
 				5CB7ECD3CEB111ACDD8647D7 /* QEMU */,
+				797C890FD180223396F75229 /* JITHelper */,
 			);
 			sourceTree = "<group>";
 			usesTabs = 0;
@@ -1087,6 +1139,7 @@
 				BBECF3A22691314C00DEC937 /* libiSHLinux.a */,
 				BBECF3B8269136E100DEC937 /* liblinux.a */,
 				BBBDDF8F2CE00F6B0071F1F3 /* libiSHLinuxUser.a */,
+				AE31D69ABEE4B7F9683187EC /* iSHJITHelper.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1133,6 +1186,8 @@
 				A1D5D57A854E74B275EE46AB /* JITProbe.c */,
 				F5ADC8AF29DA6C018F449036 /* JITProbe.h */,
 				31C1FD4EDA1E80CCD8B66426 /* OnboardingViewController.swift */,
+				9607608D73FBB17969CF5E8A /* JITHelperLauncher.m */,
+				AF98129378181E7CF436D4BC /* JITHelperLauncher.h */,
 			);
 			path = app;
 			sourceTree = "<group>";
@@ -1146,6 +1201,7 @@
 				BB235536235D49B300139E00 /* CoreLocation.framework */,
 				BB6DB260216435330047A611 /* libiconv.tbd */,
 				BBFB55652158644C00DFE6DE /* libresolv.tbd */,
+				8FFCB76572612C76C4F8C730 /* iOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -1554,6 +1610,7 @@
 				BB10E5CB248DBAB7009C7A74 /* PBXTargetDependency */,
 				BB13F7E7200AD874003D1C4D /* PBXTargetDependency */,
 				BB88F49E2154760800A341FD /* PBXTargetDependency */,
+				E59F4C2A75DCE6062110F312 /* PBXTargetDependency */,
 			);
 			name = iSH;
 			productName = iSH;
@@ -1695,6 +1752,23 @@
 			productReference = BBFB2C5B2590257E00545EAB /* libish_emu.a */;
 			productType = "com.apple.product-type.library.static";
 		};
+		CA28DC2F2F2A4C6C4480B630 /* iSHJITHelper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D9A90BDECD48DDACD4FA314B /* Build configuration list for PBXNativeTarget "iSHJITHelper" */;
+			buildPhases = (
+				71238B918A6C91E0C4637865 /* Sources */,
+				AE2FAC9D4341389905E60CDC /* Frameworks */,
+				AE4052736BB402E26A60AA07 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = iSHJITHelper;
+			productName = iSHJITHelper;
+			productReference = AE31D69ABEE4B7F9683187EC /* iSHJITHelper.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -1797,6 +1871,7 @@
 				BB4A922324ED9402002F5A96 /* iSH pre */,
 				497F6CE3254E5E4C00C82F46 /* MakeXcodeAutoCompleteWork */,
 				497F6D46254E605F00C82F46 /* ish */,
+				CA28DC2F2F2A4C6C4480B630 /* iSHJITHelper */,
 			);
 		};
 /* End PBXProject section */
@@ -1841,6 +1916,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AC2C7EC334292C0BFF74D796 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AE4052736BB402E26A60AA07 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -2227,6 +2309,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		71238B918A6C91E0C4637865 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C5BA678EA73D1B1E22A34A86 /* JITHelperHandler.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BB21A1722689084800BD19B4 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -2293,6 +2383,7 @@
 				F7970F0CB69DAF46C8F92D41 /* JITViewController.swift in Sources */,
 				DBED49CEC16EC9FC22DE2A12 /* JITProbe.c in Sources */,
 				C876B13D90AE2041533295F4 /* OnboardingViewController.swift in Sources */,
+				8A0FD347EA7F03E65B2E8C73 /* JITHelperLauncher.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2341,6 +2432,7 @@
 				0613F6CA23E90E7A579F3A42 /* JITViewController.swift in Sources */,
 				7A67DAF30E47B250F7CBA2ED /* JITProbe.c in Sources */,
 				8EE3B89ADE65613EDFE64710 /* OnboardingViewController.swift in Sources */,
+				68FD8AD22DA4B3320B7ECE3A /* JITHelperLauncher.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2446,6 +2538,12 @@
 			target = BB13F7D0200ACCA2003D1C4D /* Ninja */;
 			targetProxy = BBFB2C562590257E00545EAB /* PBXContainerItemProxy */;
 		};
+		E59F4C2A75DCE6062110F312 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = iSHJITHelper;
+			target = CA28DC2F2F2A4C6C4480B630 /* iSHJITHelper */;
+			targetProxy = FC6BA6715EE88C20670762DB /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
@@ -2476,6 +2574,36 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		18926A834B01321A2A5522A1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				SDKROOT = iphoneos;
+			};
+			name = Debug;
+		};
+		3A0CC594A9BBF9749C6A629E /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BB0B86D52587009D00208600 /* iOS.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = app/JITHelper/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_IDENTIFIER).JITHelper";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		497F6CE8254E5E4C00C82F46 /* Debug-ApplePleaseFixFB19282108 */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B86D52587009D00208600 /* iOS.xcconfig */;
@@ -2503,6 +2631,87 @@
 			buildSettings = {
 			};
 			name = Release;
+		};
+		615507A669D075E7B0028F63 /* DebugLinux */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				SDKROOT = iphoneos;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = DebugLinux;
+		};
+		8B9F4BE1121109A7CC1B1837 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				SDKROOT = iphoneos;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		8C6CCD07CB89002815D4C913 /* DebugLinux */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BB0B86D52587009D00208600 /* iOS.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = app/JITHelper/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_IDENTIFIER).JITHelper";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = DebugLinux;
+		};
+		AE4B8047C002999C7DAC813B /* ReleaseLinux */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BB0B86D52587009D00208600 /* iOS.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = app/JITHelper/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_IDENTIFIER).JITHelper";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = ReleaseLinux;
+		};
+		B358FF20D064B8DC4F32872A /* ReleaseLinux */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				SDKROOT = iphoneos;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = ReleaseLinux;
+		};
+		B86468C8F5CF0619275B5697 /* Debug-ApplePleaseFixFB19282108 */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				SDKROOT = iphoneos;
+			};
+			name = "Debug-ApplePleaseFixFB19282108";
 		};
 		BB13F7CC200ACC31003D1C4D /* Debug-ApplePleaseFixFB19282108 */ = {
 			isa = XCBuildConfiguration;
@@ -3050,6 +3259,27 @@
 			};
 			name = Release;
 		};
+		FF5F68D154B8F382EEE0698D /* Debug-ApplePleaseFixFB19282108 */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BB0B86D52587009D00208600 /* iOS.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = app/JITHelper/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_IDENTIFIER).JITHelper";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = "Debug-ApplePleaseFixFB19282108";
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -3236,6 +3466,17 @@
 				BB7F620E2688EAB5003C0220 /* DebugLinux */,
 				BBFB2C5A2590257E00545EAB /* Release */,
 				BBEF19B426806D1F001225BD /* ReleaseLinux */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D9A90BDECD48DDACD4FA314B /* Build configuration list for PBXNativeTarget "iSHJITHelper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FF5F68D154B8F382EEE0698D /* Debug-ApplePleaseFixFB19282108 */,
+				8C6CCD07CB89002815D4C913 /* DebugLinux */,
+				3A0CC594A9BBF9749C6A629E /* Release */,
+				AE4B8047C002999C7DAC813B /* ReleaseLinux */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

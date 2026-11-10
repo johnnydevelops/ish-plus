@@ -305,7 +305,7 @@ public final class VirtualMachine: NSObject {
             // a cheap pointer authentication algorithm instead of QARMA.
             "-cpu", "max,pauth-impdef=on",
             // split-wx: JIT code through a second, executable mapping (iOS)
-            "-accel", interpreted ? "tcg,thread=multi,tb-size=64" : "tcg,thread=multi,tb-size=64,split-wx=on",
+            "-accel", interpreted ? "tcg,thread=multi,tb-size=256" : "tcg,thread=multi,tb-size=256,split-wx=on",
             "-smp", "\(cpus)",
             "-m", "1024",
             "-kernel", file("vmlinuz"),
