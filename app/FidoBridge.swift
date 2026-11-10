@@ -42,10 +42,16 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
     private var pending: (command: Int, payload: Data)?
     /// The pending request was already sent again after the key left
     private var retried = false
-    /// Times the pending request's session was refused as busy
+    /// Times the pending request's session was refused by iOS and restarted
     private var busyRetries = 0
     /// A session is being created on the main thread
     private var starting = false
+    /// When the last session was closed or ended. iOS ends a new session
+    /// at once ("Session invalidated unexpectedly") when it begins too soon
+    /// after the previous one closed, e.g. ssh to a second host right after
+    /// the first login's "Done".
+    private var lastSessionEnd: DispatchTime?
+    private static let sessionCooldown: TimeInterval = 2.5
 
     func serve(_ port: GuestPort) {
         self.port = port
@@ -138,7 +144,13 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
     private func startSession() {
         guard !starting else { return }
         starting = true
-        DispatchQueue.main.async { [self] in
+        // Leave iOS time to finish closing the previous session
+        var wait: TimeInterval = 0
+        if let lastSessionEnd {
+            let elapsed = Double(DispatchTime.now().uptimeNanoseconds - lastSessionEnd.uptimeNanoseconds) / 1e9
+            wait = max(0, Self.sessionCooldown - elapsed)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + wait) { [self] in
             let session = NFCTagReaderSession(pollingOption: .iso14443, delegate: self, queue: queue)
             session?.alertMessage = "Hold your security key near the iPhone."
             queue.async { [self] in
@@ -193,13 +205,19 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
             tag = nil
             closeTimer?.cancel()
             closeTimer = nil
+            lastSessionEnd = .now()
             let code = (error as? NFCReaderError)?.code
             vmLog("security key: NFC session ended: \(error.localizedDescription)")
             guard pending != nil else { return }
-            // iOS is still closing the previous sheet: try again shortly
-            if code == .readerSessionInvalidationErrorSystemIsBusy, busyRetries < 3 {
+            // iOS refused the session because the previous one was still
+            // closing ("busy", or ended "unexpectedly" right after begin()):
+            // try again, waiting longer each time (~2.5 s cooldown plus 1, 2,
+            // 3, 4 s). The guest keeps libfido2 waiting with KEEPALIVEs.
+            if code == .readerSessionInvalidationErrorSystemIsBusy
+                || code == .readerSessionInvalidationErrorSessionTerminatedUnexpectedly,
+               busyRetries < 4 {
                 busyRetries += 1
-                queue.asyncAfter(deadline: .now() + 1) { [self] in
+                queue.asyncAfter(deadline: .now() + Double(busyRetries)) { [self] in
                     if pending != nil, self.session == nil { startSession() }
                 }
                 return
@@ -335,6 +353,7 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
         tag = nil
         guard let session else { return }
         self.session = nil
+        lastSessionEnd = .now()
         DispatchQueue.main.async {
             if let error {
                 session.invalidate(errorMessage: error)
