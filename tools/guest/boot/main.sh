@@ -22,6 +22,9 @@ for alias in /sys/bus/*/devices/*/modalias; do
     $B modprobe -q "$($B cat "$alias")" 2>/dev/null
 done
 $B hostname ishplus
+# Any user may ping (ICMP sockets need no privileges then): distributions'
+# ping relies on file capabilities, which unpacking their archive loses
+echo "0 2147483647" > /proc/sys/net/ipv4/ping_group_range
 $B ifconfig lo up
 $B ifconfig eth0 up 2>/dev/null
 $B udhcpc -b -q -n -t 5 -i eth0 -s $S/boot/udhcpc.script >/dev/null 2>&1

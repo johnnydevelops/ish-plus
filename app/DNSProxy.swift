@@ -141,8 +141,12 @@ final class DNSProxy {
             if let address = info.ai_addr {
                 if ipv6 {
                     address.withMemoryRebound(to: sockaddr_in6.self, capacity: 1) {
-                        records.append(Record(type: 28, rclass: 1, ttl: 60,
-                                              data: withUnsafeBytes(of: $0.pointee.sin6_addr, Array.init)))
+                        let bytes = withUnsafeBytes(of: $0.pointee.sin6_addr, Array.init)
+                        // Not IPv4 addresses mapped to IPv6 (::ffff:a.b.c.d)
+                        let mapped = bytes.prefix(12) == [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff][...]
+                        if !mapped {
+                            records.append(Record(type: 28, rclass: 1, ttl: 60, data: bytes))
+                        }
                     }
                 } else {
                     address.withMemoryRebound(to: sockaddr_in.self, capacity: 1) {
