@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXAggregateTarget section */
@@ -1719,7 +1719,7 @@
 			);
 			mainGroup = BB792B451F96D8E000FFB7A4;
 			packageReferences = (
-				A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "SwiftTerm" */,
+				A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "deps/SwiftTerm" */,
 			);
 			productRefGroup = BB792B511F96D90D00FFB7A4 /* Products */;
 			projectDirPath = "";
@@ -2580,6 +2580,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
+				DEVELOPMENT_TEAM = P6W2HPMYUF;
 				SWIFT_VERSION = 5.0;
 			};
 			name = "Debug-ApplePleaseFixFB19282108";
@@ -2588,6 +2589,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
+				DEVELOPMENT_TEAM = P6W2HPMYUF;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -2604,6 +2606,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
+				DEVELOPMENT_TEAM = P6W2HPMYUF;
 				SWIFT_VERSION = 5.0;
 			};
 			name = DebugLinux;
@@ -2875,6 +2878,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B86CD2586FD8800208600 /* App.xcconfig */;
 			buildSettings = {
+				DEVELOPMENT_TEAM = P6W2HPMYUF;
 				SWIFT_VERSION = 5.0;
 			};
 			name = ReleaseLinux;
@@ -3180,7 +3184,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "SwiftTerm" */ = {
+		A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "deps/SwiftTerm" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = deps/SwiftTerm;
 		};
@@ -3189,12 +3193,12 @@
 /* Begin XCSwiftPackageProductDependency section */
 		9A7A2BABFDF81E1D59AE6598 /* SwiftTerm */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "SwiftTerm" */;
+			package = A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "deps/SwiftTerm" */;
 			productName = SwiftTerm;
 		};
 		A64B20771684513C8DC55D08 /* SwiftTerm */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "SwiftTerm" */;
+			package = A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "deps/SwiftTerm" */;
 			productName = SwiftTerm;
 		};
 /* End XCSwiftPackageProductDependency section */
