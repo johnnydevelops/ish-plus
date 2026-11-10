@@ -333,7 +333,7 @@
     for (ISHForwardedPort *port in ISHPortForwarder.shared.ports) {
         NSString *title = [NSString stringWithFormat:@"localhost:%ld", (long) port.hostPort];
         UIAction *open = [UIAction actionWithTitle:title
-                                             image:[UIImage systemImageNamed:@"safari"]
+                                             image:[UIImage systemImageNamed:@"globe"]
                                         identifier:nil
                                            handler:^(UIAction *action) {
             [UIApplication.sharedApplication openURL:port.url options:@{} completionHandler:nil];
@@ -343,7 +343,7 @@
         [portItems addObject:open];
     }
     if (portItems.count > 0)
-        [menu addObject:[UIMenu menuWithTitle:@"Open in Safari" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:portItems]];
+        [menu addObject:[UIMenu menuWithTitle:@"Open in Browser" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:portItems]];
     return menu;
 }
 
