@@ -46,6 +46,7 @@
 		8414365EE62A93141BDB2151 /* iSHJITHelper.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AE31D69ABEE4B7F9683187EC /* iSHJITHelper.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8EE3B89ADE65613EDFE64710 /* OnboardingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31C1FD4EDA1E80CCD8B66426 /* OnboardingViewController.swift */; };
 		A82BC7B8C19D56921BE50B4F /* VirtualMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08EFD7D513BBE4A4DB86DC3E /* VirtualMachine.swift */; };
+		AFD98AC285514E9BB14995C7 /* FidoBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1994B75901479C9F09071067 /* FidoBridge.swift */; };
 		B27B9DE9EC0CC2F5EC805584 /* SwiftLinkage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A891C9AEEDBFA1130B28128 /* SwiftLinkage.swift */; };
 		B8CB880AFB753ED85FA15B2D /* TerminalSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6391F54F532F3E4928D350AA /* TerminalSurface.swift */; };
 		BB0F552E239F8A790032A2A1 /* Icons.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB0F552D239F8A790032A2A1 /* Icons.plist */; };
@@ -182,6 +183,7 @@
 /* Begin PBXFileReference section */
 		08EFD7D513BBE4A4DB86DC3E /* VirtualMachine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VirtualMachine.swift; sourceTree = "<group>"; };
 		0A891C9AEEDBFA1130B28128 /* SwiftLinkage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwiftLinkage.swift; sourceTree = "<group>"; };
+		1994B75901479C9F09071067 /* FidoBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FidoBridge.swift; sourceTree = "<group>"; };
 		23DF1BE7C23E37EB249CD436 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		31C1FD4EDA1E80CCD8B66426 /* OnboardingViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingViewController.swift; sourceTree = "<group>"; };
 		477E1313748964CA68B92D2A /* libqemu-aarch64-softmmu-tci.dylib */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = "compiled.mach-o.dylib"; name = "libqemu-aarch64-softmmu-tci.dylib"; path = "build-qemu/sysroot-ios-arm64/lib/libqemu-aarch64-softmmu-tci.dylib"; sourceTree = SOURCE_ROOT; };
@@ -534,6 +536,7 @@
 				4B7D8B35C99F9EE30F670C46 /* QEMUMonitor.swift */,
 				9A847B6DB669F691BF9EE320 /* VMState.swift */,
 				AEB7B4901B1A2E1D8686C0BF /* ResumeViewController.swift */,
+				1994B75901479C9F09071067 /* FidoBridge.swift */,
 			);
 			path = app;
 			sourceTree = "<group>";
@@ -969,6 +972,7 @@
 				6A324D1B6387562B1AC3D4D0 /* QEMUMonitor.swift in Sources */,
 				2FCDBB311EEF90C0F19D14E4 /* VMState.swift in Sources */,
 				F1ACF3EEC304BB68445CE94E /* ResumeViewController.swift in Sources */,
+				AFD98AC285514E9BB14995C7 /* FidoBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1058,7 +1062,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B85A42586F1CB00208600 /* ProjectDebug.xcconfig */;
 			buildSettings = {
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 			};
 			name = "Debug-ApplePleaseFixFB19282108";
 		};
@@ -1066,7 +1070,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BB0B85A52586F1E100208600 /* ProjectRelease.xcconfig */;
 			buildSettings = {
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 			};
 			name = Release;
 		};
