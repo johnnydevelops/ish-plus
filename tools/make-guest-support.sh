@@ -80,6 +80,8 @@ cp "$(apk_fetch tini-static)/sbin/tini-static" "$stage/bin/tini"
 ln -s busybox "$stage/bin/modprobe"
 cp "$(apk_fetch apk-tools-static)/sbin/apk.static" "$stage/bin/apk"
 cp "$(apk_fetch e2fsprogs)/sbin/mke2fs" "$stage/sbin/mke2fs"
+cp "$(apk_fetch e2fsprogs-extra)/usr/sbin/resize2fs" "$stage/sbin/resize2fs" 2>/dev/null \
+    || cp "$(apk_fetch e2fsprogs)/sbin/resize2fs" "$stage/sbin/resize2fs"
 for p in e2fsprogs-libs libcom_err libblkid libuuid libeconf; do
     find "$(apk_fetch $p)" -name "*.so.*" -exec cp -L {} "$stage/lib/musl/" \;
 done

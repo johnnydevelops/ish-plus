@@ -157,6 +157,9 @@ if [ -n "$INSTALL" ]; then
     fi
 fi
 [ -n "$mounted" ] || mount -t ext4 "$ROOT" /newroot || fail "cannot mount the root disk"
+# A disk made bigger in iSH+: grow the file system to it (online; quick when
+# there is nothing to do)
+LD_LIBRARY_PATH=/opt/ishplus/lib/musl /opt/ishplus/sbin/resize2fs "$ROOT" >/dev/null 2>&1
 
 # Hand the mounts over to the distribution
 mkdir -p /newroot/opt/ishplus /newroot/.modloop /newroot/dev /newroot/proc /newroot/sys

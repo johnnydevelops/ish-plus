@@ -32,11 +32,13 @@
 		49FF844B2A06249F00850B7A /* ExceptionExfiltrator.m in Sources */ = {isa = PBXBuildFile; fileRef = 49FF844A2A06249F00850B7A /* ExceptionExfiltrator.m */; };
 		4F15F87C7B8C9EADA4797559 /* DistrosViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A650484A8360D2669C1C3344 /* DistrosViewController.swift */; };
 		513374B37BBB25AEC8C621C8 /* DistroManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3ECFE55CA115CDF5C60459 /* DistroManager.swift */; };
+		51742885E6B98072A4138516 /* VMSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 501900BEC8B43D848CF2FB04 /* VMSettings.swift */; };
 		611DBAE48BB21E277E429F6A /* OnDevicePairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C9D381ABA749D43BCE9377 /* OnDevicePairing.swift */; };
 		62A737F846F8EF35046F8491 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 599290A47C2DDDD7A435DFA3 /* Foundation.framework */; };
 		63A76CAC87E1FE87EACBF434 /* libqemu-aarch64-softmmu.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = DF4620D19DC63C97C4EDA00A /* libqemu-aarch64-softmmu.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		68FD8AD22DA4B3320B7ECE3A /* JITHelperLauncher.m in Sources */ = {isa = PBXBuildFile; fileRef = 9607608D73FBB17969CF5E8A /* JITHelperLauncher.m */; };
 		72C57F7F9E45D97A8548D5C9 /* RunCommandIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF2EB9ACBD43D9BA161EE2A8 /* RunCommandIntent.swift */; };
+		784C9DF67E7B174BEBE3CD79 /* VMSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90303182AD42E61C3CBBC32 /* VMSettingsViewController.swift */; };
 		7C170B0049C15E6B6456497A /* DistroSetupViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D2D852F3D9B73E99D70407 /* DistroSetupViewController.swift */; };
 		7F6B04E33974E1CD992CBE28 /* StikJIT.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 81BD35790524254A633600D3 /* StikJIT.xcframework */; };
 		8414365EE62A93141BDB2151 /* iSHJITHelper.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AE31D69ABEE4B7F9683187EC /* iSHJITHelper.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -190,6 +192,7 @@
 		497F6D47254E605F00C82F46 /* ish */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ish; sourceTree = BUILT_PRODUCTS_DIR; };
 		49FF844A2A06249F00850B7A /* ExceptionExfiltrator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ExceptionExfiltrator.m; sourceTree = "<group>"; };
 		49FF844C2A0624AF00850B7A /* ExceptionExfiltrator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ExceptionExfiltrator.h; sourceTree = "<group>"; };
+		501900BEC8B43D848CF2FB04 /* VMSettings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VMSettings.swift; sourceTree = "<group>"; };
 		599290A47C2DDDD7A435DFA3 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		5B62450DCAB3F80C9FC06E4B /* GuestServices.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GuestServices.swift; sourceTree = "<group>"; };
 		6391F54F532F3E4928D350AA /* TerminalSurface.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
@@ -203,6 +206,7 @@
 		9A28E4E8219A8B670073D200 /* AboutAppearanceViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AboutAppearanceViewController.h; sourceTree = "<group>"; };
 		9A28E4E9219A8B670073D200 /* AboutAppearanceViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AboutAppearanceViewController.m; sourceTree = "<group>"; };
 		A650484A8360D2669C1C3344 /* DistrosViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DistrosViewController.swift; sourceTree = "<group>"; };
+		A90303182AD42E61C3CBBC32 /* VMSettingsViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VMSettingsViewController.swift; sourceTree = "<group>"; };
 		AE31D69ABEE4B7F9683187EC /* iSHJITHelper.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = iSHJITHelper.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF98129378181E7CF436D4BC /* JITHelperLauncher.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = JITHelperLauncher.h; sourceTree = "<group>"; };
 		B9F7EDF01267B0CE2AB2DC08 /* DNSProxy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DNSProxy.swift; sourceTree = "<group>"; };
@@ -516,6 +520,8 @@
 				FF2EB9ACBD43D9BA161EE2A8 /* RunCommandIntent.swift */,
 				B9F7EDF01267B0CE2AB2DC08 /* DNSProxy.swift */,
 				EF79ECEFDBB2821EB483E54D /* PortForwarder.swift */,
+				501900BEC8B43D848CF2FB04 /* VMSettings.swift */,
+				A90303182AD42E61C3CBBC32 /* VMSettingsViewController.swift */,
 			);
 			path = app;
 			sourceTree = "<group>";
@@ -945,6 +951,8 @@
 				F832E7EDE71419B080DCC704 /* GuestServices.swift in Sources */,
 				313F8C227740F07613B9E6D9 /* DNSProxy.swift in Sources */,
 				1494D14E49F6CD364E9BCDDC /* PortForwarder.swift in Sources */,
+				51742885E6B98072A4138516 /* VMSettings.swift in Sources */,
+				784C9DF67E7B174BEBE3CD79 /* VMSettingsViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

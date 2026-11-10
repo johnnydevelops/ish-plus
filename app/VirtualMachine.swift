@@ -357,11 +357,8 @@ public final class VirtualMachine: NSObject {
         let guest = VirtualMachine.guestDirectory
         func file(_ name: String) -> String { guest.appendingPathComponent(name).path }
         func kernel(_ name: String) -> String { VirtualMachine.kernelFile(name)!.path }
-        // One vCPU per performance core: vCPUs on efficiency cores slow the
-        // others down (cross-CPU TLB flushes wait for them), which made
-        // starting processes ~35% slower on an A13 (2 performance cores)
-        // with 4 vCPUs than with 2, for little gain in parallel work.
-        var cpus = max(1, min(VirtualMachine.performanceCores, 4))
+        // Chosen in Settings > Linux VM (automatic by default)
+        var cpus = VMSettings.cpuCount
         // Developer overrides, for comparing settings without rebuilding:
         // Documents/VM/cpu (a -cpu value) and Documents/VM/smp (a count).
         func override(_ name: String) -> String? {
@@ -382,7 +379,7 @@ public final class VirtualMachine: NSObject {
             // split-wx: JIT code through a second, executable mapping (iOS)
             "-accel", interpreted ? "tcg,thread=multi,tb-size=256" : "tcg,thread=multi,tb-size=256,split-wx=on",
             "-smp", "\(cpus)",
-            "-m", "1024",
+            "-m", "\(VMSettings.memoryMB)",
             "-kernel", kernel("vmlinuz"),
             "-initrd", kernel("initramfs"),
             // iSH+'s initramfs finds its disks by their serial (see

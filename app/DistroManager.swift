@@ -164,6 +164,21 @@ public final class DistroManager: NSObject, URLSessionDownloadDelegate {
         changed()
     }
 
+    /// The disk's size (the most it can hold), in GB.
+    func diskSizeGB(_ distro: Distro) -> Int {
+        let size = (try? FileManager.default.attributesOfItem(atPath: distro.diskURL.path)[.size] as? Int64) ?? 0
+        return Int(size >> 30)
+    }
+
+    /// Grows a distribution's disk (it stays sparse); Linux grows its file
+    /// system the next time it starts.
+    func resize(_ distro: Distro, toGB size: Int) throws {
+        let handle = try FileHandle(forWritingTo: distro.diskURL)
+        defer { try? handle.close() }
+        try handle.truncate(atOffset: UInt64(size) << 30)
+        changed()
+    }
+
     @objc public func remove(_ distro: Distro) {
         if let task = tasks.first(where: { $0.value.distro.id == distro.id }) {
             session.getAllTasks { $0.first { $0.taskIdentifier == task.key }?.cancel() }

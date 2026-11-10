@@ -20,6 +20,7 @@
 @property (weak, nonatomic) IBOutlet UISwitch *keepAliveSwitch;
 @property (weak, nonatomic) IBOutlet UITableViewCell *jitSetupCell;
 @property (weak, nonatomic) IBOutlet UITableViewCell *distrosCell;
+@property (weak, nonatomic) IBOutlet UITableViewCell *vmSettingsCell;
 
 @property (weak, nonatomic) IBOutlet UITableViewCell *openGithub;
 @property (weak, nonatomic) IBOutlet UITableViewCell *openFediverse;
@@ -99,7 +100,10 @@
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
-    if (cell == self.distrosCell) {
+    if (cell == self.vmSettingsCell) {
+        [tableView deselectRowAtIndexPath:indexPath animated:YES];
+        [self.navigationController pushViewController:[ISHVMSettingsViewController new] animated:YES];
+    } else if (cell == self.distrosCell) {
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
         [self.navigationController pushViewController:[ISHDistrosViewController new] animated:YES];
     } else if (cell == self.jitSetupCell) {

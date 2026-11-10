@@ -106,7 +106,7 @@ public final class DistrosViewController: UITableViewController {
         } else if !distro.installed {
             content.secondaryText = "Installs the next time it starts"
         } else {
-            content.secondaryText = "\(Self.bytes(distro.diskUsage)) used"
+            content.secondaryText = "\(Self.bytes(distro.diskUsage)) used of \(manager.diskSizeGB(distro)) GB"
         }
         if distro.id == manager.active?.id {
             cell.accessoryType = .checkmark
@@ -142,7 +142,42 @@ public final class DistrosViewController: UITableViewController {
             self?.confirmDelete(distro)
             done(false)
         }
-        return UISwipeActionsConfiguration(actions: [delete])
+        guard distro.installed || distro.hasArchive, manager.downloads[distro.id] == nil else {
+            return UISwipeActionsConfiguration(actions: [delete])
+        }
+        let resize = UIContextualAction(style: .normal, title: "Disk Size") { [weak self] _, _, done in
+            self?.chooseDiskSize(distro)
+            done(true)
+        }
+        resize.backgroundColor = .systemBlue
+        return UISwipeActionsConfiguration(actions: [delete, resize])
+    }
+
+    private func chooseDiskSize(_ distro: Distro) {
+        let current = manager.diskSizeGB(distro)
+        let sizes = [16, 32, 64, 128, 256].filter { $0 > current }
+        let alert = UIAlertController(
+            title: "Disk Size",
+            message: "\(distro.title) can hold up to \(current) GB. A bigger disk only takes the space its files use, and grows the next time it starts. Disks cannot be made smaller.",
+            preferredStyle: .actionSheet)
+        for size in sizes {
+            alert.addAction(UIAlertAction(title: "\(size) GB", style: .default) { [weak self] _ in
+                do {
+                    try self?.manager.resize(distro, toGB: size)
+                } catch {
+                    let failure = UIAlertController(title: "Could Not Resize", message: error.localizedDescription, preferredStyle: .alert)
+                    failure.addAction(UIAlertAction(title: "OK", style: .default))
+                    self?.present(failure, animated: true)
+                }
+            })
+        }
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        if let index = distros.firstIndex(where: { $0.id == distro.id }),
+           let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) {
+            alert.popoverPresentationController?.sourceView = cell
+            alert.popoverPresentationController?.sourceRect = cell.bounds
+        }
+        present(alert, animated: true)
     }
 
     private func confirmDelete(_ distro: Distro) {
