@@ -150,8 +150,11 @@
             .else
                 uxtb w8, ecx
             .endif
-            tst w8, 31
+            # x86 masks the count to 5 bits. 32-bit code doing 64-bit shifts
+            # routinely passes counts of 32-63 here, so this matters.
+            ands w8, w8, 31
             b.eq 1f
+            ubfx w11, _tmp, 31, 1 /* sign before, for OF */
             mov w9, 32
             sub w9, w9, w8
             sub w8, w8, 1 /* shift by one less */
@@ -170,6 +173,10 @@
             .endif
             orr _tmp, w8, w9
             strb w10, [_cpu, CPU_cf]
+            # OF is set when the sign changed (only defined for a count of 1)
+            ubfx w12, _tmp, 31, 1
+            eor w11, w11, w12
+            strb w11, [_cpu, CPU_of]
             setf_zsp
         1:
             .ifc \arg,imm
