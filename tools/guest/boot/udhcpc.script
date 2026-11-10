@@ -1,0 +1,15 @@
+#!/opt/ishplus/bin/busybox sh
+# udhcpc events: configure eth0 and DNS (works on any distribution).
+B=/opt/ishplus/bin/busybox
+case "$1" in
+deconfig)
+    $B ifconfig "$interface" 0.0.0.0 ;;
+bound|renew)
+    $B ifconfig "$interface" "$ip" ${subnet:+netmask $subnet}
+    while $B route del default gw 0.0.0.0 dev "$interface" 2>/dev/null; do :; done
+    for r in $router; do $B route add default gw "$r" dev "$interface"; done
+    # Some distributions link resolv.conf to a resolver that is not running
+    [ -L /etc/resolv.conf ] && $B rm -f /etc/resolv.conf
+    { for d in $dns; do echo "nameserver $d"; done; } > /etc/resolv.conf ;;
+esac
+exit 0

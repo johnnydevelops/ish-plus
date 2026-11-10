@@ -1,0 +1,88 @@
+#!/bin/sh
+# iSH+ initramfs init (replaces Alpine's): installs a distribution on first
+# boot and starts it with iSH+'s own init (from the support disk), so any
+# distribution boots the same way. Disks are found by their virtio serial:
+#   ishplus-root     the distribution's disk (ext4)
+#   ishplus-modloop  kernel modules (squashfs)
+#   ishplus-support  iSH+'s support disk (squashfs), see make-guest-support.sh
+#   inst:<bytes>     a root filesystem archive (tar, any compression) to
+#                    install on the root disk, which is formatted if needed
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+/bin/busybox mkdir -p /usr/bin /usr/sbin /proc /sys /dev /newroot
+/bin/busybox --install -s
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+# Messages go to every console (the app's first session and serial.log).
+say() { echo "<3>ishplus: $*" > /dev/kmsg; }
+fail() { say "$*"; say "boot failed"; exec sh; }
+
+for m in virtio_pci virtio_blk squashfs ext4; do modprobe -q $m; done
+disk() { # serial prefix -> device
+    for s in /sys/block/vd*/serial; do
+        case "$(cat "$s" 2>/dev/null)" in "$1"*) echo "/dev/${s#/sys/block/}" | sed 's|/serial$||'; return;; esac
+    done
+}
+for i in $(seq 1 50); do [ -n "$(disk ishplus-root)" ] && break; sleep 0.1; done
+ROOT=$(disk ishplus-root)
+MODLOOP=$(disk ishplus-modloop)
+SUPPORT=$(disk ishplus-support)
+INSTALL=$(disk inst:)
+[ -n "$ROOT" ] || fail "no root disk"
+[ -n "$SUPPORT" ] || fail "no support disk"
+
+# Kernel modules for everything else (console, network, ...)
+mkdir -p /.modloop /opt/ishplus
+mount -t squashfs -o ro "$MODLOOP" /.modloop || fail "cannot mount the modules"
+mount --bind /.modloop/modules /lib/modules
+mount -t squashfs -o ro "$SUPPORT" /opt/ishplus || fail "cannot mount the support disk"
+
+# The support disk's busybox has every applet (xz, ...)
+X=/opt/ishplus/bin/busybox
+mounted=
+if [ -n "$INSTALL" ]; then
+    if mount -t ext4 "$ROOT" /newroot 2>/dev/null; then
+        mounted=1
+        if [ ! -e /newroot/.ishplus-installed ]; then
+            # An interrupted installation: start over
+            umount /newroot; mounted=
+        fi
+    fi
+    if [ -z "$mounted" ]; then
+        say "preparing the disk"
+        LD_LIBRARY_PATH=/opt/ishplus/lib/musl /opt/ishplus/sbin/mke2fs -q -F -t ext4 -L ishplus-root -E lazy_itable_init=1,lazy_journal_init=1 "$ROOT" \
+            || fail "cannot format the disk"
+        mount -t ext4 "$ROOT" /newroot || fail "cannot mount the new disk"
+        mounted=1
+        bytes=$(cat "/sys/block/${INSTALL#/dev/}/serial"); bytes=${bytes#inst:}
+        say "installing ($((bytes / 1048576)) MB to unpack)"
+        ( while sleep 15; do say "installing... $(du -sm /newroot | cut -f1) MB so far"; done ) &
+        progress=$!
+        case "$(head -c 6 "$INSTALL" | od -An -tx1 | tr -d ' \n')" in
+        fd377a585a00) unpack="$X xzcat" ;;
+        1f8b*) unpack="$X zcat" ;;
+        425a68*) unpack="$X bzcat" ;;
+        *) unpack=cat ;;
+        esac
+        head -c "$bytes" "$INSTALL" | $unpack | $X tar -x -C /newroot || fail "the archive could not be unpacked"
+        kill $progress
+        # Some archives (e.g. Armtix) have the root in a subdirectory
+        if [ ! -e /newroot/bin ] && [ ! -L /newroot/bin ]; then
+            sub=$(ls /newroot | grep -v lost+found)
+            [ "$(echo "$sub" | wc -l)" = 1 ] && [ -d "/newroot/$sub/etc" ] && \
+                { mv /newroot/"$sub"/* /newroot/"$sub"/.[!.]* /newroot/ 2>/dev/null; rmdir "/newroot/$sub"; }
+        fi
+        touch /newroot/.ishplus-installed
+        sync
+        say "installed"
+    fi
+fi
+[ -n "$mounted" ] || mount -t ext4 "$ROOT" /newroot || fail "cannot mount the root disk"
+
+# Hand the mounts over to the distribution
+mkdir -p /newroot/opt/ishplus /newroot/.modloop /newroot/dev /newroot/proc /newroot/sys
+umount /lib/modules
+mount --move /.modloop /newroot/.modloop
+mount --move /opt/ishplus /newroot/opt/ishplus
+for d in dev proc sys; do mount --move /$d /newroot/$d; done
+exec switch_root /newroot /opt/ishplus/bin/tini -s -- /opt/ishplus/bin/busybox sh /opt/ishplus/boot/main.sh
