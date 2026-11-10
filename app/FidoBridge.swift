@@ -21,6 +21,7 @@
 
 import CoreNFC
 import Foundation
+import UIKit
 
 final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
     static let shared = FidoBridge()
@@ -66,8 +67,21 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
     // MARK: Requests
 
     private func handle(command: Int, payload: Data) {
+        // GetInfo: from the key's last answer when no key is at hand (one
+        // tap less per login), or a generic one without NFC, so libfido2
+        // keeps treating the device as a FIDO2 key (it falls back to U2F,
+        // and ssh to "device is not fido2", when GetInfo fails)
+        if command == Self.commandCBOR && payload == Self.getInfo && !(tag != nil && session != nil) {
+            if let cached = UserDefaults.standard.data(forKey: Self.infoKey) {
+                return answer(status: 0, payload: cached)
+            }
+            if !NFCTagReaderSession.readingAvailable {
+                return answer(status: 0, payload: Self.genericInfo)
+            }
+        }
         guard NFCTagReaderSession.readingAvailable else {
             vmLog("security key request, but this device cannot read NFC")
+            reportNoNFC()
             return answer(status: Self.errorOther, payload: Data())
         }
         pending = (command, payload)
@@ -79,6 +93,45 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
             startSession()
         }
         // Otherwise a session is up and waiting for a key: it takes this request.
+    }
+
+    // MARK: Without NFC
+
+    private static let getInfo = Data([0x04])
+    private static let infoKey = "Security Key Info"
+    /// authenticatorGetInfo's answer for a FIDO2 key in general: versions
+    /// FIDO_2_0 and U2F_V2, a zero AAGUID, and options rk and up.
+    private static let genericInfo: Data = {
+        var cbor: [UInt8] = [0x00, 0xA3, 0x01, 0x82, 0x68]
+        cbor += Array("FIDO_2_0".utf8) + [0x66] + Array("U2F_V2".utf8)
+        cbor += [0x03, 0x50] + [UInt8](repeating: 0, count: 16)
+        cbor += [0x04, 0xA2, 0x62] + Array("rk".utf8) + [0xF5, 0x62] + Array("up".utf8) + [0xF5]
+        return Data(cbor)
+    }()
+    private var reportedNoNFC = false
+
+    /// Says on screen, once, why security keys do not work.
+    private func reportNoNFC() {
+        guard !reportedNoNFC else { return }
+        reportedNoNFC = true
+        DispatchQueue.main.async {
+            let (title, message): (String, String)
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                title = "No NFC on This iPad"
+                message = "A program in Linux asked for a security key. iSH+ talks to security keys over NFC, which iPads do not have: they work on an iPhone."
+            } else {
+                title = "iSH+ Cannot Use NFC"
+                message = "A program in Linux asked for a security key, but this copy of iSH+ was signed without the NFC Tag Reading capability, so iOS does not let it use NFC. Install iSH+ with a signing profile that includes it. Free Apple IDs, and some sideloaders such as iloader, cannot add it."
+            }
+            let scene = UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .first { $0.activationState == .foregroundActive }
+            guard var top = scene?.keyWindow?.rootViewController else { return }
+            while let presented = top.presentedViewController { top = presented }
+            let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            top.present(alert, animated: true)
+        }
     }
 
     /// Starts an NFC session for the pending request. On the queue.
@@ -211,6 +264,10 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
             switch result {
             case .success(let (data, sw)):
                 pending = nil
+                // The key's GetInfo, for when no key is at hand
+                if command == Self.commandCBOR && payload == Self.getInfo && sw == 0x9000 && data.first == 0 {
+                    UserDefaults.standard.set(data, forKey: Self.infoKey)
+                }
                 if command == Self.commandCBOR {
                     sw == 0x9000 ? answer(status: 0, payload: data) : answer(status: Self.errorOther, payload: Data())
                 } else {

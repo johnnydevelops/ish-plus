@@ -43,6 +43,8 @@ Store, and iSH+ can enable JIT by itself, without a computer.
 1. Download the `.ipa` from the [releases](../../releases) and sideload it
    (AltStore, SideStore, iloader, Feather...). JIT works with any of them:
    nothing to set up.
+   Security keys over NFC (on iPhone) also need the signing profile to have
+   the **NFC Tag Reading** capability: see below.
 2. Install and connect [LocalDevVPN](https://apps.apple.com/search?term=LocalDevVPN),
    with Developer Mode on.
 3. Open iSH+ and follow the setup: pair it with your device (Pair With This
