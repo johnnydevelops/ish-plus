@@ -13,7 +13,10 @@
 //  iOS gives apps no access to security keys over USB, only over NFC, which
 //  iPads do not have. The NFC session stays open a few seconds after an
 //  answer, so the requests of one login (GetInfo, GetAssertion...) take one
-//  tap.
+//  tap, and closes as soon as the login's last request (the GetAssertion
+//  that needs the user, or MakeCredential) is answered. Every delegate
+//  callback checks it comes from the current session: a closed session's
+//  invalidation can arrive after the next session has started.
 //
 
 import CoreNFC
@@ -36,6 +39,12 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
     private var closeTimer: DispatchWorkItem?
     /// The request waiting for a key
     private var pending: (command: Int, payload: Data)?
+    /// The pending request was already sent again after the key left
+    private var retried = false
+    /// Times the pending request's session was refused as busy
+    private var busyRetries = 0
+    /// A session is being created on the main thread
+    private var starting = false
 
     func serve(_ port: GuestPort) {
         self.port = port
@@ -62,14 +71,36 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
             return answer(status: Self.errorOther, payload: Data())
         }
         pending = (command, payload)
+        retried = false
+        busyRetries = 0
         if let tag, session != nil {
             send(to: tag)
         } else if session == nil {
-            DispatchQueue.main.async { [self] in
-                let session = NFCTagReaderSession(pollingOption: .iso14443, delegate: self, queue: queue)
-                session?.alertMessage = "Hold your security key near the iPhone."
+            startSession()
+        }
+        // Otherwise a session is up and waiting for a key: it takes this request.
+    }
+
+    /// Starts an NFC session for the pending request. On the queue.
+    private func startSession() {
+        guard !starting else { return }
+        starting = true
+        DispatchQueue.main.async { [self] in
+            let session = NFCTagReaderSession(pollingOption: .iso14443, delegate: self, queue: queue)
+            session?.alertMessage = "Hold your security key near the iPhone."
+            queue.async { [self] in
+                starting = false
+                guard let session else {
+                    vmLog("security key: could not create an NFC session")
+                    if pending != nil {
+                        pending = nil
+                        answer(status: Self.errorOther, payload: Data())
+                    }
+                    return
+                }
+                guard pending != nil else { return } // cancelled meanwhile
                 self.session = session
-                session?.begin()
+                DispatchQueue.main.async { session.begin() }
             }
         }
     }
@@ -77,6 +108,17 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
     private func cancel() {
         pending = nil
         endSession(error: nil)
+    }
+
+    /// Whether a request ends a login or registration, so the session can
+    /// close at once instead of waiting for more requests: MakeCredential,
+    /// or a GetAssertion that needs the user (ssh first checks which key
+    /// holds the credential with "up": false, then signs).
+    private static func isFinal(command: Int, payload: Data) -> Bool {
+        guard command == commandCBOR, let ctap = payload.first else { return false }
+        if ctap == 0x01 { return true }
+        // "up": false in the options map is a text "up" (62 75 70) then false (f4)
+        return ctap == 0x02 && payload.range(of: Data([0x62, 0x75, 0x70, 0xF4])) == nil
     }
 
     private func answer(status: UInt8, payload: Data) {
@@ -90,18 +132,33 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
 
     func tagReaderSession(_ session: NFCTagReaderSession, didInvalidateWithError error: Error) {
         queue.async { [self] in
+            // A session this bridge already let go of (closed after an
+            // answer or a failure) ends after the next one may have started:
+            // it must not touch the current session or its request.
+            guard session === self.session else { return }
             self.session = nil
             tag = nil
-            if pending != nil {
-                pending = nil
-                let code = (error as? NFCReaderError)?.code
-                answer(status: code == .readerSessionInvalidationErrorUserCanceled ? Self.errorCancel : Self.errorTimeout,
-                       payload: Data())
+            closeTimer?.cancel()
+            closeTimer = nil
+            let code = (error as? NFCReaderError)?.code
+            vmLog("security key: NFC session ended: \(error.localizedDescription)")
+            guard pending != nil else { return }
+            // iOS is still closing the previous sheet: try again shortly
+            if code == .readerSessionInvalidationErrorSystemIsBusy, busyRetries < 3 {
+                busyRetries += 1
+                queue.asyncAfter(deadline: .now() + 1) { [self] in
+                    if pending != nil, self.session == nil { startSession() }
+                }
+                return
             }
+            pending = nil
+            answer(status: code == .readerSessionInvalidationErrorUserCanceled ? Self.errorCancel : Self.errorTimeout,
+                   payload: Data())
         }
     }
 
     func tagReaderSession(_ session: NFCTagReaderSession, didDetect tags: [NFCTag]) {
+        guard session === self.session else { return }
         guard case .iso7816(let found) = tags.first else {
             session.alertMessage = "That is not a FIDO security key. Try another."
             session.restartPolling()
@@ -151,20 +208,37 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
             return answer(status: Self.errorOther, payload: Data())
         }
         exchange(tag, apdu, collected: Data()) { [self] result in
-            pending = nil
             switch result {
             case .success(let (data, sw)):
+                pending = nil
                 if command == Self.commandCBOR {
                     sw == 0x9000 ? answer(status: 0, payload: data) : answer(status: Self.errorOther, payload: Data())
                 } else {
                     answer(status: 0, payload: data + Data([UInt8(sw >> 8), UInt8(sw & 0xff)]))
                 }
-                // One tap for the requests of a login: keep the session a bit
-                let close = DispatchWorkItem { [weak self] in self?.endSession(error: nil) }
-                closeTimer = close
-                queue.asyncAfter(deadline: .now() + 5, execute: close)
+                if Self.isFinal(command: command, payload: payload) {
+                    // The login is done: no reason to keep the sheet up
+                    endSession(error: nil, message: "Done. You can remove the key.")
+                } else {
+                    // One tap for the requests of a login: keep the session a bit
+                    let close = DispatchWorkItem { [weak self] in self?.endSession(error: nil) }
+                    closeTimer = close
+                    queue.asyncAfter(deadline: .now() + 5, execute: close)
+                }
             case .failure(let error):
                 vmLog("security key: \(error.localizedDescription)")
+                // Usually the key left the field (the session was kept open
+                // from an earlier request): ask for it again, once.
+                if !retried, let session {
+                    retried = true
+                    self.tag = nil
+                    DispatchQueue.main.async {
+                        session.alertMessage = "Hold your security key near the iPhone again."
+                        session.restartPolling()
+                    }
+                    return
+                }
+                pending = nil
                 answer(status: Self.errorOther, payload: Data())
                 endSession(error: "Could not talk to the key. Try again.")
             }
@@ -198,14 +272,19 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
         }
     }
 
-    private func endSession(error: String?) {
+    private func endSession(error: String?, message: String? = nil) {
         closeTimer?.cancel()
         closeTimer = nil
         tag = nil
         guard let session else { return }
         self.session = nil
         DispatchQueue.main.async {
-            if let error { session.invalidate(errorMessage: error) } else { session.invalidate() }
+            if let error {
+                session.invalidate(errorMessage: error)
+            } else {
+                if let message { session.alertMessage = message }
+                session.invalidate()
+            }
         }
     }
 }
