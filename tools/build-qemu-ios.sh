@@ -162,6 +162,8 @@ configure_qemu() { # build-dir prefix target-list extra-args...
 stage_qemu() {
     log "Building QEMU (deps/qemu)"
     configure_qemu "$WORK/qemu-build" "$PREFIX" aarch64-softmmu,x86_64-softmmu
+    # Debug info and local symbols: about half the size (exports stay)
+    xcrun strip -x -S "$PREFIX/lib/libqemu-aarch64-softmmu.dylib"
 }
 
 # Build for when JIT cannot be enabled, with the TCTI threaded interpreter
@@ -173,6 +175,7 @@ stage_qemu-tci() {
         --extra-ldflags=-Wl,-no_deduplicate --extra-ldflags=-Wl,-no_compact_unwind
     cp "$WORK/tci-install/lib/libqemu-aarch64-softmmu.dylib" "$PREFIX/lib/libqemu-aarch64-softmmu-tci.dylib"
     install_name_tool -id @rpath/libqemu-aarch64-softmmu-tci.dylib "$PREFIX/lib/libqemu-aarch64-softmmu-tci.dylib"
+    xcrun strip -x -S "$PREFIX/lib/libqemu-aarch64-softmmu-tci.dylib"
 }
 
 stages=("$@")
