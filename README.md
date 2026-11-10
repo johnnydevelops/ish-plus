@@ -54,6 +54,25 @@ starts; you can switch to another VPN afterwards.
 
 Requires iOS 26 or later (iOS 27 to pair on the device).
 
+### Sideloaders and entitlements
+
+Some features need entitlements, which your sideloader has to keep when it
+signs iSH+:
+
+| Feature | Entitlement | Without it |
+| --- | --- | --- |
+| JIT | `get-task-allow` | Linux only runs without JIT, much more slowly |
+| More memory for Linux | `com.apple.developer.kernel.increased-memory-limit`, `extended-virtual-addressing` | iSH+ measures the limit iOS gives it and picks a smaller VM |
+| Security keys over NFC (iPhone) | `com.apple.developer.nfc.readersession.formats` | `ssh` with `sk-` keys fails |
+
+Free Apple IDs generally get only `get-task-allow`: the others typically need
+a paid Apple Developer account. Sideloaders also differ in which entitlements
+they apply. iloader, for example, applies the increased memory limit but not
+NFC, even with a paid account, so iSH+ installed with it cannot use security
+keys. For security keys, sign with a paid account using a sideloader that
+keeps the app's entitlements (for example Sideloadly, or Feather with your own
+certificate and a provisioning profile that includes NFC Tag Reading).
+
 ## Building
 
 You need a Mac with Xcode 27 and [Homebrew](https://brew.sh):
