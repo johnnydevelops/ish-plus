@@ -10,6 +10,7 @@
 
 import Darwin
 import Foundation
+import os
 
 @objc(ISHVirtualMachineError)
 public enum VirtualMachineError: Int, LocalizedError, CustomStringConvertible {
@@ -314,6 +315,7 @@ public final class VirtualMachine: NSObject {
                     vmLog("debugger attached: \((info.kp_proc.p_flag & P_TRACED) != 0 ? "yes" : "no")")
                 }
             }
+            VirtualMachine.logMemoryFootprint()
             qemuMainLoop()
             qemuCleanup()
             vmLog("QEMU stopped")
@@ -334,6 +336,33 @@ public final class VirtualMachine: NSObject {
         isRunning = false
         hasStopped = true
         lock.unlock()
+    }
+
+    /// Logs iSH+'s memory footprint (what iOS ends apps for) when it changes
+    /// by more than 50 MB, to see how the VM's memory use evolves.
+    private static var footprintTimer: DispatchSourceTimer?
+
+    static func logMemoryFootprint() {
+        var last = 0
+        let timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+        footprintTimer = timer
+        timer.schedule(deadline: .now(), repeating: 10)
+        timer.setEventHandler {
+            var info = task_vm_info_data_t()
+            var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+            let result = withUnsafeMutablePointer(to: &info) {
+                $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                    task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+                }
+            }
+            guard result == KERN_SUCCESS else { return }
+            let mb = Int(info.phys_footprint >> 20)
+            if abs(mb - last) >= 50 {
+                last = mb
+                vmLog("memory footprint: \(mb) MB (available: \(os_proc_available_memory() >> 20) MB)")
+            }
+        }
+        timer.resume()
     }
 
     /// Performance (big) cores; all cores on chips without the distinction.
@@ -409,6 +438,10 @@ public final class VirtualMachine: NSObject {
             "-netdev", "user,id=net",
             "-device", "virtio-net-pci,netdev=net,romfile=",
             "-device", "virtio-rng-pci",
+            // Linux reports the memory it frees, which QEMU gives back to
+            // iOS (patched for Apple systems): iSH+'s footprint shrinks again
+            // after Linux used memory, so iOS is less likely to end it
+            "-device", "virtio-balloon-pci,free-page-reporting=on",
             "-device", "virtio-serial-pci",
             "-display", "none",
             "-monitor", "unix:\(socketDirectory.appendingPathComponent("mon").path),server=on,wait=off",
