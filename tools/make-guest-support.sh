@@ -75,7 +75,7 @@ apk_fetch() { # package -> unpacked directory
 cp "$(apk_fetch busybox-static)/bin/busybox.static" "$stage/bin/busybox"
 # iSH+'s own guest agent (port forwarding), see tools/guest/agent
 "$ROOT/tools/build-guest-agent.sh" >/dev/null
-cp "$ROOT/build-guest/agent/ishplus-agent" "$stage/bin/"
+cp "$ROOT/build-guest/agent/ishplus-agent" "$ROOT/build-guest/agent/ishplus-fido" "$stage/bin/"
 cp "$(apk_fetch tini-static)/sbin/tini-static" "$stage/bin/tini"
 ln -s busybox "$stage/bin/modprobe"
 cp "$(apk_fetch apk-tools-static)/sbin/apk.static" "$stage/bin/apk"

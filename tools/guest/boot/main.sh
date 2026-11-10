@@ -66,6 +66,10 @@ if [ -d /mnt/ios/.ishplus-dev ]; then
 fi
 # Reports the ports servers listen on, so iSH+ forwards them
 $S/bin/ishplus-agent </dev/null >/dev/null 2>&1 &
+# A security key for ssh and other FIDO programs, which iSH+ answers with a
+# YubiKey (or another FIDO key) over NFC
+$B modprobe -q uhid; $B modprobe -q hid_generic; $B modprobe -q hidraw
+$S/bin/ishplus-fido </dev/null >/dev/null 2>&1 &
 # Commands sent by iSH+ (Shortcuts)
 $B sh $S/boot/exec-agent.sh &
 # Developer hook: run a script attached as a disk (serial "ishplus-autorun"),

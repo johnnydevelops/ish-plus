@@ -1,7 +1,8 @@
 #!/bin/bash
-# Builds ishplus-agent (tools/guest/agent) for the guest: a static aarch64
-# Linux binary, with Homebrew's LLVM and a sysroot of Alpine's musl and
-# kernel headers. Output: build-guest/agent/ishplus-agent
+# Builds iSH+'s guest programs (tools/guest/agent): ishplus-agent (port
+# forwarding) and ishplus-fido (security keys), static aarch64 Linux
+# binaries, with Homebrew's LLVM and a sysroot of Alpine's musl and kernel
+# headers. Output: build-guest/agent/
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$ROOT/build-guest/agent"
@@ -19,9 +20,11 @@ if [ ! -e "$SYSROOT/usr/lib/libc.a" ]; then
     done
 fi
 BUILTINS=$(find "$SYSROOT" -name "libclang_rt.builtins*aarch64*.a" | head -1)
-"$CLANG" --target=aarch64-linux-musl --sysroot="$SYSROOT" -fuse-ld=lld -static -O2 -Wall \
-    -nostdlib "$SYSROOT/usr/lib/crt1.o" "$SYSROOT/usr/lib/crti.o" \
-    "$ROOT/tools/guest/agent/agent.c" -o "$WORK/ishplus-agent" \
-    -L"$SYSROOT/usr/lib" -lc ${BUILTINS:+"$BUILTINS"} "$SYSROOT/usr/lib/crtn.o"
-"$(brew --prefix llvm)/bin/llvm-strip" "$WORK/ishplus-agent"
-ls -la "$WORK/ishplus-agent"
+for program in agent fido; do
+    "$CLANG" --target=aarch64-linux-musl --sysroot="$SYSROOT" -fuse-ld=lld -static -O2 -Wall \
+        -nostdlib "$SYSROOT/usr/lib/crt1.o" "$SYSROOT/usr/lib/crti.o" \
+        "$ROOT/tools/guest/agent/$program.c" -o "$WORK/ishplus-$program" \
+        -L"$SYSROOT/usr/lib" -lc ${BUILTINS:+"$BUILTINS"} "$SYSROOT/usr/lib/crtn.o"
+    "$(brew --prefix llvm)/bin/llvm-strip" "$WORK/ishplus-$program"
+done
+ls -la "$WORK"/ishplus-*

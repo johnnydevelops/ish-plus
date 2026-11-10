@@ -52,7 +52,9 @@ EOF
 ent "$WORK/app.entitlements" "	<key>com.apple.developer.kernel.increased-memory-limit</key>
 	<true/>
 	<key>com.apple.developer.kernel.extended-virtual-addressing</key>
-	<true/>"
+	<true/>
+	<key>com.apple.developer.nfc.readersession.formats</key>
+	<array><string>TAG</string></array>"
 ent "$WORK/appex.entitlements" ""
 
 sign() {

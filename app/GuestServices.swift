@@ -127,6 +127,7 @@ final class GuestServices {
     private var clipboard: GuestPort!
     private var exec: GuestPort!
     private var ports: GuestPort!
+    private var fido: GuestPort!
     private let execQueue = DispatchQueue(label: "app.ishplus.exec")
     private var nextID = 1
     /// The guest's agent answered (it is up).
@@ -141,13 +142,14 @@ final class GuestServices {
         clipboard = GuestPort(name: "clipboard", path: socketDirectory.appendingPathComponent("clipboard").path)
         exec = GuestPort(name: "exec", path: socketDirectory.appendingPathComponent("exec").path)
         ports = GuestPort(name: "ports", path: socketDirectory.appendingPathComponent("ports").path)
+        fido = GuestPort(name: "fido", path: socketDirectory.appendingPathComponent("fido").path)
         PortForwarder.shared.configure(monitorPath: socketDirectory.appendingPathComponent("mon").path)
         // Files made in the guest keep their owner and mode in extended
         // attributes; others appear owned by the guest's user, which the
         // guest reports at boot ("U <uid> <gid>" on the clipboard port).
         return ["-fsdev", "local,id=share,path=\(Self.sharedFolder.path),security_model=mapped-xattr",
                 "-device", "virtio-9p-pci,fsdev=share,mount_tag=ishplus-share"]
-            + clipboard.qemuArguments + exec.qemuArguments + ports.qemuArguments
+            + clipboard.qemuArguments + exec.qemuArguments + ports.qemuArguments + fido.qemuArguments
     }
 
     /// Called once QEMU is running.
@@ -159,6 +161,8 @@ final class GuestServices {
         execQueue.async { [exec] in
             _ = exec?.connect()
         }
+        // Security keys over NFC for the guest's ishplus-fido
+        FidoBridge.shared.serve(fido)
         // Ports servers listen on in the guest (ishplus-agent)
         Thread.detachNewThread { [ports] in
             guard let ports, ports.connect() else { return }
