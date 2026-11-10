@@ -78,14 +78,19 @@ cat > "$stage/rootfs/etc/inittab" <<'EOF'
 ::ctrlaltdel:/sbin/reboot
 ::shutdown:/bin/umount -a -r
 EOF
-# A login on one iSH+ session's console; consoles the app did not attach wait
-# quietly instead of making init respawn a failing getty forever.
+# A root shell on one iSH+ session's console, logged in automatically like
+# iSH; consoles the app did not attach wait quietly instead of making init
+# respawn a failing getty forever.
 cat > "$stage/rootfs/usr/sbin/ishplus-console" <<'CONSOLE'
 #!/bin/sh
 [ -e "/dev/$1" ] || exec sleep 2147483647
-exec /sbin/getty -n -l /bin/login 0 "$1" xterm-256color
+exec /sbin/getty -n -l /usr/sbin/ishplus-autologin 0 "$1" xterm-256color
 CONSOLE
-chmod 755 "$stage/rootfs/usr/sbin/ishplus-console"
+cat > "$stage/rootfs/usr/sbin/ishplus-autologin" <<'AUTOLOGIN'
+#!/bin/sh
+exec /bin/login -f root
+AUTOLOGIN
+chmod 755 "$stage/rootfs/usr/sbin/ishplus-console" "$stage/rootfs/usr/sbin/ishplus-autologin"
 echo "ishplus" > "$stage/rootfs/etc/hostname"
 printf 'nameserver 10.0.2.3\n' > "$stage/rootfs/etc/resolv.conf"
 # Log in as root without a password, like iSH

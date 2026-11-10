@@ -105,6 +105,13 @@ public final class VirtualMachineConsole: NSObject {
     }
 }
 
+/// Appends to Documents/VM/qemu.log, which also receives QEMU's stderr.
+func vmLog(_ message: String) {
+    NSLog("iSH+ VM: %@", message)
+    let line = "[\(Date())] iSH+: \(message)\n"
+    FileHandle.standardError.write(line.data(using: .utf8)!)
+}
+
 @objc(ISHVirtualMachine)
 public final class VirtualMachine: NSObject {
     @objc public static let shared = VirtualMachine()
@@ -129,7 +136,7 @@ public final class VirtualMachine: NSObject {
 
     private static func library(interpreted: Bool) -> URL {
         Bundle.main.privateFrameworksURL!.appendingPathComponent(
-            interpreted ? "libqemu-system-aarch64-tci.dylib" : "libqemu-system-aarch64.dylib")
+            interpreted ? "libqemu-aarch64-softmmu-tci.dylib" : "libqemu-aarch64-softmmu.dylib")
     }
 
     /// Whether this build includes the interpreter fallback.
@@ -173,40 +180,117 @@ public final class VirtualMachine: NSObject {
         defer { lock.unlock() }
         if isRunning { return }
         if hasStopped { throw VirtualMachineError.alreadyStopped }
+        // Diagnostics: a file named force-tci containing "1" in the VM folder
+        // runs the interpreter.
+        if let flag = try? String(contentsOf: VirtualMachine.guestDirectory.appendingPathComponent("force-tci"), encoding: .utf8),
+           flag.hasPrefix("1") {
+            interpreted = true
+        }
         guard interpreted || VirtualMachine.jitAvailable else { throw VirtualMachineError.noJIT }
         guard VirtualMachine.guestInstalled else { throw VirtualMachineError.missingGuest }
 
         let library = VirtualMachine.library(interpreted: interpreted)
         guard let handle = dlopen(library.path, RTLD_NOW | RTLD_LOCAL),
-              let symbol = dlsym(handle, "qemu_embedded_main") else {
-            NSLog("iSH+ VM: dlopen failed: %s", String(cString: dlerror()))
+              let initSymbol = dlsym(handle, "qemu_init"),
+              let loopSymbol = dlsym(handle, "qemu_main_loop"),
+              let cleanupSymbol = dlsym(handle, "qemu_cleanup") else {
+            vmLog("dlopen failed: \(String(cString: dlerror()))")
             throw VirtualMachineError.missingLibrary
         }
-        typealias EmbeddedMain = @convention(c) (Int32, UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?) -> Int32
-        let qemuMain = unsafeBitCast(symbol, to: EmbeddedMain.self)
+        typealias QemuInit = @convention(c) (Int32, UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?, UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?) -> Int32
+        typealias QemuMainLoop = @convention(c) () -> Void
+        typealias QemuCleanup = @convention(c) () -> Void
+        let qemuInit = unsafeBitCast(initSymbol, to: QemuInit.self)
+        let qemuMainLoop = unsafeBitCast(loopSymbol, to: QemuMainLoop.self)
+        let qemuCleanup = unsafeBitCast(cleanupSymbol, to: QemuCleanup.self)
 
         try? FileManager.default.removeItem(at: socketDirectory)
         try FileManager.default.createDirectory(at: socketDirectory, withIntermediateDirectories: true)
 
+        // QEMU reports errors on stderr; keep them in a log the user (and we) can read.
+        let logURL = VirtualMachine.guestDirectory.appendingPathComponent("qemu.log")
+        if freopen(logURL.path, "a", stderr) != nil {
+            setvbuf(stderr, nil, _IONBF, 0)
+        }
         let arguments = makeArguments()
-        NSLog("iSH+ VM: qemu %@", arguments.joined(separator: " "))
+        vmLog("starting \(interpreted ? "interpreted" : "with JIT"): \(arguments.joined(separator: " "))")
 
         // QEMU's main loop runs on its own thread with a large stack; QEMU keeps
         // global state, so a VM can only be started once per app launch.
         let thread = Thread { [weak self] in
+            // QEMU calls exit() on errors and shutdown; on its own thread that
+            // must only end this thread, not the app (UTM's technique).
+            let qemuThread = pthread_self()
+            atexit_b {
+                if pthread_equal(pthread_self(), qemuThread) != 0 {
+                    vmLog("QEMU called exit()")
+                    self?.markStopped()
+                    pthread_exit(nil)
+                }
+            }
             var argv: [UnsafeMutablePointer<CChar>?] = arguments.map { strdup($0) } + [nil]
-            let status = qemuMain(Int32(arguments.count), &argv)
-            NSLog("iSH+ VM: QEMU exited with status %d", status)
-            self?.lock.lock()
-            self?.isRunning = false
-            self?.hasStopped = true
-            self?.lock.unlock()
+            var envp: [UnsafeMutablePointer<CChar>?] = [nil]
+            let status = qemuInit(Int32(arguments.count), &argv, &envp)
+            vmLog("qemu_init returned \(status)")
+            qemuMainLoop()
+            qemuCleanup()
+            vmLog("QEMU stopped")
+            self?.markStopped()
         }
         thread.name = "qemu-main"
         thread.stackSize = 16 << 20
         thread.qualityOfService = .userInteractive
         thread.start()
         isRunning = true
+        scheduleDiagnostics()
+    }
+
+    /// Asks QEMU's monitor for the VM state and every vCPU's registers a few
+    /// seconds into the boot, twice, and logs the answers: if the PCs move the
+    /// guest is running (if slowly); if not, the vCPUs are stuck.
+    private func scheduleDiagnostics() {
+        let path = socketDirectory.appendingPathComponent("mon").path
+        DispatchQueue.global(qos: .utility).async {
+            for delay: UInt32 in [6, 8] {
+                sleep(delay)
+                let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+                var address = sockaddr_un()
+                address.sun_family = sa_family_t(AF_UNIX)
+                withUnsafeMutableBytes(of: &address.sun_path) { raw in
+                    _ = path.withCString { strlcpy(raw.baseAddress!.assumingMemoryBound(to: CChar.self), $0, raw.count) }
+                }
+                let ok = withUnsafePointer(to: &address) {
+                    $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                        Darwin.connect(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size))
+                    }
+                } == 0
+                guard ok else { vmLog("monitor: cannot connect"); Darwin.close(fd); continue }
+                let commands = "info status\ninfo registers -a\n"
+                _ = commands.withCString { write(fd, $0, strlen($0)) }
+                usleep(1_500_000)
+                var output = Data()
+                var buffer = [UInt8](repeating: 0, count: 65536)
+                var flags = fcntl(fd, F_GETFL); flags |= O_NONBLOCK; _ = fcntl(fd, F_SETFL, flags)
+                while true {
+                    let n = read(fd, &buffer, buffer.count)
+                    if n <= 0 { break }
+                    output.append(contentsOf: buffer[0..<n])
+                }
+                Darwin.close(fd)
+                let text = String(decoding: output, as: UTF8.self)
+                    .split(separator: "\n")
+                    .filter { $0.contains("status") || $0.contains("PC=") || $0.contains("CPU#") }
+                    .joined(separator: "\n")
+                vmLog("monitor after \(delay)s:\n\(text)")
+            }
+        }
+    }
+
+    private func markStopped() {
+        lock.lock()
+        isRunning = false
+        hasStopped = true
+        lock.unlock()
     }
 
     private func makeArguments() -> [String] {
@@ -220,12 +304,13 @@ public final class VirtualMachine: NSObject {
             // max: ARMv8.x features (FEX needs v8.2+ and LSE). pauth-impdef:
             // a cheap pointer authentication algorithm instead of QARMA.
             "-cpu", "max,pauth-impdef=on",
-            "-accel", "tcg,thread=multi,tb-size=256",
+            // split-wx: JIT code through a second, executable mapping (iOS)
+            "-accel", interpreted ? "tcg,thread=multi,tb-size=64" : "tcg,thread=multi,tb-size=64,split-wx=on",
             "-smp", "\(cpus)",
             "-m", "1024",
             "-kernel", file("vmlinuz"),
             "-initrd", file("initramfs"),
-            "-append", "root=/dev/vda rootfstype=ext4 modules=virtio_blk,ext4,squashfs console=hvc0 quiet",
+            "-append", "root=/dev/vda rootfstype=ext4 modules=virtio_blk,ext4,squashfs earlycon=pl011,0x9000000 console=ttyAMA0 console=hvc0 loglevel=4",
             "-drive", "if=none,file=\(file("rootfs.img")),format=raw,id=root,cache=writeback,discard=unmap",
             "-device", "virtio-blk-pci,drive=root",
             "-drive", "if=none,file=\(file("modloop")),format=raw,id=modloop,readonly=on",
@@ -234,7 +319,12 @@ public final class VirtualMachine: NSObject {
             "-device", "virtio-net-pci,netdev=net,romfile=",
             "-device", "virtio-rng-pci",
             "-device", "virtio-serial-pci",
-            "-display", "none", "-serial", "none", "-monitor", "none",
+            "-display", "none",
+            "-monitor", "unix:\(socketDirectory.appendingPathComponent("mon").path),server=on,wait=off",
+            // Early boot messages (before the virtio console exists) go to the
+            // emulated serial port, saved for diagnosing boot problems.
+            "-serial", "file:\(file("serial.log"))",
+            "-d", "guest_errors,unimp", "-D", file("qemu-debug.log"),
         ]
         for i in 0..<VirtualMachine.consoleCount {
             args += ["-chardev", "socket,id=con\(i),path=\(socketPath(i)),server=on,wait=off",
@@ -285,6 +375,7 @@ public final class VirtualMachine: NSObject {
                     }
                 }
                 if result == 0 {
+                    vmLog("connected to \(path)")
                     console.start()
                     // Nudge the console so getty prints its prompt.
                     console.send(Data([0x0d]))
@@ -292,7 +383,7 @@ public final class VirtualMachine: NSObject {
                 }
                 usleep(100_000)
             }
-            NSLog("iSH+ VM: could not connect to %@", path)
+            vmLog("could not connect to \(path)")
             console.close()
         }
     }
@@ -300,3 +391,6 @@ public final class VirtualMachine: NSObject {
 
 @_silgen_name("csops")
 private func ish_csops(_ pid: pid_t, _ ops: UInt32, _ useraddr: UnsafeMutableRawPointer?, _ usersize: Int) -> Int32
+
+@_silgen_name("jit_probe_run")
+private func jit_probe_run()

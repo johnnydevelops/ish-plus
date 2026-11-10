@@ -136,8 +136,12 @@ public final class JITViewController: UIViewController {
 
     // MARK: Enabling
 
+    /// Temporarily off while testing with a debugger attached from Xcode, so
+    /// iSH+ does not switch to StikDebug. TODO: re-enable with the in-app enabler.
+    private static let openStikDebug = false
+
     private static var stikDebugInstalled: Bool {
-        guard let url = URL(string: "stikdebug://") else { return false }
+        guard openStikDebug, let url = URL(string: "stikdebug://") else { return false }
         return UIApplication.shared.canOpenURL(url)
     }
 

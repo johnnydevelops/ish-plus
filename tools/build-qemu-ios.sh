@@ -1,11 +1,10 @@
 #!/bin/bash
-# Builds QEMU's system emulators (aarch64 and x86_64) for iOS from our own
-# fork (deps/qemu, branch ishplus), plus the libraries a headless VM needs:
-# glib, libffi, pixman, libslirp (user-mode networking) and libucontext
-# (fast user-space coroutines, since iOS has no makecontext).
-#
-# All sources are upstream releases. UTM's iOS build was used as a reference
-# for techniques only; its code and patches are not used.
+# Builds QEMU's system emulators (aarch64 and x86_64) for iOS from our fork
+# (deps/qemu, branch ishplus, based on UTM's QEMU fork, which carries the iOS
+# JIT handling, the shared library build and the TCTI threaded interpreter),
+# plus the libraries a headless VM needs: glib, libffi, pixman, libslirp
+# (user-mode networking) and libucontext (coroutines; iOS has no makecontext).
+# The libraries are upstream releases.
 #
 # Usage: tools/build-qemu-ios.sh [stage...]
 #   stages: fetch deps qemu qemu-tci (default: all)
@@ -147,7 +146,7 @@ configure_qemu() { # build-dir prefix target-list extra-args...
     mkdir -p "$build"
     (cd "$build" && "$QEMU_DIR/configure" --prefix="$prefix" --cross-prefix="" \
         --target-list="$targets" "$@" \
-        -Dembedded=true --with-coroutine=libucontext \
+        --enable-shared-lib --enable-ucontext --with-coroutine=libucontext \
         --enable-tcg --enable-slirp --disable-slirp-smbd \
         --disable-hvf --disable-cocoa --disable-sdl --disable-gtk --disable-coreaudio \
         --disable-vmnet --disable-vnc --disable-spice --disable-opengl --disable-curses \
@@ -159,18 +158,21 @@ configure_qemu() { # build-dir prefix target-list extra-args...
         make -j"$NCPU" && make install)
 }
 
-# JIT build: libqemu-system-{aarch64,x86_64}.dylib
+# JIT build: libqemu-{aarch64,x86_64}-softmmu.dylib
 stage_qemu() {
     log "Building QEMU (deps/qemu)"
     configure_qemu "$WORK/qemu-build" "$PREFIX" aarch64-softmmu,x86_64-softmmu
 }
 
-# Interpreter build for when JIT cannot be enabled: libqemu-system-aarch64-tci.dylib
+# Build for when JIT cannot be enabled, with the TCTI threaded interpreter
+# (much faster than QEMU's TCI): libqemu-aarch64-softmmu-tci.dylib
 stage_qemu-tci() {
-    log "Building QEMU with the TCG interpreter"
-    configure_qemu "$WORK/qemu-build-tci" "$WORK/tci-install" aarch64-softmmu --enable-tcg-interpreter
-    cp "$WORK/tci-install/lib/libqemu-system-aarch64.dylib" "$PREFIX/lib/libqemu-system-aarch64-tci.dylib"
-    install_name_tool -id @rpath/libqemu-system-aarch64-tci.dylib "$PREFIX/lib/libqemu-system-aarch64-tci.dylib"
+    log "Building QEMU with the threaded interpreter (TCTI)"
+    configure_qemu "$WORK/qemu-build-tci" "$WORK/tci-install" aarch64-softmmu \
+        --enable-tcg-threaded-interpreter --extra-cflags=-Wno-unused-command-line-argument \
+        --extra-ldflags=-Wl,-no_deduplicate --extra-ldflags=-Wl,-no_compact_unwind
+    cp "$WORK/tci-install/lib/libqemu-aarch64-softmmu.dylib" "$PREFIX/lib/libqemu-aarch64-softmmu-tci.dylib"
+    install_name_tool -id @rpath/libqemu-aarch64-softmmu-tci.dylib "$PREFIX/lib/libqemu-aarch64-softmmu-tci.dylib"
 }
 
 stages=("$@")
