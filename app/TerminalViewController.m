@@ -63,6 +63,8 @@
 @property UIButton *sessionsButton;
 @property BOOL showingJITScreen;
 @property BOOL pendingJITScreen;
+// A session to start once the view is on screen (to present setup first)
+@property BOOL pendingStart;
 @property (readonly) int sessionPid;
 @property (readonly, nonatomic) Terminal *sessionTerminal;
 
@@ -168,6 +170,19 @@
         self.pendingJITScreen = NO;
         [self presentJITScreenThenStartSession];
     }
+    if (self.pendingStart) {
+        self.pendingStart = NO;
+        [self startSession];
+    }
+}
+
+// Screens can only be presented once the view is on screen.
+- (BOOL)canPresentNow {
+    if (self.view.window == nil || self.presentedViewController != nil) {
+        self.pendingStart = YES;
+        return NO;
+    }
+    return YES;
 }
 
 // "Enabling JIT…", then start the session the way the user chose.
@@ -395,6 +410,10 @@ static int nextVMTerminalNumber;
 // when the session is closed, so the shell is still there next time.
 - (int)startVMSession {
     ISHVirtualMachine *vm = ISHVirtualMachine.shared;
+    if (!vm.isRunning && !ISHOnboarding.completed) {
+        [self presentOnboardingThenStartSession];
+        return 0;
+    }
     if (!vm.isRunning && !ISHDistroManager.shared.hasBootableDistro) {
         [self presentDistroChooserThenStartSession];
         return 0;
@@ -432,8 +451,20 @@ static int nextVMTerminalNumber;
     return 0;
 }
 
+- (void)presentOnboardingThenStartSession {
+    if (self.showingJITScreen || ![self canPresentNow])
+        return;
+    self.showingJITScreen = YES;
+    __weak typeof(self) weakSelf = self;
+    ISHOnboardingViewController *onboarding = [[ISHOnboardingViewController alloc] initWithCompletion:^{
+        weakSelf.showingJITScreen = NO;
+        [weakSelf startSession];
+    }];
+    [self presentViewController:onboarding animated:NO completion:nil];
+}
+
 - (void)presentDistroChooserThenStartSession {
-    if (self.showingJITScreen)
+    if (self.showingJITScreen || ![self canPresentNow])
         return;
     self.showingJITScreen = YES;
     __weak typeof(self) weakSelf = self;

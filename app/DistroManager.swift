@@ -25,6 +25,8 @@ public final class Distro: NSObject, Codable {
     /// "trixie"
     @objc public let version: String
     let source: URL
+    /// "debian", for its logo (nil for distributions added by older builds)
+    @objc public internal(set) var family: String?
     /// The guest has unpacked the archive onto the disk.
     @objc public internal(set) var installed: Bool
     let added: Date
@@ -43,6 +45,8 @@ public final class Distro: NSObject, Codable {
     var diskURL: URL { directory.appendingPathComponent("disk.img") }
     /// The root filesystem archive, until the guest has installed it.
     var archiveURL: URL { directory.appendingPathComponent("rootfs.archive") }
+    /// The account to create, until the guest has installed it.
+    var setupURL: URL { directory.appendingPathComponent("setup.conf") }
     var hasArchive: Bool { FileManager.default.fileExists(atPath: archiveURL.path) }
     /// Space the disk takes (it is sparse).
     var diskUsage: Int64 {
@@ -56,6 +60,10 @@ public struct DistroImage: Hashable {
     public let family: String
     public let name: String
     public let release: String
+    /// "LTS", "testing"...
+    public var note: String?
+    /// A development or rolling snapshot rather than a release.
+    public var isDevelopment = false
     public let url: URL
     /// A file listing "sha256  filename" lines, and the name to look up.
     let checksums: URL?
@@ -65,8 +73,42 @@ public struct DistroImage: Hashable {
 }
 
 public struct DistroFamily {
+    /// "debian" (also the name of its logo in Assets.xcassets/Distros)
+    public let key: String
     public let name: String
+    public let summary: String
+    /// Releases first (newest first), development snapshots last.
     public let images: [DistroImage]
+}
+
+/// The account created when a distribution is installed.
+public struct DistroSetup {
+    public var user: String
+    public var password: String
+    public var rootPassword: String
+
+    public init(user: String, password: String, rootPassword: String) {
+        self.user = user
+        self.password = password
+        self.rootPassword = rootPassword
+    }
+
+    /// Valid Linux user names (as useradd accepts by default).
+    public static func isValid(user: String) -> Bool {
+        user.range(of: "^[a-z_][a-z0-9_-]{0,31}$", options: .regularExpression) != nil && user != "root"
+    }
+
+    /// Read by the guest's installer (tools/guest/boot/init), attached as a
+    /// disk, hence padded to whole sectors.
+    var file: Data {
+        func line(_ key: String, _ value: String) -> String {
+            "\(key)=\(Data(value.utf8).base64EncodedString())\n"
+        }
+        var text = line("ISHPLUS_USER", user) + line("ISHPLUS_PASSWORD", password)
+            + line("ISHPLUS_ROOT_PASSWORD", rootPassword)
+        text += String(repeating: "\n", count: (512 - text.utf8.count % 512) % 512)
+        return Data(text.utf8)
+    }
 }
 
 /// Progress of a distribution being downloaded.
@@ -142,6 +184,7 @@ public final class DistroManager: NSObject, URLSessionDownloadDelegate {
         DispatchQueue.main.async { [self] in
             distro.installed = true
             try? FileManager.default.removeItem(at: distro.archiveURL)
+            try? FileManager.default.removeItem(at: distro.setupURL)
             save()
             changed()
         }
@@ -178,6 +221,7 @@ public final class DistroManager: NSObject, URLSessionDownloadDelegate {
         guard FileManager.default.fileExists(atPath: legacy.path) else { return }
         let distro = Distro(id: UUID().uuidString, name: "Alpine Linux", version: "3.24",
                             source: URL(string: "https://alpinelinux.org")!, installed: true)
+        distro.family = "alpine"
         do {
             try FileManager.default.createDirectory(at: distro.directory, withIntermediateDirectories: true)
             try FileManager.default.moveItem(at: legacy, to: distro.diskURL)
@@ -200,7 +244,7 @@ public final class DistroManager: NSObject, URLSessionDownloadDelegate {
     private static let armtix = URL(string: "https://armtix.artixlinux.org/images/")!
 
     private static let familyNames = [
-        "almalinux": "AlmaLinux", "alpine": "Alpine Linux", "alt": "ALT Linux", "archlinux": "Arch Linux",
+        "almalinux": "AlmaLinux", "alpine": "Alpine Linux", "alt": "ALT Linux", "archlinux": "Arch Linux ARM",
         "artix": "Artix Linux", "centos": "CentOS Stream", "debian": "Debian", "devuan": "Devuan",
         "fedora": "Fedora", "kali": "Kali Linux", "openeuler": "openEuler", "opensuse": "openSUSE",
         "oracle": "Oracle Linux", "rockylinux": "Rocky Linux", "ubuntu": "Ubuntu", "voidlinux": "Void Linux",
@@ -208,10 +252,37 @@ public final class DistroManager: NSObject, URLSessionDownloadDelegate {
     /// Images that do not work with iSH+'s init (they need their own to set
     /// up the system) or are not general-purpose distributions.
     private static let unsupported: Set<String> = ["busybox", "nixos", "openwrt"]
-    private static let ubuntuVersions = [
-        "jammy": "22.04 jammy", "noble": "24.04 noble", "plucky": "25.04 plucky",
-        "questing": "25.10 questing", "resolute": "26.04 resolute", "stonking": "26.10 stonking",
+    private static let summaries = [
+        "almalinux": "Enterprise Linux, compatible with RHEL",
+        "alpine": "Small, simple and fast to install",
+        "alt": "Russian distribution with its own packages",
+        "archlinux": "Rolling release, simple and up to date",
+        "artix": "Arch without systemd",
+        "centos": "The upstream of RHEL",
+        "debian": "The universal operating system",
+        "devuan": "Debian without systemd",
+        "fedora": "Leading-edge, from the Fedora Project",
+        "kali": "Security testing and penetration tools",
+        "openeuler": "Enterprise Linux from the OpenAtom Foundation",
+        "opensuse": "Stable Leap or rolling Tumbleweed",
+        "oracle": "Enterprise Linux from Oracle",
+        "rockylinux": "Enterprise Linux, compatible with RHEL",
+        "ubuntu": "Popular and well supported",
+        "voidlinux": "Independent, with runit and xbps",
     ]
+    /// Release names shown with their version, and notes.
+    private static let releaseNames = [
+        "ubuntu/jammy": ("22.04 Jammy Jellyfish", "LTS"), "ubuntu/noble": ("24.04 Noble Numbat", "LTS"),
+        "ubuntu/plucky": ("25.04 Plucky Puffin", nil), "ubuntu/questing": ("25.10 Questing Quokka", nil),
+        "ubuntu/resolute": ("26.04 Resolute Raccoon", "LTS"), "ubuntu/stonking": ("26.10 Stonking", nil),
+        "debian/bookworm": ("12 bookworm", "oldstable"), "debian/trixie": ("13 trixie", "stable"),
+        "debian/forky": ("14 forky", "testing"),
+        "devuan/daedalus": ("5 daedalus", nil), "devuan/excalibur": ("6 excalibur", nil),
+        "opensuse/tumbleweed": ("Tumbleweed", "rolling"),
+        "archlinux/current": ("Rolling", nil), "voidlinux/current": ("Rolling", nil),
+        "kali/current": ("Rolling", nil), "alt/Sisyphus": ("Sisyphus", "development"),
+    ] as [String: (String, String?)]
+    private static let development: Set<String> = ["alpine/edge", "debian/forky", "alt/Sisyphus", "ubuntu/stonking"]
 
     /// Available distributions, Alpine (small, the default) first.
     public func catalog() async throws -> [DistroFamily] {
@@ -219,8 +290,11 @@ public final class DistroManager: NSObject, URLSessionDownloadDelegate {
         let artix = (try? await artixCatalog()) ?? []
         let images = try await lxcImages + artix
         let families = Dictionary(grouping: images, by: \.family).map { key, images in
-            DistroFamily(name: images[0].name,
-                         images: images.sorted { $0.release.localizedStandardCompare($1.release) == .orderedDescending })
+            DistroFamily(key: key, name: images[0].name, summary: Self.summaries[key] ?? "",
+                         images: images.sorted {
+                             if $0.isDevelopment != $1.isDevelopment { return !$0.isDevelopment }
+                             return $0.release.localizedStandardCompare($1.release) == .orderedDescending
+                         })
         }
         return families.sorted {
             if $0.name == "Alpine Linux" { return true }
@@ -239,13 +313,16 @@ public final class DistroManager: NSObject, URLSessionDownloadDelegate {
                   !Self.unsupported.contains(fields[0]) else { return nil }
             let family = fields[0]
             let directory = Self.lxc.appendingPathComponent(fields[5])
-            var release = fields[1]
-            if family == "ubuntu" { release = Self.ubuntuVersions[release] ?? release }
-            return DistroImage(family: family, name: Self.familyNames[family] ?? family.capitalized,
-                               release: release,
-                               url: directory.appendingPathComponent("rootfs.tar.xz"),
-                               checksums: directory.appendingPathComponent("SHA256SUMS"),
-                               checksumName: "rootfs.tar.xz")
+            let key = "\(family)/\(fields[1])"
+            let (release, note) = Self.releaseNames[key] ?? (fields[1] == "edge" ? "Edge" : fields[1], nil)
+            var image = DistroImage(family: family, name: Self.familyNames[family] ?? family.capitalized,
+                                    release: release,
+                                    url: directory.appendingPathComponent("rootfs.tar.xz"),
+                                    checksums: directory.appendingPathComponent("SHA256SUMS"),
+                                    checksumName: "rootfs.tar.xz")
+            image.isDevelopment = Self.development.contains(key)
+            image.note = note ?? (image.isDevelopment ? "development" : nil)
+            return image
         }
     }
 
@@ -260,7 +337,7 @@ public final class DistroManager: NSObject, URLSessionDownloadDelegate {
         }
         guard let date = dates.max() else { return [] }
         let file = "armtix-openrc-\(date).tar.xz"
-        return [DistroImage(family: "artix", name: "Artix Linux", release: "current",
+        return [DistroImage(family: "artix", name: "Artix Linux", release: "Rolling",
                             url: Self.armtix.appendingPathComponent(file),
                             checksums: Self.armtix.appendingPathComponent("sha256sums"),
                             checksumName: file)]
@@ -279,9 +356,15 @@ public final class DistroManager: NSObject, URLSessionDownloadDelegate {
 
     /// Starts downloading a distribution; it appears in `distros` at once.
     @discardableResult
-    public func install(_ image: DistroImage) -> Distro {
+    public func install(_ image: DistroImage, setup: DistroSetup?) -> Distro {
         let distro = Distro(id: UUID().uuidString, name: image.name, version: image.release,
                             source: image.url, installed: false)
+        distro.family = image.family
+        try? FileManager.default.createDirectory(at: distro.directory, withIntermediateDirectories: true)
+        if let setup {
+            // Only readable by iSH+, and deleted once the guest has used it
+            try? setup.file.write(to: distro.setupURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        }
         distros.append(distro)
         downloads[distro.id] = DistroDownload(received: 0, expected: 0)
         let task = session.downloadTask(with: image.url)

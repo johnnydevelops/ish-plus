@@ -24,6 +24,7 @@
 		0613F6CA23E90E7A579F3A42 /* JITViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97EA159F635965A28FE3E83 /* JITViewController.swift */; };
 		09F32ACB38D3F055A800DD26 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 9A7A2BABFDF81E1D59AE6598 /* SwiftTerm */; };
 		0FC2383C2991FBA6004C09EC /* mmx.c in Sources */ = {isa = PBXBuildFile; fileRef = 0FC2383B2991FB82004C09EC /* mmx.c */; };
+		1884D9B2B02CFCE4F96BC38B /* DistroSetupViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D2D852F3D9B73E99D70407 /* DistroSetupViewController.swift */; };
 		20BD3774A997C864D7D2E0A9 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = A64B20771684513C8DC55D08 /* SwiftTerm */; };
 		2352FD9E3A32D954A010933D /* StikJIT.xcframework in Embed QEMU */ = {isa = PBXBuildFile; fileRef = 81BD35790524254A633600D3 /* StikJIT.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		37988EFDAF0D0747A964C9B9 /* BackgroundKeepAlive.m in Sources */ = {isa = PBXBuildFile; fileRef = DADA01E465A18DDFDE1C066B /* BackgroundKeepAlive.m */; };
@@ -117,6 +118,7 @@
 		63A76CAC87E1FE87EACBF434 /* libqemu-aarch64-softmmu.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = DF4620D19DC63C97C4EDA00A /* libqemu-aarch64-softmmu.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		68FD8AD22DA4B3320B7ECE3A /* JITHelperLauncher.m in Sources */ = {isa = PBXBuildFile; fileRef = 9607608D73FBB17969CF5E8A /* JITHelperLauncher.m */; };
 		7A67DAF30E47B250F7CBA2ED /* JITProbe.c in Sources */ = {isa = PBXBuildFile; fileRef = A1D5D57A854E74B275EE46AB /* JITProbe.c */; };
+		7C170B0049C15E6B6456497A /* DistroSetupViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D2D852F3D9B73E99D70407 /* DistroSetupViewController.swift */; };
 		7F6B04E33974E1CD992CBE28 /* StikJIT.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 81BD35790524254A633600D3 /* StikJIT.xcframework */; };
 		8414365EE62A93141BDB2151 /* iSHJITHelper.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AE31D69ABEE4B7F9683187EC /* iSHJITHelper.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8A0FD347EA7F03E65B2E8C73 /* JITHelperLauncher.m in Sources */ = {isa = PBXBuildFile; fileRef = 9607608D73FBB17969CF5E8A /* JITHelperLauncher.m */; };
@@ -803,6 +805,7 @@
 		D97EA159F635965A28FE3E83 /* JITViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = JITViewController.swift; sourceTree = "<group>"; };
 		DADA01E465A18DDFDE1C066B /* BackgroundKeepAlive.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = BackgroundKeepAlive.m; sourceTree = "<group>"; };
 		DF4620D19DC63C97C4EDA00A /* libqemu-aarch64-softmmu.dylib */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = "compiled.mach-o.dylib"; name = "libqemu-aarch64-softmmu.dylib"; path = "build-qemu/sysroot-ios-arm64/lib/libqemu-aarch64-softmmu.dylib"; sourceTree = SOURCE_ROOT; };
+		E6D2D852F3D9B73E99D70407 /* DistroSetupViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DistroSetupViewController.swift; sourceTree = "<group>"; };
 		F5ADC8AF29DA6C018F449036 /* JITProbe.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = JITProbe.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -1196,6 +1199,7 @@
 				AF98129378181E7CF436D4BC /* JITHelperLauncher.h */,
 				6F3ECFE55CA115CDF5C60459 /* DistroManager.swift */,
 				A650484A8360D2669C1C3344 /* DistrosViewController.swift */,
+				E6D2D852F3D9B73E99D70407 /* DistroSetupViewController.swift */,
 			);
 			path = app;
 			sourceTree = "<group>";
@@ -2421,6 +2425,7 @@
 				8A0FD347EA7F03E65B2E8C73 /* JITHelperLauncher.m in Sources */,
 				43B0A9C57F9394AD1D099B10 /* DistroManager.swift in Sources */,
 				8AD89A3688A7BF36D7204254 /* DistrosViewController.swift in Sources */,
+				1884D9B2B02CFCE4F96BC38B /* DistroSetupViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2472,6 +2477,7 @@
 				68FD8AD22DA4B3320B7ECE3A /* JITHelperLauncher.m in Sources */,
 				513374B37BBB25AEC8C621C8 /* DistroManager.swift in Sources */,
 				4F15F87C7B8C9EADA4797559 /* DistrosViewController.swift in Sources */,
+				7C170B0049C15E6B6456497A /* DistroSetupViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

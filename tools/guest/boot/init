@@ -7,6 +7,7 @@
 #   ishplus-support  iSH+'s support disk (squashfs), see make-guest-support.sh
 #   inst:<bytes>     a root filesystem archive (tar, any compression) to
 #                    install on the root disk, which is formatted if needed
+#   ishplus-setup    with inst:, the user account to create (see create_user)
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 /bin/busybox mkdir -p /usr/bin /usr/sbin /proc /sys /dev /newroot
 /bin/busybox --install -s
@@ -28,6 +29,7 @@ ROOT=$(disk ishplus-root)
 MODLOOP=$(disk ishplus-modloop)
 SUPPORT=$(disk ishplus-support)
 INSTALL=$(disk inst:)
+SETUP=$(disk ishplus-setup)
 [ -n "$ROOT" ] || fail "no root disk"
 [ -n "$SUPPORT" ] || fail "no support disk"
 
@@ -39,6 +41,69 @@ mount -t squashfs -o ro "$SUPPORT" /opt/ishplus || fail "cannot mount the suppor
 
 # The support disk's busybox has every applet (xz, ...)
 X=/opt/ishplus/bin/busybox
+# The account chosen in iSH+ when adding the distribution: a file of
+# ISHPLUS_USER=, ISHPLUS_PASSWORD= and ISHPLUS_ROOT_PASSWORD= lines, values
+# in base64. Done by editing the account files directly, so it works the
+# same on every distribution. The user gets admin rights: the wheel and
+# sudo groups, and sudo and doas rules for when either is installed.
+create_user() {
+    R=/newroot
+    field() { head -c 65536 "$1" | tr -d '\0' | sed -n "s/^$2=//p" | $X base64 -d 2>/dev/null; }
+    user=$(field "$1" ISHPLUS_USER)
+    password=$(field "$1" ISHPLUS_PASSWORD)
+    root_password=$(field "$1" ISHPLUS_ROOT_PASSWORD)
+    hash() { $X cryptpw -m sha512 "$1"; }
+    days=$(( $(date +%s) / 86400 ))
+    set_password() { # account hash
+        if grep -q "^$1:" $R/etc/shadow; then
+            awk -F: -v OFS=: -v u="$1" -v h="$2" -v d="$days" '$1 == u { $2 = h; $3 = d } { print }' \
+                $R/etc/shadow > $R/etc/shadow.new
+        else
+            { cat $R/etc/shadow; echo "$1:$2:$days:0:99999:7:::"; } > $R/etc/shadow.new
+        fi
+        cat $R/etc/shadow.new > $R/etc/shadow; rm $R/etc/shadow.new
+    }
+    [ -n "$root_password" ] && set_password root "$(hash "$root_password")"
+    [ -n "$user" ] || return 0
+    case "$user" in *[!a-z0-9_-]*|[!a-z_]*|root) say "invalid user name"; return 0;; esac
+    say "creating the user $user"
+    if ! grep -q "^$user:" $R/etc/passwd; then
+        id=1000
+        while cut -d: -f3 $R/etc/passwd | grep -qx $id || cut -d: -f3 $R/etc/group | grep -qx $id; do
+            id=$((id + 1))
+        done
+        shell=$(awk -F: '$1 == "root" { print $7 }' $R/etc/passwd)
+        [ -x "$R/bin/bash" ] && shell=/bin/bash
+        [ -n "$shell" ] || shell=/bin/sh
+        echo "$user:x:$id:$id::/home/$user:$shell" >> $R/etc/passwd
+        echo "$user:x:$id:" >> $R/etc/group
+        [ -e $R/etc/gshadow ] && echo "$user:!::" >> $R/etc/gshadow
+        mkdir -p $R/home/$user
+        [ -d $R/etc/skel ] && cp -a $R/etc/skel/. $R/home/$user/
+        chown -R $id:$id $R/home/$user
+        chmod 700 $R/home/$user
+    fi
+    set_password "$user" "$(hash "$password")"
+    # Admin groups (wheel is created if the distribution has neither)
+    grep -q '^wheel:' $R/etc/group || grep -q '^sudo:' $R/etc/group || {
+        gid=10
+        while cut -d: -f3 $R/etc/group | grep -qx $gid; do gid=$((gid + 1)); done
+        echo "wheel:x:$gid:" >> $R/etc/group
+    }
+    for g in wheel sudo; do
+        grep -q "^$g:" $R/etc/group || continue
+        awk -F: -v OFS=: -v g="$g" -v u="$user" '$1 == g { $4 = ($4 == "" ? u : $4 "," u) } { print }' \
+            $R/etc/group > $R/etc/group.new
+        cat $R/etc/group.new > $R/etc/group; rm $R/etc/group.new
+    done
+    mkdir -p $R/etc/sudoers.d $R/etc/doas.d $R/etc/ishplus
+    echo "$user ALL=(ALL:ALL) ALL" > $R/etc/sudoers.d/ishplus
+    chmod 440 $R/etc/sudoers.d/ishplus
+    echo "permit persist $user as root" > $R/etc/doas.d/ishplus.conf
+    # Sessions log in as this user (see boot/shell.sh)
+    echo "$user" > $R/etc/ishplus/user
+}
+
 mounted=
 if [ -n "$INSTALL" ]; then
     if mount -t ext4 "$ROOT" /newroot 2>/dev/null; then
@@ -72,6 +137,7 @@ if [ -n "$INSTALL" ]; then
             [ "$(echo "$sub" | wc -l)" = 1 ] && [ -d "/newroot/$sub/etc" ] && \
                 { mv /newroot/"$sub"/* /newroot/"$sub"/.[!.]* /newroot/ 2>/dev/null; rmdir "/newroot/$sub"; }
         fi
+        [ -n "$SETUP" ] && create_user "$SETUP"
         touch /newroot/.ishplus-installed
         sync
         say "installed"

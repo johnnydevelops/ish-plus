@@ -32,26 +32,37 @@ public final class Onboarding: NSObject {
 
 @objc(ISHOnboardingViewController)
 public final class OnboardingViewController: UIViewController, UIDocumentPickerDelegate {
+    private enum StepKind { case welcome, vpn, pairing, distro, done }
+
     private struct Step {
+        let kind: StepKind
         let symbol: String
         let title: String
         let text: String
     }
 
-    private let steps: [Step] = [
-        Step(symbol: "cpu",
+    private static let allSteps: [Step] = [
+        Step(kind: .welcome, symbol: "cpu",
              title: "Welcome to iSH+",
-             text: "iSH+ runs a real Linux kernel in a virtual machine. To run it at full speed it needs JIT, which iSH+ can enable for itself once it is paired with this device. This takes a few minutes, once."),
-        Step(symbol: "network.badge.shield.half.filled",
+             text: "iSH+ runs a real Linux distribution in a virtual machine. Setting it up takes a few minutes: pairing iSH+ with this device so it can enable JIT and run at full speed, and choosing your distribution."),
+        Step(kind: .vpn, symbol: "network.badge.shield.half.filled",
              title: "Connect LocalDevVPN",
              text: "iSH+ talks to this device's developer services through LocalDevVPN. Install it from the App Store and connect it. It only routes traffic to this device and must be connected whenever iSH+ enables JIT."),
-        Step(symbol: "link",
+        Step(kind: .pairing, symbol: "link",
              title: "Pair iSH+",
              text: "Pair iSH+ with this device so it can attach its debugger to itself. Import a pairing file made on a computer, or pair directly on this device."),
-        Step(symbol: "checkmark.seal",
+        Step(kind: .distro, symbol: "shippingbox",
+             title: "Choose a Distribution",
+             text: "Pick the Linux distribution iSH+ runs, and create your account. It downloads while you finish setting up, and installs the first time it starts. You can add more in Settings > Distributions."),
+        Step(kind: .done, symbol: "checkmark.seal",
              title: "All Set",
              text: "iSH+ will enable JIT by itself whenever it starts the Linux VM. Keep LocalDevVPN connected. You can redo this setup from Settings at any time."),
     ]
+
+    /// From Settings (JIT Setup) the distribution step is left out.
+    private var steps: [Step] {
+        fromSettings ? Self.allSteps.filter { $0.kind != .distro } : Self.allSteps
+    }
 
     private var index = 0
     private let completion: () -> Void
@@ -96,6 +107,8 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
         buttons.axis = .vertical
         buttons.spacing = 12
         pageControl.numberOfPages = steps.count
+        NotificationCenter.default.addObserver(self, selector: #selector(distrosChanged),
+                                               name: DistroManager.didChangeNotification, object: nil)
         pageControl.isUserInteractionEnabled = false
         pageControl.currentPageIndicatorTintColor = .label
         pageControl.pageIndicatorTintColor = .tertiaryLabel
@@ -164,9 +177,33 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
         }
     }
 
+    private var distroChosen = false
+
+    @objc private func distrosChanged() {
+        guard steps[index].kind == .distro else { return }
+        updateStatus()
+        let chosen = !DistroManager.shared.distros.isEmpty
+        if chosen != distroChosen {
+            distroChosen = chosen
+            setButtons(buttonsForStep())
+        }
+    }
+
     private func updateStatus() {
         statusLabel.isHidden = true
-        if index == 2 && Onboarding.hasPairing {
+        if steps[index].kind == .distro, let distro = DistroManager.shared.distros.last {
+            statusLabel.isHidden = false
+            statusLabel.textColor = .secondaryLabel
+            if let download = DistroManager.shared.downloads[distro.id] {
+                let percent = Int(download.fraction * 100)
+                statusLabel.text = download.verifying ? "\(distro.title): checking the download…"
+                    : "\(distro.title): downloading… \(percent)%"
+            } else {
+                statusLabel.textColor = .systemGreen
+                statusLabel.text = "\(distro.title) is ready."
+            }
+        }
+        if steps[index].kind == .pairing && Onboarding.hasPairing {
             statusLabel.isHidden = false
             statusLabel.textColor = .systemGreen
             statusLabel.text = "Paired. A pairing file is installed."
@@ -175,16 +212,16 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
 
     private func buttonsForStep() -> [UIButton] {
         let next = makeButton("Continue", prominent: true) { [weak self] in self?.advance() }
-        switch index {
-        case 0:
-            return [makeButton("Set Up JIT", prominent: true) { [weak self] in self?.advance() },
+        switch steps[index].kind {
+        case .welcome:
+            return [makeButton("Get Started", prominent: true) { [weak self] in self?.advance() },
                     makeButton("Skip for Now", prominent: false) { [weak self] in self?.finish() }]
-        case 1:
+        case .vpn:
             return [next,
                     makeButton("Get LocalDevVPN", prominent: false) {
                         if let url = URL(string: "itms-apps://apps.apple.com/search?term=LocalDevVPN") { UIApplication.shared.open(url) }
                     }]
-        case 2:
+        case .pairing:
             var list = [makeButton("Import Pairing File…", prominent: !Onboarding.hasPairing) { [weak self] in self?.importPairingFile() },
                         makeButton("Pair With This Device", prominent: false) { [weak self] in self?.pairOnDevice() }]
             if Onboarding.hasPairing {
@@ -193,7 +230,14 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
                 list.append(makeButton("Skip", prominent: false) { [weak self] in self?.advance() })
             }
             return list
-        default:
+        case .distro:
+            let chosen = !DistroManager.shared.distros.isEmpty
+            distroChosen = chosen
+            let choose = makeButton(chosen ? "Choose Another…" : "Choose a Distribution…", prominent: !chosen) { [weak self] in
+                self?.chooseDistro()
+            }
+            return chosen ? [next, choose] : [choose, makeButton("Skip", prominent: false) { [weak self] in self?.advance() }]
+        case .done:
             return [makeButton(fromSettings ? "Done" : "Start iSH+", prominent: true) { [weak self] in self?.finish() }]
         }
     }
@@ -232,6 +276,21 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
     private func finish() {
         Onboarding.completed = true
         dismiss(animated: true) { [completion] in completion() }
+    }
+
+    // MARK: Distribution
+
+    private func chooseDistro() {
+        let catalog = DistroCatalogViewController()
+        let navigation = UINavigationController(rootViewController: catalog)
+        catalog.navigationItem.leftBarButtonItem = UIBarButtonItem(systemItem: .cancel, primaryAction: UIAction { [weak navigation] _ in
+            navigation?.dismiss(animated: true)
+        })
+        catalog.onStarted = { [weak self, weak navigation] in
+            navigation?.dismiss(animated: true)
+            self?.show(self?.index ?? 0, animated: true)
+        }
+        present(navigation, animated: true)
     }
 
     // MARK: Pairing

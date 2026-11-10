@@ -440,6 +440,11 @@ public final class VirtualMachine: NSObject {
            let size = try? FileManager.default.attributesOfItem(atPath: distro.archiveURL.path)[.size] as? Int {
             args += ["-drive", "if=none,file=\(distro.archiveURL.path),format=raw,id=install,readonly=on",
                      "-device", "virtio-blk-pci,drive=install,serial=inst:\(size)"]
+            // The account to create
+            if FileManager.default.fileExists(atPath: distro.setupURL.path) {
+                args += ["-drive", "if=none,file=\(distro.setupURL.path),format=raw,id=setup,readonly=on",
+                         "-device", "virtio-blk-pci,drive=setup,serial=ishplus-setup"]
+            }
         }
         // Developer hook: the guest runs Documents/VM/autorun.sh at boot,
         // with its output in serial.log.

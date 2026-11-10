@@ -1,0 +1,15 @@
+{
+  "almalinux": "#000000",
+  "alpine": "#0D597F",
+  "archlinux": "#1793D1",
+  "artix": "#10A0CC",
+  "centos": "#262577",
+  "debian": "#A81D33",
+  "devuan": "#004489",
+  "fedora": "#51A2DA",
+  "kali": "#557C94",
+  "opensuse": "#73BA25",
+  "rockylinux": "#10B981",
+  "ubuntu": "#E95420",
+  "voidlinux": "#478061"
+}
