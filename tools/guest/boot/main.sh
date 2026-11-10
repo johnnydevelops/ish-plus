@@ -78,16 +78,15 @@ done
 # A root shell on each iSH+ session's console, started again when it exits.
 console() {
     while [ ! -e /dev/hvc$1 ]; do $B sleep 1; done
-    # Output before iSH+ connects to the console is lost, and iSH+ sends a
-    # return when it connects: wait for it (without echoing it), so the
-    # welcome and the first prompt are seen, once.
-    until { $B stty -echo; read -r _; $B stty echo; } 2>/dev/null < /dev/hvc$1; do $B sleep 10; done
     while :; do
-        # Fails quietly (and is retried) while QEMU has no port for it
-        if ! { $B setsid -c $B sh $S/boot/shell.sh < /dev/hvc$1 > /dev/hvc$1 2>&1; } 2>/dev/null; then
-            $B sleep 10
-        fi
-        $B sleep 1
+        # Output before iSH+ connects to the console is lost, and iSH+ sends
+        # a return when a session connects: wait for it (without echoing
+        # it), so each session sees the welcome and the first prompt. Fails
+        # quietly (and is retried) while QEMU has no port for the console.
+        until { $B stty -echo; read -r _; $B stty echo; } 2>/dev/null < /dev/hvc$1; do $B sleep 10; done
+        $B setsid -c $B sh $S/boot/shell.sh < /dev/hvc$1 > /dev/hvc$1 2>&1
+        # The shell exited (exit, or iSH+ closed the session: hangup.sh)
+        printf '\r\n[Shell exited. Press Return for a new one.]\r\n' > /dev/hvc$1 2>/dev/null
     done
 }
 for i in 0 1 2 3; do console $i & done

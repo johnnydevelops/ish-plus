@@ -44,9 +44,13 @@ public final class VirtualMachineConsole: NSObject {
     private var closed = false
     private var started = false
 
+    /// Run once, when the console closes (either side)
+    private let onClosed: () -> Void
+
     fileprivate init(index: Int, fd: Int32, output: @escaping (Data) -> Void, closed: @escaping () -> Void) {
         self.index = index
         self.fd = fd
+        onClosed = closed
         queue = DispatchQueue(label: "app.ishplus.vm.console\(index)")
         source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)
         super.init()
@@ -59,7 +63,7 @@ public final class VirtualMachineConsole: NSObject {
             } else if n == 0 || (errno != EAGAIN && errno != EINTR) {
                 self.closed = true
                 self.source.cancel()
-                closed()
+                self.onClosed()
             }
         }
         source.setCancelHandler { [fd] in Darwin.close(fd) }
@@ -99,6 +103,9 @@ public final class VirtualMachineConsole: NSObject {
         VirtualMachine.shared.setConsoleSize(index: index, columns: columns, rows: rows)
     }
 
+    /// Closes the session's console: frees it for another session (through
+    /// the same cleanup as when the other side closes it) and hangs up its
+    /// shell in Linux, so the next session on it starts afresh.
     @objc public func close() {
         queue.async { [self] in
             guard !closed else { return }
@@ -109,6 +116,8 @@ public final class VirtualMachineConsole: NSObject {
                 source.resume()
             }
             source.cancel()
+            GuestServices.shared.run("sh /opt/ishplus/boot/hangup.sh \(index)", asRoot: true) { _, _ in }
+            onClosed()
         }
     }
 }

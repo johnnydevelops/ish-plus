@@ -292,7 +292,8 @@
 }
 
 - (void)closeSession:(TerminalSession *)session {
-    // Hanging up the terminal sends SIGHUP to the shell; processExited: cleans up.
+    // Closes its console, which hangs up its shell in Linux;
+    // vmConsoleClosedForTerminal: then removes the session.
     [session.terminal destroy];
 }
 
