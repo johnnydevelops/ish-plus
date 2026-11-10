@@ -244,7 +244,7 @@ public final class DistroManager: NSObject, URLSessionDownloadDelegate {
     private static let armtix = URL(string: "https://armtix.artixlinux.org/images/")!
 
     private static let familyNames = [
-        "almalinux": "AlmaLinux", "alpine": "Alpine Linux", "alt": "ALT Linux", "archlinux": "Arch Linux ARM",
+        "almalinux": "AlmaLinux", "alpine": "Alpine Linux", "alt": "ALT Linux", "archlinux": "Arch Linux",
         "artix": "Artix Linux", "centos": "CentOS Stream", "debian": "Debian", "devuan": "Devuan",
         "fedora": "Fedora", "kali": "Kali Linux", "openeuler": "openEuler", "opensuse": "openSUSE",
         "oracle": "Oracle Linux", "rockylinux": "Rocky Linux", "ubuntu": "Ubuntu", "voidlinux": "Void Linux",
