@@ -21,3 +21,4 @@ e2e_out/
 /build-uc/
 /.cache/
 /build-qemu/
+/build-guest/
