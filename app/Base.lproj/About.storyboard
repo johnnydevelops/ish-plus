@@ -134,6 +134,35 @@
                                             </constraints>
                                         </tableViewCellContentView>
                                     </tableViewCell>
+                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" preservesSuperviewLayoutMargins="YES" selectionStyle="none" indentationWidth="10" id="KpA-l1-vE1" userLabel="Keep Alive">
+                                        <rect key="frame" x="0.0" y="192" width="320" height="43.5"/>
+                                        <autoresizingMask key="autoresizingMask"/>
+                                        <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" preservesSuperviewLayoutMargins="YES" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="KpA-l1-vE1" id="KpA-l1-vE2">
+                                            <rect key="frame" x="0.0" y="0.0" width="320" height="43.5"/>
+                                            <autoresizingMask key="autoresizingMask"/>
+                                            <subviews>
+                                                <label opaque="NO" multipleTouchEnabled="YES" contentMode="left" insetsLayoutMarginsFromSafeArea="NO" text="Keep Running in Background" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="KpA-l1-vE3">
+                                                    <rect key="frame" x="16" y="11.5" width="181" height="21"/>
+                                                    <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                                    <nil key="textColor"/>
+                                                    <nil key="highlightedColor"/>
+                                                </label>
+                                                <switch opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" translatesAutoresizingMaskIntoConstraints="NO" id="KpA-l1-vE4">
+                                                    <rect key="frame" x="255" y="6.5" width="51" height="31"/>
+                                                    <connections>
+                                                        <action selector="keepAliveChanged:" destination="yJz-O7-jlW" eventType="valueChanged" id="KpA-l1-vE5"/>
+                                                    </connections>
+                                                </switch>
+                                            </subviews>
+                                            <constraints>
+                                                <constraint firstItem="KpA-l1-vE4" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="KpA-l1-vE3" secondAttribute="trailing" constant="8" symbolic="YES" id="KpA-l1-vE6"/>
+                                                <constraint firstItem="KpA-l1-vE3" firstAttribute="leading" secondItem="KpA-l1-vE2" secondAttribute="leadingMargin" id="KpA-l1-vE7"/>
+                                                <constraint firstItem="KpA-l1-vE4" firstAttribute="centerY" secondItem="KpA-l1-vE2" secondAttribute="centerY" id="KpA-l1-vE8"/>
+                                                <constraint firstAttribute="trailingMargin" secondItem="KpA-l1-vE4" secondAttribute="trailing" id="KpA-l1-vE9"/>
+                                                <constraint firstItem="KpA-l1-vE3" firstAttribute="centerY" secondItem="KpA-l1-vE2" secondAttribute="centerY" id="KpA-l1-vEa"/>
+                                            </constraints>
+                                        </tableViewCellContentView>
+                                    </tableViewCell>
                                 </cells>
                             </tableViewSection>
                             <tableViewSection id="u3N-3a-97w">
@@ -389,6 +418,7 @@
                         <outlet property="bootCommandField" destination="bKw-tV-nX1" id="MVz-gk-QE7"/>
                         <outlet property="capsLockMappingCell" destination="31N-0g-RhF" id="UjF-21-3df"/>
                         <outlet property="disableDimmingSwitch" destination="cPj-sQ-qsh" id="Kjp-xA-A0Y"/>
+                        <outlet property="keepAliveSwitch" destination="KpA-l1-vE4" id="KpA-l1-vEb"/>
                         <outlet property="exportContainerCell" destination="OIE-9g-Btx" id="qxo-l5-0Mq"/>
                         <outlet property="launchCommandField" destination="gDx-hv-hhV" id="RQn-gk-Dx8"/>
                         <outlet property="openDiscord" destination="K5r-jy-Dzl" id="b4l-Vr-6l8"/>

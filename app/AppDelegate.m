@@ -21,6 +21,7 @@
 #import "NSObject+SaneKVO.h"
 #import "Roots.h"
 #import "TerminalViewController.h"
+#import "BackgroundKeepAlive.h"
 #import "UserPreferences.h"
 #import "UIApplication+OpenURL.h"
 #include "kernel/init.h"
@@ -273,6 +274,8 @@ void NetworkReachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReach
     }
 #endif
     
+    [BackgroundKeepAlive start];
+
     [UserPreferences.shared observe:@[@"shouldDisableDimming"] options:NSKeyValueObservingOptionInitial
                               owner:self usingBlock:^(typeof(self) self) {
         dispatch_async(dispatch_get_main_queue(), ^{

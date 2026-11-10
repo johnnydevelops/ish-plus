@@ -24,6 +24,7 @@
 		09F32ACB38D3F055A800DD26 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 9A7A2BABFDF81E1D59AE6598 /* SwiftTerm */; };
 		0FC2383C2991FBA6004C09EC /* mmx.c in Sources */ = {isa = PBXBuildFile; fileRef = 0FC2383B2991FB82004C09EC /* mmx.c */; };
 		20BD3774A997C864D7D2E0A9 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = A64B20771684513C8DC55D08 /* SwiftTerm */; };
+		37988EFDAF0D0747A964C9B9 /* BackgroundKeepAlive.m in Sources */ = {isa = PBXBuildFile; fileRef = DADA01E465A18DDFDE1C066B /* BackgroundKeepAlive.m */; };
 		491B31E62883BF22008EEFB0 /* ThemeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 491B31E52883BF22008EEFB0 /* ThemeViewController.m */; };
 		49302D8E277669D300C9885A /* ish.c in Sources */ = {isa = PBXBuildFile; fileRef = 49302D8D277669D300C9885A /* ish.c */; };
 		496C7AB227CC697E005D7613 /* Theme.m in Sources */ = {isa = PBXBuildFile; fileRef = 491C4C1E27C8FB65008B1DFA /* Theme.m */; };
@@ -743,6 +744,8 @@
 		BBFB557B215878C600DFE6DE /* UIApplication+OpenURL.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIApplication+OpenURL.m"; sourceTree = "<group>"; };
 		BBFB557E21587B6800DFE6DE /* ArrowBarButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArrowBarButton.h; sourceTree = "<group>"; };
 		BBFB557F21587B6800DFE6DE /* ArrowBarButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArrowBarButton.m; sourceTree = "<group>"; };
+		D657DA6CA639A3C79F8158C0 /* BackgroundKeepAlive.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = BackgroundKeepAlive.h; sourceTree = "<group>"; };
+		DADA01E465A18DDFDE1C066B /* BackgroundKeepAlive.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = BackgroundKeepAlive.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1084,6 +1087,8 @@
 				BB41591D255EF9E300E0950C /* UITests */,
 				6391F54F532F3E4928D350AA /* TerminalSurface.swift */,
 				0A891C9AEEDBFA1130B28128 /* SwiftLinkage.swift */,
+				D657DA6CA639A3C79F8158C0 /* BackgroundKeepAlive.h */,
+				DADA01E465A18DDFDE1C066B /* BackgroundKeepAlive.m */,
 			);
 			path = app;
 			sourceTree = "<group>";
@@ -1719,7 +1724,7 @@
 			);
 			mainGroup = BB792B451F96D8E000FFB7A4;
 			packageReferences = (
-				A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "deps/SwiftTerm" */,
+				A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "SwiftTerm" */,
 			);
 			productRefGroup = BB792B511F96D90D00FFB7A4 /* Products */;
 			projectDirPath = "";
@@ -2282,6 +2287,7 @@
 				BB77636726E486A7008DB44A /* fakefs.c in Sources */,
 				BB28C7B826896CE600BDC834 /* ArrowBarButton.m in Sources */,
 				B8CB880AFB753ED85FA15B2D /* TerminalSurface.swift in Sources */,
+				37988EFDAF0D0747A964C9B9 /* BackgroundKeepAlive.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3184,7 +3190,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "deps/SwiftTerm" */ = {
+		A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "SwiftTerm" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = deps/SwiftTerm;
 		};
@@ -3193,12 +3199,12 @@
 /* Begin XCSwiftPackageProductDependency section */
 		9A7A2BABFDF81E1D59AE6598 /* SwiftTerm */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "deps/SwiftTerm" */;
+			package = A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "SwiftTerm" */;
 			productName = SwiftTerm;
 		};
 		A64B20771684513C8DC55D08 /* SwiftTerm */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "deps/SwiftTerm" */;
+			package = A4C1A925B57161C942EA8889 /* XCLocalSwiftPackageReference "SwiftTerm" */;
 			productName = SwiftTerm;
 		};
 /* End XCSwiftPackageProductDependency section */

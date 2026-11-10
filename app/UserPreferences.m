@@ -20,6 +20,7 @@ static NSString *const kPreferenceFontFamilyKey = @"Font Family";
 static NSString *const kPreferenceFontSizeKey = @"Font Size";
 static NSString *const kPreferenceThemeKey = @"ModernTheme";
 static NSString *const kPreferenceDisableDimmingKey = @"Disable Dimming";
+static NSString *const kPreferenceKeepAliveKey = @"Keep Alive In Background";
 NSString *const kPreferenceLaunchCommandKey = @"Init Command";
 NSString *const kPreferenceBootCommandKey = @"Boot Command";
 static NSString *const kPreferenceCursorStyleKey = @"Cursor Style";
@@ -160,6 +161,7 @@ bool (*remove_user_default)(const char *name);
             kPreferenceHideExtraKeysWithExternalKeyboardKey: @(NO),
             kPreferenceOverrideControlSpaceKey: @(NO),
             kPreferenceDisableDimmingKey: @(NO),
+            kPreferenceKeepAliveKey: @(YES),
             kPreferenceLaunchCommandKey: @[@"/bin/login", @"-f", @"root"],
             kPreferenceBootCommandKey: @[@"/sbin/init"],
             kPreferenceBlinkCursorKey: @(NO),
@@ -194,6 +196,7 @@ bool (*remove_user_default)(const char *name);
             @"font_family": kPreferenceFontFamilyKey,
             @"font_size": kPreferenceFontSizeKey,
             @"disable_dimming": kPreferenceDisableDimmingKey,
+            @"keep_alive_in_background": kPreferenceKeepAliveKey,
             @"launch_command": kPreferenceLaunchCommandKey,
             @"boot_command": kPreferenceBootCommandKey,
             @"cursor_style": kPreferenceCursorStyleKey,
@@ -219,6 +222,7 @@ bool (*remove_user_default)(const char *name);
             kPreferenceFontFamilyKey: property(fontFamily),
             kPreferenceFontSizeKey: property(fontSize),
             kPreferenceDisableDimmingKey: property(shouldDisableDimming),
+            kPreferenceKeepAliveKey: property(keepAliveInBackground),
             kPreferenceLaunchCommandKey: property(launchCommand),
             kPreferenceBootCommandKey: property(bootCommand),
             kPreferenceCursorStyleKey: property(cursorStyle),
@@ -416,6 +420,19 @@ bool (*remove_user_default)(const char *name);
 }
 
 - (BOOL)validateShouldDisableDimming:(id *)value error:(NSError **)error {
+    return [*value isKindOfClass:NSNumber.class];
+}
+
+// MARK: keepAliveInBackground
+- (BOOL)keepAliveInBackground {
+    return [_defaults boolForKey:kPreferenceKeepAliveKey];
+}
+
+- (void)setKeepAliveInBackground:(BOOL)keepAlive {
+    [_defaults setBool:keepAlive forKey:kPreferenceKeepAliveKey];
+}
+
+- (BOOL)validateKeepAliveInBackground:(id *)value error:(NSError **)error {
     return [*value isKindOfClass:NSNumber.class];
 }
 

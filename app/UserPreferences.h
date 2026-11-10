@@ -55,6 +55,8 @@ extern NSString *const kThemeBackgroundColor;
 @property (nonatomic) Theme *theme;
 @property (nonatomic) Palette *palette;
 @property BOOL shouldDisableDimming;
+// Keep iSH+ (and everything running in it) alive while the app is in the background.
+@property BOOL keepAliveInBackground;
 @property (null_resettable) NSString *fontFamily;
 @property (readonly) NSString *fontFamilyUserFacingName;
 @property (readonly) UIFont *approximateFont;
