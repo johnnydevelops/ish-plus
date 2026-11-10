@@ -41,8 +41,8 @@ Store, and iSH+ can enable JIT by itself, without a computer.
 ## Installing
 
 1. Download the `.ipa` from the [releases](../../releases) and sideload it
-   (AltStore, SideStore, Feather...). Keep its entitlements: JIT needs
-   `get-task-allow`.
+   (AltStore, SideStore, iloader, Feather...). JIT works with any of them:
+   nothing to set up.
 2. Install and connect [LocalDevVPN](https://apps.apple.com/search?term=LocalDevVPN),
    with Developer Mode on.
 3. Open iSH+ and follow the setup: pair it with your device (Pair With This
@@ -56,17 +56,17 @@ Requires iOS 26 or later (iOS 27 to pair on the device).
 
 ### Sideloaders and entitlements
 
-Some features need entitlements, which your sideloader has to keep when it
-signs iSH+:
+JIT needs nothing special: sideloaders sign with development certificates,
+which always allow debugging (`get-task-allow`), and that is all it needs.
+Two other features need entitlements, which your sideloader has to apply when
+it signs iSH+:
 
 | Feature | Entitlement | Without it |
 | --- | --- | --- |
-| JIT | `get-task-allow` | Linux only runs without JIT, much more slowly |
 | More memory for Linux | `com.apple.developer.kernel.increased-memory-limit`, `extended-virtual-addressing` | iSH+ measures the limit iOS gives it and picks a smaller VM |
 | Security keys over NFC (iPhone) | `com.apple.developer.nfc.readersession.formats` | `ssh` with `sk-` keys fails |
 
-Free Apple IDs generally get only `get-task-allow`: the others typically need
-a paid Apple Developer account. Sideloaders also differ in which entitlements
+These typically need a paid Apple Developer account. Sideloaders also differ in which entitlements
 they apply. iloader, for example, applies the increased memory limit but not
 NFC, even with a paid account, so iSH+ installed with it cannot use security
 keys. For security keys, sign with a paid account using a sideloader that
