@@ -9,6 +9,7 @@
 #import "JITHelperLauncher.h"
 #import <dlfcn.h>
 #import <unistd.h>
+#import <signal.h>
 
 @interface NSObject (ISHPrivateNSExtension)
 + (instancetype)extensionWithIdentifier:(NSString *)identifier error:(NSError **)error;
@@ -16,6 +17,7 @@
 - (void)setRequestCompletionBlock:(void (^)(NSUUID *requestIdentifier, NSArray *extensionItems))block;
 - (void)setRequestCancellationBlock:(void (^)(NSUUID *requestIdentifier, NSError *error))block;
 - (void)setRequestInterruptionBlock:(void (^)(NSUUID *requestIdentifier))block;
+- (void)_kill:(int)signal;
 @end
 
 static NSString *const kHelperFile = @"iSHJITHelper.appex";
@@ -38,7 +40,14 @@ static id currentExtension; // keep the extension alive while it works
 + (void)enableJITWithPairingData:(NSData *)pairing
                       completion:(void (^)(NSString *, NSArray<NSString *> *))completion {
     void (^finish)(NSString *, NSArray *) = ^(NSString *error, NSArray *log) {
+        // In qemu.log (stderr) once the VM runs
+        fprintf(stderr, "[%s] iSH+: JIT helper finished: %s (%s)\n", NSDate.date.description.UTF8String,
+                error ? error.UTF8String : "ok", [log componentsJoinedByString:@" | "].UTF8String ?: "");
         dispatch_async(dispatch_get_main_queue(), ^{
+            // The helper is done (it detached): end its process, which iOS
+            // would otherwise keep around idle
+            if ([currentExtension respondsToSelector:@selector(_kill:)])
+                [currentExtension _kill:SIGKILL];
             currentExtension = nil;
             completion(error, log ?: @[]);
         });

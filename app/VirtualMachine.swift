@@ -304,6 +304,16 @@ public final class VirtualMachine: NSObject {
             vmLog("qemu_init returned \(status)")
             self?.qemuInitialized()
             VMState.shared.restoreAfterInit()
+            // Whether the JIT enabler detached (a debugger left attached
+            // slows signals down)
+            DispatchQueue.global().asyncAfter(deadline: .now() + 15) {
+                var info = kinfo_proc()
+                var size = MemoryLayout<kinfo_proc>.size
+                var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+                if sysctl(&mib, 4, &info, &size, nil, 0) == 0 {
+                    vmLog("debugger attached: \((info.kp_proc.p_flag & P_TRACED) != 0 ? "yes" : "no")")
+                }
+            }
             qemuMainLoop()
             qemuCleanup()
             vmLog("QEMU stopped")
