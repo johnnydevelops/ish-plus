@@ -10,9 +10,11 @@
 #import "NSObject+SaneKVO.h"
 #import "iSHSwift.h"
 
-@interface TerminalView ()
+@interface TerminalView () <UIGestureRecognizerDelegate>
 @property (nonatomic) ISHTerminalSurface *surface;
 @property (nonatomic) UIButton *focusButton;
+@property (nonatomic) CGFloat pinchStartFontSize;
+@property (nonatomic) BOOL pinching;
 @end
 
 @implementation TerminalView
@@ -34,6 +36,56 @@
             [self _updateStyle];
         });
     }];
+    // Pinch to change the text size, as in Termux
+    UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(_pinch:)];
+    pinch.delegate = self;
+    [self addGestureRecognizer:pinch];
+}
+
+#pragma mark Pinch to change the text size
+
+static const CGFloat kMinimumPinchFontSize = 6;
+static const CGFloat kMaximumPinchFontSize = 48;
+
+- (void)_pinch:(UIPinchGestureRecognizer *)pinch {
+    switch (pinch.state) {
+        case UIGestureRecognizerStateBegan:
+            self.pinchStartFontSize = self.effectiveFontSize;
+            self.pinching = NO;
+            break;
+        case UIGestureRecognizerStateChanged: {
+            // Two fingers scrolling also change the scale a little: only a
+            // clear pinch (10%) changes the text size, and then stops the scroll
+            if (!self.pinching) {
+                if (fabs(pinch.scale - 1) < 0.1)
+                    break;
+                self.pinching = YES;
+                self.surface.panGestureRecognizer.enabled = NO;
+                self.surface.panGestureRecognizer.enabled = YES;
+            }
+            CGFloat size = round(MIN(MAX(self.pinchStartFontSize * pinch.scale, kMinimumPinchFontSize), kMaximumPinchFontSize));
+            if (size == self.effectiveFontSize)
+                break;
+            // The text size setting itself (Settings > Appearance), so it
+            // stays and applies to every session; a Cmd +/- size is replaced
+            _overrideFontSize = 0;
+            UserPreferences.shared.fontSize = @((int) size);
+            [self _updateStyle];
+            break;
+        }
+        default:
+            self.pinching = NO;
+            break;
+    }
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
+    shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)other {
+    return YES;
+}
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
+    return self.surface != nil && gestureRecognizer.numberOfTouches >= 2;
 }
 
 - (void)dealloc {
