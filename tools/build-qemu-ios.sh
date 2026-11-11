@@ -10,7 +10,9 @@
 # from UTM's WebKit fork), libepoxy and virglrenderer (UTM's forks), at the
 # commits UTM pins. QEMU's JIT build gets OpenGL and virglrenderer when the
 # gpu stage was built; ANGLE's libEGL.dylib and libGLESv2.dylib are embedded
-# next to the QEMU libraries (libepoxy loads them from there).
+# next to the QEMU libraries (libepoxy loads them from there). Vulkan
+# (Venus): MoltenVK (UTM's fork), MoltenVK.framework embedded the same way,
+# which virglrenderer loads when the guest uses Venus (no Vulkan loader).
 #
 # Usage: tools/build-qemu-ios.sh [stage...]
 #   stages: fetch deps gpu qemu qemu-tci (default: all)
@@ -36,6 +38,7 @@ LIBUCONTEXT_SRC="https://github.com/kaniini/libucontext/archive/refs/tags/libuco
 WEBKIT_REPO="https://github.com/utmapp/WebKit.git ed78ab6e1a37f4f11583a0bd038f22ec91f3ff10"
 EPOXY_REPO="https://github.com/utmapp/libepoxy.git bf98587477fe68d07b93319ece7b40a7d0e2eabe"
 VIRGL_REPO="https://github.com/utmapp/virglrenderer.git 65cc14eb896f121ffc5130ce04815a923a03c41d"
+MOLTENVK_REPO="https://github.com/utmapp/MoltenVK.git ef1c5461774f5fbd224ddcfd91fd2c0ea23f0384"
 
 # ---------------------------------------------------------------- toolchain
 MINVER="15.0"
@@ -105,6 +108,7 @@ stage_fetch() {
     fetch_git "$WEBKIT_REPO" angle Source/ThirdParty/ANGLE Configurations Tools/ccache
     fetch_git "$EPOXY_REPO" libepoxy
     fetch_git "$VIRGL_REPO" virglrenderer
+    fetch_git "$MOLTENVK_REPO" MoltenVK
 }
 
 # ---------------------------------------------------------------- builders
@@ -190,11 +194,31 @@ stage_gpu() {
         install_name_tool -id "@rpath/$l.dylib" "$PREFIX/lib/$l.dylib"
     done
     rsync -a "$angle/include/" "$PREFIX/include/"
+
+    log "Building MoltenVK"
+    local mvk="$SRC/MoltenVK"
+    # Xcode no longer builds for iOS < 15 / macOS < 12
+    find "$mvk" -name project.pbxproj -not -path "*/External/*" -exec sed -i '' \
+        -e 's/IPHONEOS_DEPLOYMENT_TARGET = 1[0-4]\.[0-9]*;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/' \
+        -e 's/MACOSX_DEPLOYMENT_TARGET = 1[01]\.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = 12.0;/' {} +
+    # SPIRV-Cross at the revision MoltenVK uses, patched (tools/qemu-ios-patches)
+    fetch_git "https://github.com/KhronosGroup/SPIRV-Cross.git $(cat "$mvk/ExternalRevisions/SPIRV-Cross_repo_revision")" SPIRV-Cross
+    (cd "$mvk" && env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 ./fetchDependencies --ios \
+            --spirv-cross-root "$SRC/SPIRV-Cross" &&
+        find External -name project.pbxproj -exec sed -i '' \
+            -e 's/IPHONEOS_DEPLOYMENT_TARGET = 1[0-4]\.[0-9]*;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/' \
+            -e 's/MACOSX_DEPLOYMENT_TARGET = 1[01]\.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = 12.0;/' {} + &&
+        env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 make ios)
+    rm -rf "$PREFIX/lib/MoltenVK.framework"
+    cp -a "$mvk/Package/Release/MoltenVK/dynamic/MoltenVK.xcframework/ios-arm64/MoltenVK.framework" "$PREFIX/lib/"
+    # Vulkan headers, for virglrenderer's Venus
+    rsync -a "$mvk/External/Vulkan-Headers/include/" "$PREFIX/include/"
     mesonb "$SRC/libepoxy" darwin -Ddefault_library=static -Dtests=false -Dglx=no -Degl=yes -Dx11=false
     # virglrenderer's build needs PyYAML
     python3 -m venv "$WORK/venv" && "$WORK/venv/bin/pip" -q install pyyaml
     PYTHON="$WORK/venv/bin/python3" mesonb "$SRC/virglrenderer" darwin -Ddefault_library=static \
-        -Dtests=false -Dcheck-gl-errors=false -Dvtest=false -Dplatforms=egl
+        -Dtests=false -Dcheck-gl-errors=false -Dvtest=false -Dplatforms=egl \
+        -Dvenus=true -Drender-server-mode=thread -Dvulkan-dload=true
 }
 
 configure_qemu() { # build-dir prefix target-list extra-args...

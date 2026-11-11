@@ -1,3 +1,13 @@
+From 13ac6d29dc1906a395bad3a76a8aae9117985f2a Mon Sep 17 00:00:00 2001
+From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
+Date: Wed, 11 Nov 2026 14:16:47 +0000
+Subject: [PATCH 1/5] util/anon_file: on iOS, fall back to a temporary file
+
+iOS apps without an app group may not create POSIX shared memory.
+---
+ src/mesa/util/anon_file.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
 diff --git a/src/mesa/util/anon_file.c b/src/mesa/util/anon_file.c
 index c3638917..8f7f99ee 100644
 --- a/src/mesa/util/anon_file.c
@@ -31,3 +41,562 @@ index c3638917..8f7f99ee 100644
  #elif defined(__OpenBSD__)
     char template[] = "/tmp/mesa-XXXXXXXXXX";
     fd = shm_mkstemp(template);
+-- 
+2.54.0 (Apple Git-157)
+
+
+From c307a867c18e8c67f76bb620c30c599a3ed414b2 Mon Sep 17 00:00:00 2001
+From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
+Date: Wed, 11 Nov 2026 14:16:47 +0000
+Subject: [PATCH 2/5] vrend: write gl_PointSize on GLES hosts
+
+GLES leaves the size of points undefined unless the last vertex stage
+writes gl_PointSize. ANGLE on Metal draws them huge: glamor's core-font
+text (drawn as points) became large black blocks. Write 1 (the GL default)
+when the guest's shader doesn't set a size.
+---
+ src/vrend/vrend_shader.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/src/vrend/vrend_shader.c b/src/vrend/vrend_shader.c
+index 39895cec..c4597722 100644
+--- a/src/vrend/vrend_shader.c
++++ b/src/vrend/vrend_shader.c
+@@ -2558,6 +2558,14 @@ static void handle_vertex_proc_exit(const struct dump_ctx *ctx,
+     if (!ctx->key->gs_present && !ctx->key->tes_present)
+        emit_prescale(glsl_strbufs);
+ 
++    /* GLES leaves the size of points undefined unless the last vertex stage
++     * writes gl_PointSize (desktop GL uses glPointSize, 1 by default); ANGLE
++     * on Metal then draws them huge. Guests that don't set a size per vertex
++     * get 1. */
++    if (ctx->cfg->use_gles && !ctx->has_pointsize_output &&
++        !ctx->key->gs_present && !ctx->key->tes_present)
++       emit_buf(glsl_strbufs, "gl_PointSize = 1.0;\n");
++
+     if (ctx->key->vs.fog_fixup_mask)
+        emit_fog_fixup_write(ctx, glsl_strbufs);
+ }
+@@ -5974,6 +5982,8 @@ iter_instruction(struct tgsi_iterate_context *iter,
+          emit_clip_dist_movs(ctx, &ctx->glsl_strbufs);
+          if (!ctx->key->gs_present) {
+             emit_prescale(&ctx->glsl_strbufs);
++            if (ctx->cfg->use_gles && !ctx->has_pointsize_output)
++               emit_buf(&ctx->glsl_strbufs, "gl_PointSize = 1.0;\n");
+          }
+       } else if (iter->processor.Processor == TGSI_PROCESSOR_FRAGMENT) {
+          handle_fragment_proc_exit(ctx, &ctx->glsl_strbufs);
+-- 
+2.54.0 (Apple Git-157)
+
+
+From c6452b055749d1c25a87fbff1d872c49c7e22ae0 Mon Sep 17 00:00:00 2001
+From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
+Date: Wed, 11 Nov 2026 14:16:47 +0000
+Subject: [PATCH 3/5] vrend: base vertex through EXT_base_instance; no
+ dual-source blend on ANGLE Metal
+
+- ANGLE on Metal has GL_EXT_base_instance but not
+  GL_EXT_draw_elements_base_vertex: indexed draws with a base vertex were
+  dropped. Use glDrawElementsInstancedBaseVertexBaseInstance instead.
+- ANGLE on Metal advertises GL_EXT_blend_func_extended but blending with
+  the second output does not work (glamor's Xft text was invisible):
+  don't use it there.
+- VREND_DISABLE_FEATURES=name,... for testing.
+---
+ src/vrend/vrend_renderer.c | 40 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 40 insertions(+)
+
+diff --git a/src/vrend/vrend_renderer.c b/src/vrend/vrend_renderer.c
+index e6ae0074..829b4ac8 100644
+--- a/src/vrend/vrend_renderer.c
++++ b/src/vrend/vrend_renderer.c
+@@ -1292,7 +1292,37 @@ static void vrend_dump_tgsi(const struct tgsi_token *tokens,
+    strbuf_free(&logger_buffer);
+ }
+ 
++static void init_features_impl(int gl_ver, int gles_ver);
+ static void init_features(int gl_ver, int gles_ver)
++{
++   init_features_impl(gl_ver, gles_ver);
++
++   /* ANGLE on Metal advertises GL_EXT_blend_func_extended, but blending
++    * with the second color output does not work (glamor's text, composited
++    * with dual-source blending, comes out invisible) */
++   const char *renderer = (const char *)glGetString(GL_RENDERER);
++   if (gles_ver && renderer && strstr(renderer, "ANGLE Metal Renderer"))
++      clear_feature(feat_dual_src_blend);
++
++   /* For testing: VREND_DISABLE_FEATURES=name,name (as in feature_list) */
++   const char *off = getenv("VREND_DISABLE_FEATURES");
++   if (off) {
++      for (enum features_id id = 0; id < feat_last; id++) {
++         const char *n = feature_list[id].log_name, *p = off;
++         size_t l = strlen(n);
++         while ((p = strstr(p, n))) {
++            if ((p == off || p[-1] == ',') && (p[l] == ',' || !p[l])) {
++               clear_feature(id);
++               virgl_info("feature %s disabled\n", n);
++               break;
++            }
++            p += l;
++         }
++      }
++   }
++}
++
++static void init_features_impl(int gl_ver, int gles_ver)
+ {
+    for (enum features_id id = 0; id < feat_last; id++) {
+       if (gl_ver >= feature_list[id].gl_ver ||
+@@ -6269,6 +6299,12 @@ int vrend_draw_vbo(struct vrend_context *ctx,
+                                                              info->instance_count, info->index_bias, info->start_instance);
+             } else if (has_feature(feat_draw_elements_base_vertex)) {
+                glDrawElementsInstancedBaseVertex(mode, info->count, elsz, (void *)(uintptr_t)sub_ctx->ib.offset, info->instance_count, info->index_bias);
++            } else if (has_feature(feat_base_instance)) {
++               /* e.g. ANGLE on Metal: GL_EXT_base_instance but not
++                * GL_EXT_draw_elements_base_vertex; its entry point takes a
++                * base vertex too */
++               glDrawElementsInstancedBaseVertexBaseInstance(mode, info->count, elsz, (void *)(uintptr_t)sub_ctx->ib.offset,
++                                                             info->instance_count, info->index_bias, 0);
+             } else {
+                return EINVAL;
+             }
+@@ -6278,7 +6314,11 @@ int vrend_draw_vbo(struct vrend_context *ctx,
+             } else {
+                glDrawElementsBaseVertex(mode, info->count, elsz, (void *)(uintptr_t)sub_ctx->ib.offset, info->index_bias);
+             }
++         } else if (has_feature(feat_base_instance)) {
++            glDrawElementsInstancedBaseVertexBaseInstance(mode, info->count, elsz, (void *)(uintptr_t)sub_ctx->ib.offset,
++                                                          1, info->index_bias, 0);
+          } else {
++            virgl_warn("draw with a base vertex, but the host has none\n");
+             return EINVAL;
+          }
+       } else if (info->instance_count > 0) {
+-- 
+2.54.0 (Apple Git-157)
+
+
+From 4187faf8f6040680323c7f567eae4f2385cf9c74 Mon Sep 17 00:00:00 2001
+From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
+Date: Wed, 11 Nov 2026 15:06:27 +0000
+Subject: [PATCH 4/5] Render server in a thread without eventfd (macOS, iOS):
+ retire fences, own fence table
+
+- Without an eventfd, VIRGL_RENDERER_THREAD_SYNC is dropped, so the
+  proxy's contexts get no sync thread; with VIRGL_RENDERER_ASYNC_FENCE_CB
+  still set, virgl_renderer_poll() skips them and their fences never
+  retired (the guest waited forever on any Venus sync file). Drop
+  ASYNC_FENCE_CB too there, so polling retires them.
+- In render-server-mode=thread the server and the VMM side shared the
+  global fence table: the server re-created it and destroyed it with its
+  last context, and the VMM side then crashed on it. The server has its
+  own table now.
+---
+ server/render_context.c   |   2 +
+ server/render_state.c     |   2 +
+ src/neptune/npt_context.c |   2 +
+ src/virgl_fence.c         | 154 ++++++++++++++++++++++++++++++++------
+ src/virgl_fence.h         |  19 +++++
+ src/virglrenderer.c       |   7 ++
+ 6 files changed, 162 insertions(+), 24 deletions(-)
+
+diff --git a/server/render_context.c b/server/render_context.c
+index e0b630d6..7a3656ee 100644
+--- a/server/render_context.c
++++ b/server/render_context.c
+@@ -13,6 +13,8 @@
+ 
+ #include "render_socket.h"
+ #include "render_state.h"
++/* the render server's own fence table */
++#define VIRGL_FENCE_SERVER_SIDE
+ #include "virgl_fence.h"
+ 
+ void
+diff --git a/server/render_state.c b/server/render_state.c
+index f0f54873..ef32df44 100644
+--- a/server/render_state.c
++++ b/server/render_state.c
+@@ -12,6 +12,8 @@
+ #endif
+ 
+ #include "render_context.h"
++/* the render server's own fence table */
++#define VIRGL_FENCE_SERVER_SIDE
+ #include "virgl_fence.h"
+ #include "virtgpu_drm.h"
+ 
+diff --git a/src/neptune/npt_context.c b/src/neptune/npt_context.c
+index fa6c7501..cc0c0694 100644
+--- a/src/neptune/npt_context.c
++++ b/src/neptune/npt_context.c
+@@ -27,6 +27,8 @@
+ #include "util/os_file.h"
+ #define XXH_INLINE_ALL
+ #include "util/xxhash.h"
++/* the render server's own fence table */
++#define VIRGL_FENCE_SERVER_SIDE
+ #include "virgl_fence.h"
+ 
+ static uint32_t
+diff --git a/src/virgl_fence.c b/src/virgl_fence.c
+index 801c8053..e26e6824 100644
+--- a/src/virgl_fence.c
++++ b/src/virgl_fence.c
+@@ -24,9 +24,26 @@ struct virgl_fence {
+    struct timespec timestamp; /* for hung-checking */
+ };
+ 
+-static struct virgl_fence last_signalled_fence = { .fd = -1 };
+-static struct hash_table_u64 *virgl_fence_table;
+-static mtx_t virgl_fence_table_lock;
++/*
++ * Two tables: the VMM side's (proxy, public API) and the render server's.
++ * They are separate processes unless the render server runs as threads in
++ * the VMM (render-server-mode=thread, as on iOS); then they must still not
++ * share a table: they key it differently, and the server initializes and
++ * destroys its table with its own contexts. The server's code is built
++ * with VIRGL_FENCE_SERVER_SIDE (see virgl_fence.h).
++ */
++struct virgl_fence_tables {
++   struct virgl_fence last_signalled_fence;
++   struct hash_table_u64 *table;
++   mtx_t lock;
++};
++
++static struct virgl_fence_tables virgl_fence_vmm = { .last_signalled_fence = { .fd = -1 } };
++static struct virgl_fence_tables virgl_fence_server = { .last_signalled_fence = { .fd = -1 } };
++
++#define last_signalled_fence (t->last_signalled_fence)
++#define virgl_fence_table (t->table)
++#define virgl_fence_table_lock (t->lock)
+ 
+ static void virgl_fence_table_cleanup_cb(struct hash_entry *entry)
+ {
+@@ -36,8 +53,8 @@ static void virgl_fence_table_cleanup_cb(struct hash_entry *entry)
+    free(fence);
+ }
+ 
+-void
+-virgl_fence_table_cleanup(void)
++static void
++virgl_fence_table_cleanup_in(struct virgl_fence_tables *t)
+ {
+    _mesa_hash_table_u64_destroy(virgl_fence_table,
+                                 virgl_fence_table_cleanup_cb);
+@@ -50,8 +67,8 @@ virgl_fence_table_cleanup(void)
+       close(last_signalled_fence.fd);
+ }
+ 
+-int
+-virgl_fence_table_init(void)
++static int
++virgl_fence_table_init_in(struct virgl_fence_tables *t)
+ {
+    virgl_fence_table = _mesa_hash_table_u64_create(NULL);
+    if (!virgl_fence_table)
+@@ -66,8 +83,9 @@ virgl_fence_table_init(void)
+ }
+ 
+ static void virgl_fence_table_retire_cb(UNUSED const void *key, void *data,
+-                                        UNUSED void *arg)
++                                        void *arg)
+ {
++   struct virgl_fence_tables *t = arg;
+    struct virgl_fence *fence = data;
+    bool retire = true;
+    int err = 0;
+@@ -109,13 +127,13 @@ static void virgl_fence_table_retire_cb(UNUSED const void *key, void *data,
+ }
+ 
+ static int
+-virgl_fence_set_fd_locked(uint64_t fence_id, int fd)
++virgl_fence_set_fd_locked(struct virgl_fence_tables *t, uint64_t fence_id, int fd)
+ {
+    struct virgl_fence *fence;
+ 
+    /* walk up all fences and retire signaled ones */
+    hash_table_u64_call_foreach(virgl_fence_table,
+-                               virgl_fence_table_retire_cb, NULL);
++                               virgl_fence_table_retire_cb, t);
+ 
+    fence = _mesa_hash_table_u64_search(virgl_fence_table, fence_id);
+    if (fence)
+@@ -143,13 +161,13 @@ virgl_fence_set_fd_locked(uint64_t fence_id, int fd)
+  * This function does not take ownership of the FD, caller is responsible
+  * for closing it. Function is thread-safe.
+  */
+-int
+-virgl_fence_set_fd(uint64_t fence_id, int fd)
++static int
++virgl_fence_set_fd_in(struct virgl_fence_tables *t, uint64_t fence_id, int fd)
+ {
+    int ret;
+ 
+    mtx_lock(&virgl_fence_table_lock);
+-   ret = virgl_fence_set_fd_locked(fence_id, fd);
++   ret = virgl_fence_set_fd_locked(t, fence_id, fd);
+    mtx_unlock(&virgl_fence_table_lock);
+ 
+    if (ret)
+@@ -166,8 +184,8 @@ virgl_fence_set_fd(uint64_t fence_id, int fd)
+  *
+  * Function is thread-safe.
+  */
+-int
+-virgl_fence_get_fd(uint64_t fence_id)
++static int
++virgl_fence_get_fd_in(struct virgl_fence_tables *t, uint64_t fence_id)
+ {
+    struct virgl_fence *fence;
+    int fd = -1;
+@@ -186,7 +204,7 @@ virgl_fence_get_fd(uint64_t fence_id)
+ /* Remove fence_id's entry and return its fd, or -1 if absent.  Caller owns
+  * the fd.  Caller holds virgl_fence_table_lock. */
+ static int
+-virgl_fence_take_fd_locked(uint64_t fence_id)
++virgl_fence_take_fd_locked(struct virgl_fence_tables *t, uint64_t fence_id)
+ {
+    struct virgl_fence *fence =
+       _mesa_hash_table_u64_search(virgl_fence_table, fence_id);
+@@ -215,11 +233,11 @@ virgl_fence_take_fd_locked(uint64_t fence_id)
+  *
+  * Function is thread-safe.
+  */
+-int
+-virgl_fence_take_fd(uint64_t fence_id)
++static int
++virgl_fence_take_fd_in(struct virgl_fence_tables *t, uint64_t fence_id)
+ {
+    mtx_lock(&virgl_fence_table_lock);
+-   const int fd = virgl_fence_take_fd_locked(fence_id);
++   const int fd = virgl_fence_take_fd_locked(t, fence_id);
+    mtx_unlock(&virgl_fence_table_lock);
+ 
+    return fd;
+@@ -236,11 +254,11 @@ virgl_fence_take_fd(uint64_t fence_id)
+  *
+  * Function is thread-safe.
+  */
+-void
+-virgl_fence_retire(uint64_t fence_id)
++static void
++virgl_fence_retire_in(struct virgl_fence_tables *t, uint64_t fence_id)
+ {
+    mtx_lock(&virgl_fence_table_lock);
+-   const int fd = virgl_fence_take_fd_locked(fence_id);
++   const int fd = virgl_fence_take_fd_locked(t, fence_id);
+    mtx_unlock(&virgl_fence_table_lock);
+ 
+    if (fd >= 0)
+@@ -256,8 +274,8 @@ virgl_fence_retire(uint64_t fence_id)
+  *
+  * Function is thread-safe.
+  */
+-int
+-virgl_fence_get_last_signalled_fence_fd(void)
++static int
++virgl_fence_get_last_signalled_fence_fd_in(struct virgl_fence_tables *t)
+ {
+    int fd = -1;
+ 
+@@ -270,3 +288,91 @@ virgl_fence_get_last_signalled_fence_fd(void)
+ 
+    return fd;
+ }
++
++#undef last_signalled_fence
++#undef virgl_fence_table
++#undef virgl_fence_table_lock
++
++void
++virgl_fence_table_cleanup(void)
++{
++   virgl_fence_table_cleanup_in(&virgl_fence_vmm);
++}
++
++void
++virgl_fence_srv_table_cleanup(void)
++{
++   virgl_fence_table_cleanup_in(&virgl_fence_server);
++}
++
++int
++virgl_fence_table_init(void)
++{
++   return virgl_fence_table_init_in(&virgl_fence_vmm);
++}
++
++int
++virgl_fence_srv_table_init(void)
++{
++   return virgl_fence_table_init_in(&virgl_fence_server);
++}
++
++int
++virgl_fence_set_fd(uint64_t fence_id, int fd)
++{
++   return virgl_fence_set_fd_in(&virgl_fence_vmm, fence_id, fd);
++}
++
++int
++virgl_fence_srv_set_fd(uint64_t fence_id, int fd)
++{
++   return virgl_fence_set_fd_in(&virgl_fence_server, fence_id, fd);
++}
++
++int
++virgl_fence_get_fd(uint64_t fence_id)
++{
++   return virgl_fence_get_fd_in(&virgl_fence_vmm, fence_id);
++}
++
++int
++virgl_fence_srv_get_fd(uint64_t fence_id)
++{
++   return virgl_fence_get_fd_in(&virgl_fence_server, fence_id);
++}
++
++int
++virgl_fence_take_fd(uint64_t fence_id)
++{
++   return virgl_fence_take_fd_in(&virgl_fence_vmm, fence_id);
++}
++
++int
++virgl_fence_srv_take_fd(uint64_t fence_id)
++{
++   return virgl_fence_take_fd_in(&virgl_fence_server, fence_id);
++}
++
++void
++virgl_fence_retire(uint64_t fence_id)
++{
++   virgl_fence_retire_in(&virgl_fence_vmm, fence_id);
++}
++
++void
++virgl_fence_srv_retire(uint64_t fence_id)
++{
++   virgl_fence_retire_in(&virgl_fence_server, fence_id);
++}
++
++int
++virgl_fence_get_last_signalled_fence_fd(void)
++{
++   return virgl_fence_get_last_signalled_fence_fd_in(&virgl_fence_vmm);
++}
++
++int
++virgl_fence_srv_get_last_signalled_fence_fd(void)
++{
++   return virgl_fence_get_last_signalled_fence_fd_in(&virgl_fence_server);
++}
+diff --git a/src/virgl_fence.h b/src/virgl_fence.h
+index 77ef1749..003fc748 100644
+--- a/src/virgl_fence.h
++++ b/src/virgl_fence.h
+@@ -9,6 +9,17 @@
+ #include <stdint.h>
+ #include <unistd.h>
+ 
++/* The render server's code uses its own table (see virgl_fence.c) */
++#ifdef VIRGL_FENCE_SERVER_SIDE
++#define virgl_fence_table_init virgl_fence_srv_table_init
++#define virgl_fence_table_cleanup virgl_fence_srv_table_cleanup
++#define virgl_fence_set_fd virgl_fence_srv_set_fd
++#define virgl_fence_get_fd virgl_fence_srv_get_fd
++#define virgl_fence_get_last_signalled_fence_fd virgl_fence_srv_get_last_signalled_fence_fd
++#define virgl_fence_take_fd virgl_fence_srv_take_fd
++#define virgl_fence_retire virgl_fence_srv_retire
++#endif
++
+ int virgl_fence_table_init(void);
+ void virgl_fence_table_cleanup(void);
+ int virgl_fence_set_fd(uint64_t fence_id, int fd);
+@@ -26,6 +37,14 @@ int virgl_fence_get_last_signalled_fence_fd(void);
+ int virgl_fence_take_fd(uint64_t fence_id);
+ void virgl_fence_retire(uint64_t fence_id);
+ 
++int virgl_fence_srv_table_init(void);
++void virgl_fence_srv_table_cleanup(void);
++int virgl_fence_srv_set_fd(uint64_t fence_id, int fd);
++int virgl_fence_srv_get_fd(uint64_t fence_id);
++int virgl_fence_srv_get_last_signalled_fence_fd(void);
++int virgl_fence_srv_take_fd(uint64_t fence_id);
++void virgl_fence_srv_retire(uint64_t fence_id);
++
+ /*
+  * virtio-gpu fences live on per-ring timelines, so a fence's identity is the
+  * (ring_index, seqno) pair: the seqno alone repeats across rings (every ring's
+diff --git a/src/virglrenderer.c b/src/virglrenderer.c
+index 71076727..75602089 100644
+--- a/src/virglrenderer.c
++++ b/src/virglrenderer.c
+@@ -839,6 +839,13 @@ int virgl_renderer_init(void *cookie, int flags, struct virgl_renderer_callbacks
+    if (!has_eventfd() || getenv("VIRGL_DISABLE_MT"))
+       flags &= ~VIRGL_RENDERER_THREAD_SYNC;
+ 
++   /* Without an eventfd (macOS, iOS) the render server's contexts have no
++    * sync thread to retire their fences asynchronously, and with
++    * VIRGL_RENDERER_ASYNC_FENCE_CB virgl_renderer_poll() skips them: their
++    * fences would never retire. Retire them by polling instead. */
++   if (!has_eventfd() && (flags & VIRGL_RENDERER_RENDER_SERVER))
++      flags &= ~VIRGL_RENDERER_ASYNC_FENCE_CB;
++
+    if (state.client_initialized && (state.cookie != cookie ||
+                                     state.flags != flags ||
+                                     state.cbs != cbs)) {
+-- 
+2.54.0 (Apple Git-157)
+
+
+From 86de1bee7f49b7f9600fb08e66b734ce99609d01 Mon Sep 17 00:00:00 2001
+From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
+Date: Wed, 11 Nov 2026 15:06:27 +0000
+Subject: [PATCH 5/5] vkr: on Apple systems, load MoltenVK next to the library
+ (or VKR_VULKAN_LIBRARY)
+
+iOS apps embed MoltenVK.framework in their Frameworks folder; with
+vulkan-dload no Vulkan loader is needed.
+---
+ src/venus/vkr_library.c | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/src/venus/vkr_library.c b/src/venus/vkr_library.c
+index dc1f42c4..133ef806 100644
+--- a/src/venus/vkr_library.c
++++ b/src/venus/vkr_library.c
+@@ -6,6 +6,7 @@
+ #include "vkr_common.h"
+ 
+ #include <dlfcn.h>
++#include <stdlib.h>
+ 
+ #include "vkr_library.h"
+ 
+@@ -43,7 +44,18 @@ vkr_library_load(struct vulkan_library *lib)
+       return true;
+ 
+ #ifdef __APPLE__
+-   lib->handle = dlopen("libvulkan.dylib", RTLD_NOW | RTLD_LOCAL);
++   /* A given library (VKR_VULKAN_LIBRARY), then MoltenVK next to the library
++    * this is linked into (iOS apps embed it in their Frameworks folder; no
++    * Vulkan loader is needed), then the usual names */
++   const char *path = getenv("VKR_VULKAN_LIBRARY");
++   if (path)
++      lib->handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
++   if (lib->handle == NULL)
++      lib->handle = dlopen("@loader_path/MoltenVK.framework/MoltenVK", RTLD_NOW | RTLD_LOCAL);
++   if (lib->handle == NULL)
++      lib->handle = dlopen("@loader_path/libMoltenVK.dylib", RTLD_NOW | RTLD_LOCAL);
++   if (lib->handle == NULL)
++      lib->handle = dlopen("libvulkan.dylib", RTLD_NOW | RTLD_LOCAL);
+    if (lib->handle == NULL)
+       lib->handle = dlopen("libvulkan.1.dylib", RTLD_NOW | RTLD_LOCAL);
+    if (lib->handle == NULL)
+-- 
+2.54.0 (Apple Git-157)
+

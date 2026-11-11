@@ -14,6 +14,7 @@ public final class VMSettings: NSObject {
     private static let memoryKey = "VM Memory"
     private static let cpuKey = "VM CPUs"
     private static let gpuKey = "VM GPU Acceleration"
+    private static let vulkanKey = "VM Vulkan"
 
     /// RAM in this device, in GB (rounded, so 2.8 GB of usable memory is 3).
     @objc public static var deviceMemoryGB: Int {
@@ -122,12 +123,26 @@ public final class VMSettings: NSObject {
             Bundle.main.privateFrameworksURL!.appendingPathComponent("libGLESv2.dylib").path)
     }
 
+    /// Whether this build has MoltenVK (Vulkan over Metal), for Venus.
+    @objc public static var vulkanAvailable: Bool {
+        FileManager.default.fileExists(atPath:
+            Bundle.main.privateFrameworksURL!.appendingPathComponent("MoltenVK.framework/MoltenVK").path)
+    }
+
     /// GPU acceleration for the Desktop (VirGL: the guest's OpenGL drawn
     /// with Metal), chosen by the user; off by default. Linux cannot be saved
     /// for an instant resume while it is on (QEMU cannot save virgl's state).
     @objc public static var gpuAcceleration: Bool {
         get { gpuAvailable && UserDefaults.standard.bool(forKey: gpuKey) }
         set { UserDefaults.standard.set(newValue, forKey: gpuKey) }
+    }
+
+    /// Vulkan for Linux (Venus, on MoltenVK), with GPU acceleration;
+    /// experimental and off by default. Linux is paused while iSH+ is in the
+    /// background, as iOS allows no GPU work then.
+    @objc public static var vulkan: Bool {
+        get { gpuAcceleration && vulkanAvailable && UserDefaults.standard.bool(forKey: vulkanKey) }
+        set { UserDefaults.standard.set(newValue, forKey: vulkanKey) }
     }
 
     /// "1 GB", "1.25 GB", "512 MB"

@@ -1,0 +1,117 @@
+diff --git a/spirv_msl.cpp b/spirv_msl.cpp
+index d4252fcf..ecc19f02 100644
+--- a/spirv_msl.cpp
++++ b/spirv_msl.cpp
+@@ -2133,6 +2133,20 @@ void CompilerMSL::emit_mesh_wrapper()
+ 
+ 		for (auto &resource : resources)
+ 		{
++			// An array of buffers is passed as its elements, as the entry
++			// point declares them (name_0, name_1, ...)
++			auto &rtype = get_variable_data_type(*resource.var);
++			if (resource.basetype == SPIRType::Struct && !rtype.array.empty() &&
++			    rtype.array.size() == 1)
++			{
++				uint32_t array_size = get_resource_array_size(rtype, resource.var->self);
++				for (uint32_t i = 0; i < array_size; ++i)
++				{
++					statement(need_comma ? ", " : "", resource.name, "_", convert_to_string(i));
++					need_comma = true;
++				}
++				continue;
++			}
+ 			statement(need_comma ? ", " : "", resource.name);
+ 			need_comma = true;
+ 		}
+@@ -10165,9 +10179,21 @@ void CompilerMSL::access_chain_internal_append_index(std::string &expr, uint32_t
+ 			bool is_runtime_array = is_runtime_size_array(*type);
+ 			bool is_fixed_array = is_array(*type) && !is_runtime_array;
+ 
++			// The first index into an array of buffers (a descriptor array)
++			// selects the buffer: bounded by the array's declared length, not
++			// by a buffer's size.
++			bool descriptor_index = is_array(get_variable_data_type(*var)) &&
++			                        expr.find_first_of('[') == string::npos;
++			if (descriptor_index && is_runtime_array)
++			{
++				CompilerGLSL::access_chain_internal_append_index(expr, base, type, flags, access_chain_is_arrayed, index);
++				return;
++			}
++
+ 			if (is_runtime_array || (is_fixed_array && !index_is_literal))
+ 			{
+-				string count_expr = get_robust_buffer_array_length(*type, var->self);
++				string count_expr = descriptor_index ? to_string(to_array_size_literal(*type)) :
++				                                       get_robust_buffer_array_length(*type, var->self, expr);
+ 				string idx_expr = to_unpacked_expression(index, register_expression_read);
+ 
+ 				// Create clamped index: min(idx, max(count - 1, 0))
+@@ -14829,11 +14855,43 @@ string CompilerMSL::get_robust_image_zero_value(const SPIRType &result_type, uin
+ 	}
+ }
+ 
+-string CompilerMSL::get_robust_buffer_array_length(const SPIRType &type, uint32_t var_id)
++// The size of the buffer an access chain is in. For an array of buffers (a
++// descriptor array), that's the accessed element's: its size is indexed
++// like the buffer in the chain (name[index]... -> nameBufferSize[index]).
++string CompilerMSL::get_robust_buffer_size_expression(uint32_t var_id, const string &chain_expr)
++{
++	auto &var = get<SPIRVariable>(var_id);
++	if (!chain_expr.empty() && is_array(get_variable_data_type(var)))
++	{
++		auto open = chain_expr.find_first_of('[');
++		if (open != string::npos)
++		{
++			int depth = 0;
++			for (size_t i = open; i < chain_expr.size(); i++)
++			{
++				if (chain_expr[i] == '[')
++					depth++;
++				else if (chain_expr[i] == ']' && --depth == 0)
++				{
++					string buffer_expr = chain_expr.substr(0, open);
++					if (buffer_expr.size() >= 2 && buffer_expr[0] == '(' && buffer_expr[1] == '*')
++						buffer_expr = buffer_expr.substr(2);
++					for (auto &c : buffer_expr)
++						if (c == '.')
++							c = '_';
++					return buffer_expr + buffer_size_name_suffix + chain_expr.substr(open, i - open + 1);
++				}
++			}
++		}
++	}
++	return to_buffer_size_expression(var_id);
++}
++
++string CompilerMSL::get_robust_buffer_array_length(const SPIRType &type, uint32_t var_id, const string &chain_expr)
+ {
+ 	if (is_runtime_size_array(type))
+ 	{
+-		string size_expr = to_buffer_size_expression(var_id);
++		string size_expr = get_robust_buffer_size_expression(var_id, chain_expr);
+ 		uint32_t stride = get_decoration(type.self, DecorationArrayStride);
+ 		if (stride == 0 && type.parent_type)
+ 		{
+@@ -14849,7 +14907,7 @@ string CompilerMSL::get_robust_buffer_array_length(const SPIRType &type, uint32_
+ 		string declared_length = to_string(to_array_size_literal(type));
+ 		if (msl_options.robust_buffer_access2)
+ 		{
+-			string size_expr = to_buffer_size_expression(var_id);
++			string size_expr = get_robust_buffer_size_expression(var_id, chain_expr);
+ 			if (!size_expr.empty())
+ 			{
+ 				uint32_t stride = get_decoration(type.self, DecorationArrayStride);
+diff --git a/spirv_msl.hpp b/spirv_msl.hpp
+index 94a23dea..f586625a 100644
+--- a/spirv_msl.hpp
++++ b/spirv_msl.hpp
+@@ -1158,7 +1158,8 @@ protected:
+ 	                                          const std::string &lod_expr, bool include_null_check = true);
+ 	std::string get_robust_image_zero_value(const SPIRType &result_type, uint32_t format_components);
+ 	// Robust buffer access helpers for robustBufferAccess2
+-	std::string get_robust_buffer_array_length(const SPIRType &type, uint32_t var_id);
++	std::string get_robust_buffer_array_length(const SPIRType &type, uint32_t var_id, const std::string &chain_expr = std::string());
++	std::string get_robust_buffer_size_expression(uint32_t var_id, const std::string &chain_expr);
+ 
+ 	bool is_sample_rate() const;
+ 	bool is_intersection_query() const;

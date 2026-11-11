@@ -87,6 +87,28 @@ udev_db() {
     done
 }
 
+# The GPU has 3D (iSH+'s GPU acceleration: virgl, and venus with it), and
+# Mesa has its driver: Xorg then draws with OpenGL (glamor), which also gives
+# the desktop's programs OpenGL. Otherwise it draws in software. (The render
+# node exists without 3D too; the driver's debugfs features tell.)
+gpu_3d() {
+    [ -e /dev/dri/renderD128 ] || return 1
+    f=$($B ls /sys/kernel/debug/dri/*/virtio-gpu-features 2>/dev/null | $B head -1)
+    if [ -z "$f" ]; then
+        $B mount -t debugfs debugfs /sys/kernel/debug 2>/dev/null
+        f=$($B ls /sys/kernel/debug/dri/*/virtio-gpu-features 2>/dev/null | $B head -1)
+    fi
+    if [ -n "$f" ]; then
+        $B grep -Eq '^virgl +: yes' "$f" || return 1
+    else
+        $B dmesg | $B grep -q 'features: +virgl' || return 1
+    fi
+    for d in /usr/lib/*/dri /usr/lib/dri /usr/lib64/dri; do
+        [ -e "$d/virtio_gpu_dri.so" ] && return 0
+    done
+    return 1
+}
+
 start() {
     running && return 0
     xorg=$(xorg) || { echo "Xorg is not installed."; return 1; }
@@ -98,7 +120,10 @@ start() {
     i=0; while [ ! -e /dev/dri/card0 ] && [ $i -lt 50 ]; do $B sleep 0.1; i=$((i + 1)); done
     $B sleep 0.5
     udev_db
-    cat > $R/xorg.conf <<'EOF'
+    accel=none
+    gpu_3d && accel=glamor
+    echo "$accel" > $R/accel
+    cat > $R/xorg.conf <<EOF
 Section "ServerFlags"
     Option "AutoAddGPU" "false"
     Option "BlankTime" "0"
@@ -109,7 +134,7 @@ EndSection
 Section "Device"
     Identifier "iSH+ display"
     Driver "modesetting"
-    Option "AccelMethod" "none"
+    Option "AccelMethod" "$accel"
 EndSection
 EOF
     # Xorg allows -config only in its own directories, or as root

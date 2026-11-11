@@ -38,6 +38,7 @@
 		62A737F846F8EF35046F8491 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 599290A47C2DDDD7A435DFA3 /* Foundation.framework */; };
 		A1E6B0D10000000000000002 /* libEGL.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = A1E6B0D10000000000000001 /* libEGL.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		A1E6B0D10000000000000004 /* libGLESv2.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = A1E6B0D10000000000000003 /* libGLESv2.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		A1E6B0D10000000000000006 /* MoltenVK.framework in Embed QEMU */ = {isa = PBXBuildFile; fileRef = A1E6B0D10000000000000005 /* MoltenVK.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		63A76CAC87E1FE87EACBF434 /* libqemu-aarch64-softmmu.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = DF4620D19DC63C97C4EDA00A /* libqemu-aarch64-softmmu.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		A7D0D0E00000000000000003 /* RamDonor.m in Sources */ = {isa = PBXBuildFile; fileRef = A7D0D0E00000000000000001 /* RamDonor.m */; };
 		A7D0D0E00000000000000005 /* HelperHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = A7D0D0E00000000000000004 /* HelperHandler.m */; };
@@ -170,6 +171,7 @@
 			files = (
 				63A76CAC87E1FE87EACBF434 /* libqemu-aarch64-softmmu.dylib in Embed QEMU */,
 				E4ABA6762629329C8F07E452 /* libqemu-aarch64-softmmu-tci.dylib in Embed QEMU */,
+				A1E6B0D10000000000000006 /* MoltenVK.framework in Embed QEMU */,
 				A1E6B0D10000000000000004 /* libGLESv2.dylib in Embed QEMU */,
 				A1E6B0D10000000000000002 /* libEGL.dylib in Embed QEMU */,
 				2352FD9E3A32D954A010933D /* StikJIT.xcframework in Embed QEMU */,
@@ -339,6 +341,7 @@
 		DD81969CD8758D3D51CF4C70 /* ish.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = ish.png; path = ish.png; sourceTree = "<group>"; };
 		A1E6B0D10000000000000001 /* libEGL.dylib */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = "compiled.mach-o.dylib"; name = libEGL.dylib; path = "build-qemu/sysroot-ios-arm64/lib/libEGL.dylib"; sourceTree = SOURCE_ROOT; };
 		A1E6B0D10000000000000003 /* libGLESv2.dylib */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = "compiled.mach-o.dylib"; name = libGLESv2.dylib; path = "build-qemu/sysroot-ios-arm64/lib/libGLESv2.dylib"; sourceTree = SOURCE_ROOT; };
+		A1E6B0D10000000000000005 /* MoltenVK.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVK.framework; path = "build-qemu/sysroot-ios-arm64/lib/MoltenVK.framework"; sourceTree = SOURCE_ROOT; };
 		DF4620D19DC63C97C4EDA00A /* libqemu-aarch64-softmmu.dylib */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = "compiled.mach-o.dylib"; name = "libqemu-aarch64-softmmu.dylib"; path = "build-qemu/sysroot-ios-arm64/lib/libqemu-aarch64-softmmu.dylib"; sourceTree = SOURCE_ROOT; };
 		E6D2D852F3D9B73E99D70407 /* DistroSetupViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DistroSetupViewController.swift; sourceTree = "<group>"; };
 		EF79ECEFDBB2821EB483E54D /* PortForwarder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortForwarder.swift; sourceTree = "<group>"; };
@@ -379,6 +382,7 @@
 			children = (
 				DF4620D19DC63C97C4EDA00A /* libqemu-aarch64-softmmu.dylib */,
 				477E1313748964CA68B92D2A /* libqemu-aarch64-softmmu-tci.dylib */,
+				A1E6B0D10000000000000005 /* MoltenVK.framework */,
 				A1E6B0D10000000000000003 /* libGLESv2.dylib */,
 				A1E6B0D10000000000000001 /* libEGL.dylib */,
 				81BD35790524254A633600D3 /* StikJIT.xcframework */,

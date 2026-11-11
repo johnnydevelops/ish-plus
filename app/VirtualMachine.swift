@@ -9,6 +9,7 @@
 //
 
 import Darwin
+import UIKit
 import Foundation
 import os
 
@@ -143,6 +144,10 @@ public final class VirtualMachine: NSObject {
     /// The VM has the GPU (virtio-gpu-gl): chosen when it starts, only with
     /// JIT (the interpreter build has no OpenGL).
     @objc public private(set) var gpuAccelerated = false
+    /// ... and Vulkan (Venus)
+    @objc public private(set) var vulkan = false
+    typealias GPUPause = @convention(c) (Int32) -> Void
+    private var gpuPause: GPUPause?
     @objc public private(set) var hasStopped = false
     /// Linux's RAM, in MB: the setting, unless memory donors fell short
     private var memoryMB = VMSettings.memoryMB
@@ -268,6 +273,7 @@ public final class VirtualMachine: NSObject {
         let gpuFlag = (try? String(contentsOf: VirtualMachine.guestDirectory.appendingPathComponent("gpu"),
                                    encoding: .utf8))?.hasPrefix("1") ?? false
         gpuAccelerated = (VMSettings.gpuAcceleration || gpuFlag) && VMSettings.gpuAvailable && !interpreted
+        vulkan = gpuAccelerated && VMSettings.vulkan
 
         let library = VirtualMachine.library(interpreted: interpreted)
         guard let handle = dlopen(library.path, RTLD_NOW | RTLD_LOCAL),
@@ -285,6 +291,12 @@ public final class VirtualMachine: NSObject {
         let qemuCleanup = unsafeBitCast(cleanupSymbol, to: QemuCleanup.self)
         if let symbol = dlsym(handle, "ishplus_console_resize") {
             consoleResize = unsafeBitCast(symbol, to: ConsoleResize.self)
+        }
+        if let symbol = dlsym(handle, "ishplus_gpu_pause") {
+            gpuPause = unsafeBitCast(symbol, to: GPUPause.self)
+        }
+        if gpuAccelerated {
+            observeBackgroundForGPU()
         }
         if let symbol = dlsym(handle, "ishplus_9p_set_owner") {
             shareOwner = unsafeBitCast(symbol, to: ShareOwner.self)
@@ -441,6 +453,33 @@ public final class VirtualMachine: NSObject {
         }
     }
 
+    // MARK: GPU in the background
+
+    /// iOS refuses GPU work from apps in the background (Metal command
+    /// buffers fail, which would lose the guest's GPU). Before iSH+ enters
+    /// the background, QEMU holds the guest's GPU commands and finishes what
+    /// was submitted; with Vulkan, Linux is paused too (Venus runs its
+    /// command rings on its own threads). Undone when iSH+ is back.
+    private func observeBackgroundForGPU() {
+        let center = NotificationCenter.default
+        center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self, self.isRunning else { return }
+            if self.vulkan {
+                _ = QEMUMonitor.run("stop")
+            }
+            self.gpuPause?(1)
+            vmLog("GPU paused for the background")
+        }
+        center.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self, self.isRunning else { return }
+            self.gpuPause?(0)
+            if self.vulkan {
+                _ = QEMUMonitor.run("cont")
+            }
+            vmLog("GPU resumed")
+        }
+    }
+
     private func makeArguments() -> [String] {
         let guest = VirtualMachine.guestDirectory
         func file(_ name: String) -> String { guest.appendingPathComponent(name).path }
@@ -506,7 +545,11 @@ public final class VirtualMachine: NSObject {
             // in virglrenderer on ANGLE (Metal), and egl-headless reads each
             // frame back into the console's surface, which DesktopDisplay
             // shows as before.
-            "-device", gpuAccelerated ? "virtio-gpu-gl-pci" : "virtio-gpu-pci",
+            // With Vulkan, Venus: host-visible memory (the guest maps
+            // MoltenVK's buffers through a 1 GB window; nothing is allocated
+            // for it) and blob resources.
+            "-device", vulkan ? "virtio-gpu-gl-pci,hostmem=1G,blob=true,venus=true"
+                : gpuAccelerated ? "virtio-gpu-gl-pci" : "virtio-gpu-pci",
             "-device", "virtio-tablet-pci",
             "-device", "virtio-keyboard-pci",
             "-display", gpuAccelerated ? "egl-headless" : "none",
