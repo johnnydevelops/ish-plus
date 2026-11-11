@@ -223,6 +223,25 @@ public final class VMSettingsViewController: UITableViewController {
     }
 
     @objc private func gpuChanged() {
+        guard gpuSwitch.isOn else {
+            applyGPU()
+            return
+        }
+        // Turning it on gives up instant resume: say so first
+        let alert = UIAlertController(
+            title: "Turn On GPU Acceleration?",
+            message: "While GPU acceleration is on, instant resume is unavailable: if iOS closes iSH+ while it is in the background, Linux starts again instead of resuming where you were. Turn it off again to get instant resume back.",
+            preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
+            self?.gpuSwitch.setOn(false, animated: true)
+        })
+        alert.addAction(UIAlertAction(title: "Turn On", style: .default) { [weak self] _ in
+            self?.applyGPU()
+        })
+        present(alert, animated: true)
+    }
+
+    private func applyGPU() {
         VMSettings.gpuAcceleration = gpuSwitch.isOn
         vulkanSwitch.isEnabled = gpuSwitch.isOn
         vulkanSwitch.setOn(VMSettings.vulkan, animated: true)
