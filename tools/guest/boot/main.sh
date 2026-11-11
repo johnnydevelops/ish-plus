@@ -48,11 +48,12 @@ if [ -d "$home" ] && [ ! -e "$home/iOS" ]; then
     [ -n "$user" ] && $B chown -h "$user:" "$home/iOS"
 fi
 # Developer channel, only when Shared/.ishplus-dev exists: runs cmd.sh as
-# root whenever its first line changes, output in out.txt (lets commands
+# root whenever its first line changes after boot, output in out.txt (lets commands
 # run without restarting iSH+, e.g. while switching VPNs)
 if [ -d /mnt/ios/.ishplus-dev ]; then
     (
-        D=/mnt/ios/.ishplus-dev; last=
+        # Only commands sent from now on (not the last one, at every boot)
+        D=/mnt/ios/.ishplus-dev; last=$($B head -1 $D/cmd.sh 2>/dev/null)
         while :; do
             id=$($B head -1 $D/cmd.sh 2>/dev/null)
             if [ -n "$id" ] && [ "$id" != "$last" ]; then
