@@ -8,6 +8,7 @@ the GitHub releases with `gh`), then commit source.json.
 import json
 import os
 import plistlib
+import re
 import subprocess
 import sys
 
@@ -26,6 +27,14 @@ def gh(path):
 def at_tag(tag, path):
     return plistlib.loads(subprocess.run(["git", "-C", ROOT, "show", f"{tag}:{path}"], check=True,
                                          capture_output=True).stdout)
+
+
+def build_number(tag):
+    """CURRENT_PROJECT_VERSION at the tag (CFBundleVersion)."""
+    project = subprocess.run(["git", "-C", ROOT, "show", f"{tag}:iSH.xcodeproj/project.pbxproj"],
+                             check=True, capture_output=True, text=True).stdout
+    match = re.search(r"CURRENT_PROJECT_VERSION = (\d+);", project)
+    return match.group(1) if match else "1"
 
 
 def privacy_descriptions(tag):
@@ -47,9 +56,13 @@ def main():
         ipa = next((a for a in release["assets"] if a["name"].endswith(".ipa")), None)
         if ipa is None:
             continue
+        tag = release["tag_name"]
         versions.append({
-            "tag": release["tag_name"],
-            "version": release["tag_name"].lstrip("v"),
+            "tag": tag,
+            # The app's own version (release candidates share it: "1.0.0" for
+            # v1.0.0-rc1), and its build number, which tells them apart
+            "version": tag.lstrip("v").split("-")[0],
+            "buildVersion": build_number(tag),
             "date": release["published_at"],
             "localizedDescription": release["body"] or "",
             "downloadURL": ipa["browser_download_url"],
