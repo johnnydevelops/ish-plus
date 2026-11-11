@@ -36,6 +36,8 @@ updates, or add `https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/
   example `apt install xorg xfce4`) and the sessions menu gets a **Desktop
   Session**, with touch controls like UTM's: trackpad or touch mode, tap to
   click, two-finger tap to right-click, two-finger scroll, pinch to zoom.
+- **GPU acceleration** (Settings > Linux VM > Graphics, off by default) for
+  the desktop and for OpenGL and Vulkan programs: see below.
 - **Instant resume.** Without "Keep Running in Background", Linux is saved
   when iSH+ goes to the background; if iOS closes iSH+, you can resume where
   you were.
@@ -88,6 +90,28 @@ keys. For security keys, sign with a paid account using a sideloader that
 keeps the app's entitlements (for example Sideloadly, or Feather with your own
 certificate and a provisioning profile that includes NFC Tag Reading).
 
+## GPU acceleration
+
+With **GPU Acceleration** on (Settings > Linux VM > Graphics), Linux gets a
+virtual GPU (virtio-gpu with [VirGL](https://docs.mesa3d.org/drivers/virgl/)):
+its OpenGL runs on the iPad's GPU through ANGLE and Metal, the desktop's X
+server draws with it (glamor), and the screen goes to iSH+ as GPU surfaces,
+with no copies. OpenGL programs (`glxgears`, `glxinfo -B` from `mesa-utils`)
+use it as they are.
+
+**Vulkan** (experimental, a second switch) adds Venus: Linux's Vulkan runs on
+the GPU through [MoltenVK](https://github.com/KhronosGroup/MoltenVK), and
+OpenGL 3.1 is also available through it with zink
+(`MESA_LOADER_DRIVER_OVERRIDE=zink`). Install `mesa-vulkan-drivers` and
+`vulkan-tools` (`vulkaninfo`, `vkcube`) in Linux. On A13 and older chips,
+which have no Metal mesh shaders, Vulkan has no geometry shaders, so zink
+draws flat-shaded faces with the first vertex's colour rather than the last
+one's.
+
+Instant resume is not available with GPU acceleration, and iSH+ pauses the
+GPU while it is in the background. Both switches take effect when Linux
+restarts.
+
 ## Building
 
 You need a Mac with Xcode 27 and [Homebrew](https://brew.sh):
@@ -97,7 +121,9 @@ brew install meson ninja pkg-config glib squashfs patchelf llvm
 rustup target add aarch64-apple-ios
 git clone --recurse-submodules https://github.com/johnnydevelops/ish-plus.git
 cd ish-plus
-tools/build-qemu-ios.sh      # QEMU and its libraries for iOS (deps/qemu)
+tools/build-qemu-ios.sh      # QEMU and its libraries for iOS (deps/qemu),
+                             # with GPU acceleration (ANGLE, virglrenderer,
+                             # MoltenVK); without it: ... fetch deps qemu qemu-tci
 tools/fetch-stikjit.sh       # StikJIT, for the JIT helper
 tools/make-guest-kernel.sh   # the Linux kernel, initramfs and modules
 tools/make-guest-support.sh  # the guest support disk (FEX, iSH+'s init and tools)
@@ -142,6 +168,13 @@ used with QEMU and Linux: see `LICENSE.md`. It builds on:
 - [iSH](https://github.com/ish-app/ish) by Theodore Dubois and contributors
 - [QEMU](https://www.qemu.org) (GPL-2.0) and [UTM](https://github.com/utmapp/UTM)'s
   iOS work on it, [libslirp](https://gitlab.freedesktop.org/slirp/libslirp)
+- For GPU acceleration, [UTM](https://github.com/utmapp/UTM)'s forks of
+  [virglrenderer](https://gitlab.freedesktop.org/virgl/virglrenderer) (MIT),
+  [ANGLE](https://chromium.googlesource.com/angle/angle) (BSD-3-Clause, from
+  UTM's WebKit), [libepoxy](https://github.com/anholt/libepoxy) (MIT) and
+  [MoltenVK](https://github.com/KhronosGroup/MoltenVK) with
+  [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) (Apache-2.0),
+  with iSH+'s patches in `tools/qemu-ios-patches`
 - [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) (MIT)
 - [StikJIT](https://github.com/StikDebug/StikJIT) (MPL-2.0), downloaded at
   build time, and [idevice](https://github.com/jkcoxson/idevice) (MIT)
