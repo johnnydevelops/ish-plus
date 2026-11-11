@@ -161,7 +161,11 @@ configure_qemu() { # build-dir prefix target-list extra-args...
 # JIT build: libqemu-{aarch64,x86_64}-softmmu.dylib
 stage_qemu() {
     log "Building QEMU (deps/qemu)"
-    configure_qemu "$WORK/qemu-build" "$PREFIX" aarch64-softmmu,x86_64-softmmu
+    # -O3 and link-time optimization: about 10% faster guests, mostly from
+    # inlining the lookup QEMU does at every guest indirect branch (it spans
+    # several files); without QOM's runtime type checks on every cast.
+    configure_qemu "$WORK/qemu-build" "$PREFIX" aarch64-softmmu,x86_64-softmmu \
+        --enable-lto --disable-qom-cast-debug --extra-cflags=-O3
     # Debug info and local symbols: about half the size (exports stay)
     xcrun strip -x -S "$PREFIX/lib/libqemu-aarch64-softmmu.dylib"
 }
