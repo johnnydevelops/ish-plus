@@ -3,7 +3,7 @@
 //  iSH+
 //
 //  The Linux VM's memory and CPU count, chosen by the user (Settings > Linux
-//  VM) within what this iPad can run. Applied when the VM starts.
+//  VM) within what this device can run. Applied when the VM starts.
 //
 
 import Foundation
@@ -14,7 +14,7 @@ public final class VMSettings: NSObject {
     private static let memoryKey = "VM Memory"
     private static let cpuKey = "VM CPUs"
 
-    /// RAM in this iPad, in GB (rounded, so 2.8 GB of usable memory is 3).
+    /// RAM in this device, in GB (rounded, so 2.8 GB of usable memory is 3).
     @objc public static var deviceMemoryGB: Int {
         Int((Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824).rounded())
     }
@@ -42,21 +42,25 @@ public final class VMSettings: NSObject {
     /// QEMU's own memory besides the VM's: its translated code cache
     /// (256 MB), its code and devices, the app.
     private static let qemuOverheadMB = 450
-    /// Kept free, so iOS does not end iSH+ at the edge.
-    private static let marginMB = 150
+    /// Kept free, so iOS does not end iSH+ at the edge: 10% of the limit, at
+    /// least 150 MB (iOS lowers the limit under memory pressure).
+    private static var marginMB: Int { max(150, processMemoryLimitMB / 10) }
 
     /// The most memory the VM can have here: iSH+'s memory limit, less QEMU's
-    /// own and a margin (about 1.2 GB on a 3 GB iPad), at least 512 MB.
+    /// own and a margin (about 1.2 GB on a 3 GB iPad, 5 GB on a 12 GB iPhone),
+    /// at least 512 MB.
     @objc public static var maximumMemoryMB: Int {
         max(512, (processMemoryLimitMB - qemuOverheadMB - marginMB) / 16 * 16)
     }
 
-    /// Automatic memory (the default): from the RAM, 57% less 650 MB in
-    /// 256 MB steps (1 GB on 3 GB iPads, 1.5 GB on 4 GB, 2.5 GB on 6 GB,
-    /// 3.5 GB on 8 GB), within the maximum.
+    /// Automatic memory (the default): from the RAM, 57% less 650 MB, but at
+    /// most 60% of iSH+'s memory limit, in 256 MB steps: 1 GB on a 3 GB iPad
+    /// (limit ~1.85 GB), 3.5 GB on a 12 GB iPhone (limit ~6.1 GB; the VM
+    /// filling 5.5 GB there got iSH+ ended).
     @objc public static var automaticMemoryMB: Int {
         let estimate = Int(Double(ProcessInfo.processInfo.physicalMemory) / 1_048_576 * 0.57) - 650
-        return min(maximumMemoryMB, max(512, estimate / 256 * 256))
+        let safe = processMemoryLimitMB * 6 / 10
+        return min(maximumMemoryMB, max(512, min(estimate, safe) / 256 * 256))
     }
 
     /// The memory the user chose, or 0 for automatic.

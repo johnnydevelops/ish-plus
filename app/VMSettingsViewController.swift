@@ -22,6 +22,16 @@ public final class VMSettingsViewController: UITableViewController {
     private static let memoryStep = 256
     /// What the running VM was started with, to tell when a restart is needed.
     private let startedWith = (VMSettings.memoryMB, VMSettings.cpuCount)
+    /// The "Quit iSH+ to Apply" row is shown
+    private var showingRestart = false
+
+    // The cells with controls are made once and never reloaded: a control
+    // moved between two cells while one replaced the other (a reload while
+    // the switch was changing) froze UIKit in a layout loop (#6).
+    private lazy var automaticCell = UITableViewCell(style: .default, reuseIdentifier: nil)
+    private lazy var memoryCell = UITableViewCell(style: .default, reuseIdentifier: nil)
+    private lazy var networkCell = UITableViewCell(style: .default, reuseIdentifier: nil)
+    private let memoryTitle = UILabel()
 
     @objc public init() {
         super.init(style: .insetGrouped)
@@ -57,26 +67,80 @@ public final class VMSettingsViewController: UITableViewController {
                          UIBarButtonItem(systemItem: .done, primaryAction: UIAction { [weak self] _ in self?.view.endEditing(true) })]
         toolbar.sizeToFit()
         memoryField.inputAccessoryView = toolbar
+        buildControlCells()
         updateMemoryControls()
+        showingRestart = needsRestart
         NotificationCenter.default.addObserver(self, selector: #selector(portsChanged),
                                                name: PortForwarder.didChangeNotification, object: nil)
     }
 
+    private func buildControlCells() {
+        automaticCell.selectionStyle = .none
+        automaticCell.accessoryView = automaticMemorySwitch
+
+        memoryCell.selectionStyle = .none
+        memoryTitle.text = "Memory"
+        memoryTitle.setContentHuggingPriority(.required, for: .horizontal)
+        let row = UIStackView(arrangedSubviews: [memoryTitle, memorySlider, memoryField])
+        row.spacing = 12
+        row.alignment = .center
+        row.translatesAutoresizingMaskIntoConstraints = false
+        memoryCell.contentView.addSubview(row)
+        NSLayoutConstraint.activate([
+            memoryField.widthAnchor.constraint(equalToConstant: 104),
+            row.leadingAnchor.constraint(equalTo: memoryCell.contentView.layoutMarginsGuide.leadingAnchor),
+            row.trailingAnchor.constraint(equalTo: memoryCell.contentView.layoutMarginsGuide.trailingAnchor),
+            row.topAnchor.constraint(equalTo: memoryCell.contentView.layoutMarginsGuide.topAnchor),
+            row.bottomAnchor.constraint(equalTo: memoryCell.contentView.layoutMarginsGuide.bottomAnchor),
+            row.heightAnchor.constraint(greaterThanOrEqualToConstant: 32),
+        ])
+
+        networkCell.selectionStyle = .none
+        networkCell.accessoryView = networkSwitch
+        var content = UIListContentConfiguration.cell()
+        content.text = "Share on Network"
+        networkCell.contentConfiguration = content
+    }
+
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        tableView.reloadData()
+        // The CPU row, after choosing in its list
+        tableView.reloadRows(at: [IndexPath(row: 2, section: Section.performance.rawValue)], with: .none)
+        updateRestartRow()
     }
 
     @objc private func portsChanged() {
-        tableView.reloadSections(IndexSet(integer: Section.ports.rawValue), with: .automatic)
+        // Only the port rows (row 0 holds the switch)
+        let section = Section.ports.rawValue
+        let old = tableView.numberOfRows(inSection: section) - 1
+        let new = PortForwarder.shared.ports.count
+        tableView.performBatchUpdates {
+            let common = min(old, new)
+            if common > 0 {
+                tableView.reloadRows(at: (1...common).map { IndexPath(row: $0, section: section) }, with: .none)
+            }
+            if new > old {
+                tableView.insertRows(at: ((old + 1)...new).map { IndexPath(row: $0, section: section) }, with: .automatic)
+            } else if old > new {
+                tableView.deleteRows(at: ((new + 1)...old).map { IndexPath(row: $0, section: section) }, with: .automatic)
+            }
+        }
+        refreshFooter(of: .ports)
     }
 
     private func updateMemoryControls() {
+        let automatic = automaticMemorySwitch.isOn
         memorySlider.value = Float(VMSettings.memoryMB)
-        memorySlider.isEnabled = !automaticMemorySwitch.isOn
+        memorySlider.isEnabled = !automatic
         memoryField.text = "\(VMSettings.memoryMB)"
-        memoryField.isEnabled = !automaticMemorySwitch.isOn
-        memoryField.textColor = automaticMemorySwitch.isOn ? .secondaryLabel : .label
+        memoryField.isEnabled = !automatic
+        memoryField.textColor = automatic ? .secondaryLabel : .label
+        memoryTitle.isEnabled = !automatic
+        var content = UIListContentConfiguration.cell()
+        content.text = "Automatic Memory"
+        content.secondaryText = automatic ? "\(VMSettings.formatMemory(VMSettings.automaticMemoryMB)) for this \(UIDevice.current.model)" : nil
+        content.secondaryTextProperties.color = .secondaryLabel
+        automaticCell.contentConfiguration = content
     }
 
     /// A typed amount, within 256 MB and the maximum
@@ -85,14 +149,14 @@ public final class VMSettingsViewController: UITableViewController {
             VMSettings.chosenMemoryMB = min(maximumMemory, max(256, typed))
         }
         updateMemoryControls()
-        reloadRestartRow()
+        updateRestartRow()
     }
 
     @objc private func automaticMemoryChanged() {
         // Off: start from the automatic amount
         VMSettings.chosenMemoryMB = automaticMemorySwitch.isOn ? 0 : VMSettings.memoryMB
         updateMemoryControls()
-        reloadRestartRow()
+        updateRestartRow()
     }
 
     /// The slider moves in steps of 256 MB (up to the maximum, which may not be one)
@@ -110,11 +174,28 @@ public final class VMSettingsViewController: UITableViewController {
     @objc private func memorySliderEnded() {
         VMSettings.chosenMemoryMB = sliderMemory
         updateMemoryControls()
-        reloadRestartRow()
+        updateRestartRow()
     }
 
-    private func reloadRestartRow() {
-        tableView.reloadSections(IndexSet(integer: Section.performance.rawValue), with: .none)
+    /// Shows or hides "Quit iSH+ to Apply" by itself, and resizes the
+    /// changed rows, without reloading the cells that hold controls.
+    private func updateRestartRow() {
+        let show = needsRestart
+        tableView.performBatchUpdates {
+            if show != showingRestart {
+                let row = IndexPath(row: 3, section: Section.performance.rawValue)
+                show ? tableView.insertRows(at: [row], with: .automatic) : tableView.deleteRows(at: [row], with: .automatic)
+                showingRestart = show
+            }
+        }
+    }
+
+    private func refreshFooter(of section: Section) {
+        UIView.performWithoutAnimation {
+            tableView.footerView(forSection: section.rawValue)?.textLabel?.text =
+                self.tableView(tableView, titleForFooterInSection: section.rawValue)
+            tableView.footerView(forSection: section.rawValue)?.setNeedsLayout()
+        }
     }
 
     @objc private func networkChanged() {
@@ -131,7 +212,7 @@ public final class VMSettingsViewController: UITableViewController {
 
     public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch Section(rawValue: section)! {
-        case .performance: return needsRestart ? 4 : 3
+        case .performance: return showingRestart ? 4 : 3
         case .ports: return 1 + PortForwarder.shared.ports.count
         }
     }
@@ -146,52 +227,28 @@ public final class VMSettingsViewController: UITableViewController {
     public override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         switch Section(rawValue: section)! {
         case .performance:
-            return "iOS lets iSH+ use \(VMSettings.formatMemory(VMSettings.processMemoryLimitMB)) of this iPad's \(VMSettings.deviceMemoryGB) GB before ending it; QEMU itself needs some, so Linux can have up to \(VMSettings.formatMemory(maximumMemory)). Changes apply the next time Linux starts."
+            return "iOS lets iSH+ use \(VMSettings.formatMemory(VMSettings.processMemoryLimitMB)) of this \(UIDevice.current.model)'s \(VMSettings.deviceMemoryGB) GB before ending it; QEMU itself needs some, so Linux can have up to \(VMSettings.formatMemory(maximumMemory)). Changes apply the next time Linux starts."
         case .ports:
             let ports = PortForwarder.shared.ports.isEmpty
-                ? "Servers started in Linux appear here, and open at localhost on this iPad. "
+                ? "Servers started in Linux appear here, and open at localhost on this \(UIDevice.current.model). "
                 : ""
-            return ports + "When shared on the network, other devices can connect to them at this iPad's address."
+            return ports + "When shared on the network, other devices can connect to them at this \(UIDevice.current.model)'s address."
         }
     }
 
     public override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        switch (Section(rawValue: indexPath.section)!, indexPath.row) {
+        case (.performance, 0): return automaticCell
+        case (.performance, 1): return memoryCell
+        case (.ports, 0): return networkCell
+        default: break
+        }
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         cell.accessoryView = nil
         cell.accessoryType = .none
         cell.selectionStyle = .default
         var content = UIListContentConfiguration.valueCell()
         switch (Section(rawValue: indexPath.section)!, indexPath.row) {
-        case (.performance, 0):
-            content = .cell()
-            content.text = "Automatic Memory"
-            content.secondaryText = automaticMemorySwitch.isOn
-                ? "\(VMSettings.formatMemory(VMSettings.automaticMemoryMB)) for this iPad" : nil
-            content.secondaryTextProperties.color = .secondaryLabel
-            cell.accessoryView = automaticMemorySwitch
-            cell.selectionStyle = .none
-        case (.performance, 1):
-            cell.selectionStyle = .none
-            cell.contentConfiguration = nil
-            cell.contentView.subviews.forEach { $0.removeFromSuperview() }
-            let title = UILabel()
-            title.text = "Memory"
-            title.isEnabled = !automaticMemorySwitch.isOn
-            let row = UIStackView(arrangedSubviews: [title, memorySlider, memoryField])
-            row.spacing = 12
-            row.alignment = .center
-            row.translatesAutoresizingMaskIntoConstraints = false
-            title.setContentHuggingPriority(.required, for: .horizontal)
-            memoryField.widthAnchor.constraint(equalToConstant: 104).isActive = true
-            cell.contentView.addSubview(row)
-            NSLayoutConstraint.activate([
-                row.leadingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.leadingAnchor),
-                row.trailingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.trailingAnchor),
-                row.topAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.topAnchor),
-                row.bottomAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.bottomAnchor),
-                row.heightAnchor.constraint(greaterThanOrEqualToConstant: 32),
-            ])
-            return cell
         case (.performance, 2):
             content.text = "CPU Cores"
             content.secondaryText = VMSettings.chosenCPUCount == 0
@@ -201,11 +258,6 @@ public final class VMSettingsViewController: UITableViewController {
             content = .cell()
             content.text = "Quit iSH+ to Apply"
             content.textProperties.color = .systemRed
-        case (.ports, 0):
-            content = .cell()
-            content.text = "Share on Network"
-            cell.accessoryView = networkSwitch
-            cell.selectionStyle = .none
         case (.ports, let row):
             let port = PortForwarder.shared.ports[row - 1]
             content = .subtitleCell()
@@ -222,23 +274,21 @@ public final class VMSettingsViewController: UITableViewController {
     public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         switch (Section(rawValue: indexPath.section)!, indexPath.row) {
-        case (.performance, 0), (.performance, 1):
-            break
         case (.performance, 2):
             let automatic = Choice(label: "Automatic", detail: "\(VMSettings.automaticCPUCount)", value: 0)
             let choices = [automatic] + (1...VMSettings.maximumCPUCount).map {
                 Choice(label: "\($0)", detail: nil, value: $0)
             }
             show(ChoiceViewController(title: "CPU Cores", choices: choices, selected: VMSettings.chosenCPUCount,
-                                      footer: "Automatic uses one core per performance core of this iPad. Cores beyond those run on efficiency cores, which can slow the others down.") {
+                                      footer: "Automatic uses one core per performance core of this \(UIDevice.current.model). Cores beyond those run on efficiency cores, which can slow the others down.") {
                 VMSettings.chosenCPUCount = $0
             }, sender: self)
-        case (.performance, _):
+        case (.performance, 3):
             exit(0)
-        case (.ports, 0):
-            break
-        case (.ports, let row):
+        case (.ports, let row) where row > 0:
             UIApplication.shared.open(PortForwarder.shared.ports[row - 1].url)
+        default:
+            break
         }
     }
 }
