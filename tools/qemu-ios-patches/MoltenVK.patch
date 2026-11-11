@@ -1,0 +1,126 @@
+diff --git a/MoltenVK/MoltenVK/Commands/MVKCmdDraw.mm b/MoltenVK/MoltenVK/Commands/MVKCmdDraw.mm
+index ea656405..64bb0ecb 100644
+--- a/MoltenVK/MoltenVK/Commands/MVKCmdDraw.mm
++++ b/MoltenVK/MoltenVK/Commands/MVKCmdDraw.mm
+@@ -165,6 +165,7 @@
+ 	int32_t indexSize;
+ 	uint64_t indexBuffer;
+ 	uint8_t topoStrip;
++	int32_t baseVertex;	// firstVertex, or vertexOffset when indexed
+ };
+ 
+ #pragma mark -
+@@ -373,7 +374,15 @@
+ 
+ 					auto primitiveType = cmdEncoder->getMtlGraphics().getPrimitiveType();
+ 					int threadCount = 0;
+-					if (primitiveType == MTLPrimitiveTypePoint) {
++					VkPrimitiveTopology vkTopology = ((MVKGraphicsPipeline*)pipeline)->getVkPrimitiveTopology();
++					if (vkTopology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY) {
++						threadCount = _vertexCount / 4;
++					} else if (vkTopology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY) {
++						threadCount = _vertexCount > 3 ? _vertexCount - 3 : 0;
++						drawInfo.topoStrip = true;
++					} else if (vkTopology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY) {
++						threadCount = _vertexCount / 6;
++					} else if (primitiveType == MTLPrimitiveTypePoint) {
+ 						threadCount = _vertexCount;
+ 					} else if (primitiveType == MTLPrimitiveTypeLine) {
+ 						threadCount = _vertexCount / 2;
+@@ -389,9 +398,10 @@
+ 						reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "Unsupported primitive type: %lu", primitiveType);
+ 					}
+ 
+-					if (_firstVertex) reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "First vertex not supported yet.");
++					drawInfo.baseVertex = (int32_t)_firstVertex;
+ 					if (_firstInstance) reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "First instance not supported yet.");
+ 
++					[cmdEncoder->_mtlRenderEncoder setObjectBytes: &drawInfo length: sizeof(drawInfo) atIndex: pipeline->getDrawInfoBufferIndex()];
+ 					[cmdEncoder->_mtlRenderEncoder drawMeshThreadgroups: MTLSizeMake(threadCount, _instanceCount, 1)
+ 											threadsPerObjectThreadgroup: MTLSizeMake(1, 1, 1)
+ 											  threadsPerMeshThreadgroup: MTLSizeMake(1, 1, 1)];
+@@ -660,7 +670,15 @@
+ 
+ 					auto primitiveType = cmdEncoder->getMtlGraphics().getPrimitiveType();
+ 					int threadCount = 0;
+-					if (primitiveType == MTLPrimitiveTypePoint) {
++					VkPrimitiveTopology vkTopology = ((MVKGraphicsPipeline*)pipeline)->getVkPrimitiveTopology();
++					if (vkTopology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY) {
++						threadCount = _indexCount / 4;
++					} else if (vkTopology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY) {
++						threadCount = _indexCount > 3 ? _indexCount - 3 : 0;
++						drawInfo.topoStrip = true;
++					} else if (vkTopology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY) {
++						threadCount = _indexCount / 6;
++					} else if (primitiveType == MTLPrimitiveTypePoint) {
+ 						threadCount = _indexCount;
+ 					} else if (primitiveType == MTLPrimitiveTypeLine) {
+ 						threadCount = _indexCount / 2;
+@@ -676,9 +694,10 @@
+ 						reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "Unsupported primitive type %lu.", primitiveType);
+ 					}
+ 
+-					if (_vertexOffset) reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "Vertex offset not supported yet.");
++					drawInfo.baseVertex = _vertexOffset;
+ 					if (_firstInstance) reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "First instance not supported yet.");
+ 
++					[cmdEncoder->_mtlRenderEncoder setObjectBytes: &drawInfo length: sizeof(drawInfo) atIndex: pipeline->getDrawInfoBufferIndex()];
+ 					[cmdEncoder->_mtlRenderEncoder drawMeshThreadgroups:MTLSizeMake(threadCount, _instanceCount, 1)
+ 											threadsPerObjectThreadgroup:MTLSizeMake(1, 1, 1)
+ 											  threadsPerMeshThreadgroup:MTLSizeMake(1, 1, 1)];
+diff --git a/MoltenVK/MoltenVK/GPUObjects/MVKPipeline.mm b/MoltenVK/MoltenVK/GPUObjects/MVKPipeline.mm
+index fbead640..3dc456c3 100644
+--- a/MoltenVK/MoltenVK/GPUObjects/MVKPipeline.mm
++++ b/MoltenVK/MoltenVK/GPUObjects/MVKPipeline.mm
+@@ -1762,12 +1762,24 @@ static void addCommonImplicitBuffersToShaderConfig(SPIRVToMSLConversionConfigura
+ 	shaderConfig.options.mslOptions.robust_image_access2 = shouldEnableRobustImageAccess2(this, pCreateInfo, pVertexSS);
+ 
+ 	auto mtlPrimitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(_vkPrimitiveTopology);
+-	if (mtlPrimitiveType == MTLPrimitiveTypeTriangleStrip)
++	if (_vkPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY)
++		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::TrianglesAdjacency;
++	else if (mtlPrimitiveType == MTLPrimitiveTypeTriangleStrip)
+ 		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::TriangleStrip;
+ 	else if (mtlPrimitiveType == MTLPrimitiveTypeTriangle)
+ 		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::Triangles;
+ 	else if (mtlPrimitiveType == MTLPrimitiveTypePoint)
+ 		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::Points;
++	else if (_vkPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY)
++		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::LinesAdjacency;
++	else if (_vkPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY)
++		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::LineStripAdjacency;
++	else if (_vkPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY)
++		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::TrianglesAdjacency;
++	else if (mtlPrimitiveType == MTLPrimitiveTypeLine)
++		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::Lines;
++	else if (mtlPrimitiveType == MTLPrimitiveTypeLineStrip)
++		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::LineStrip;
+ 	else
+ 		reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "Unsupported topology: %lu", mtlPrimitiveType);
+ 
+@@ -1807,12 +1819,24 @@ static void addCommonImplicitBuffersToShaderConfig(SPIRVToMSLConversionConfigura
+ 	shaderConfig.options.mslOptions.robust_image_access2 = shouldEnableRobustImageAccess2(this, pCreateInfo, pGeometrySS);
+ 
+ 	auto mtlPrimitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(_vkPrimitiveTopology);
+-	if (mtlPrimitiveType == MTLPrimitiveTypeTriangleStrip)
++	if (_vkPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY)
++		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::TrianglesAdjacency;
++	else if (mtlPrimitiveType == MTLPrimitiveTypeTriangleStrip)
+ 		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::TriangleStrip;
+ 	else if (mtlPrimitiveType == MTLPrimitiveTypeTriangle)
+ 		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::Triangles;
+ 	else if (mtlPrimitiveType == MTLPrimitiveTypePoint)
+ 		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::Points;
++	else if (_vkPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY)
++		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::LinesAdjacency;
++	else if (_vkPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY)
++		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::LineStripAdjacency;
++	else if (_vkPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY)
++		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::TrianglesAdjacency;
++	else if (mtlPrimitiveType == MTLPrimitiveTypeLine)
++		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::Lines;
++	else if (mtlPrimitiveType == MTLPrimitiveTypeLineStrip)
++		shaderConfig.options.mslOptions.input_primitive_type = CompilerMSL::Options::PrimitiveTopology::LineStrip;
+ 	else
+ 		reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "Unsupported topology: %lu", mtlPrimitiveType);
+ 

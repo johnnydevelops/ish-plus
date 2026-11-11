@@ -1,7 +1,7 @@
 From 13ac6d29dc1906a395bad3a76a8aae9117985f2a Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 14:16:47 +0000
-Subject: [PATCH 1/5] util/anon_file: on iOS, fall back to a temporary file
+Subject: [PATCH 1/6] util/anon_file: on iOS, fall back to a temporary file
 
 iOS apps without an app group may not create POSIX shared memory.
 ---
@@ -48,7 +48,7 @@ index c3638917..8f7f99ee 100644
 From c307a867c18e8c67f76bb620c30c599a3ed414b2 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 14:16:47 +0000
-Subject: [PATCH 2/5] vrend: write gl_PointSize on GLES hosts
+Subject: [PATCH 2/6] vrend: write gl_PointSize on GLES hosts
 
 GLES leaves the size of points undefined unless the last vertex stage
 writes gl_PointSize. ANGLE on Metal draws them huge: glamor's core-font
@@ -93,7 +93,7 @@ index 39895cec..c4597722 100644
 From c6452b055749d1c25a87fbff1d872c49c7e22ae0 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 14:16:47 +0000
-Subject: [PATCH 3/5] vrend: base vertex through EXT_base_instance; no
+Subject: [PATCH 3/6] vrend: base vertex through EXT_base_instance; no
  dual-source blend on ANGLE Metal
 
 - ANGLE on Metal has GL_EXT_base_instance but not
@@ -181,7 +181,7 @@ index e6ae0074..829b4ac8 100644
 From 4187faf8f6040680323c7f567eae4f2385cf9c74 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 15:06:27 +0000
-Subject: [PATCH 4/5] Render server in a thread without eventfd (macOS, iOS):
+Subject: [PATCH 4/6] Render server in a thread without eventfd (macOS, iOS):
  retire fences, own fence table
 
 - Without an eventfd, VIRGL_RENDERER_THREAD_SYNC is dropped, so the
@@ -556,7 +556,7 @@ index 71076727..75602089 100644
 From 86de1bee7f49b7f9600fb08e66b734ce99609d01 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 15:06:27 +0000
-Subject: [PATCH 5/5] vkr: on Apple systems, load MoltenVK next to the library
+Subject: [PATCH 5/6] vkr: on Apple systems, load MoltenVK next to the library
  (or VKR_VULKAN_LIBRARY)
 
 iOS apps embed MoltenVK.framework in their Frameworks folder; with
@@ -597,6 +597,78 @@ index dc1f42c4..133ef806 100644
     if (lib->handle == NULL)
        lib->handle = dlopen("libvulkan.1.dylib", RTLD_NOW | RTLD_LOCAL);
     if (lib->handle == NULL)
+-- 
+2.54.0 (Apple Git-157)
+
+
+From 0c62e3afa2eba7296390426a6de0fecc22cf5973 Mon Sep 17 00:00:00 2001
+From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
+Date: Wed, 11 Nov 2026 17:32:36 +0000
+Subject: [PATCH 6/6] vkr: don't advertise VK_EXT_extended_dynamic_state on
+ MoltenVK
+
+With it, nothing zink draws reaches the attachments (clears do); zink
+works without it, including its geometry-shader emulations.
+VKR_HIDE_EXTENSIONS=name,... hides others, for testing.
+---
+ src/venus/vkr_physical_device.c | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
+
+diff --git a/src/venus/vkr_physical_device.c b/src/venus/vkr_physical_device.c
+index e8558156..616fcc7b 100644
+--- a/src/venus/vkr_physical_device.c
++++ b/src/venus/vkr_physical_device.c
+@@ -5,6 +5,9 @@
+ 
+ #include "vkr_physical_device.h"
+ 
++#include <stdio.h>
++#include <stdlib.h>
++
+ #include "venus-protocol/vn_protocol_renderer_device.h"
+ 
+ #include "vkr_context.h"
+@@ -272,6 +275,11 @@ vkr_physical_device_init_extensions(struct vkr_physical_device *physical_dev)
+       return;
+    }
+ 
++   /* MoltenVK (a portability driver: the host is Metal) */
++   bool is_moltenvk = false;
++   for (uint32_t i = 0; i < count; i++)
++      is_moltenvk |= !strcmp(exts[i].extensionName, "VK_KHR_portability_subset");
++
+    uint32_t advertised_count = 0;
+    for (uint32_t i = 0; i < count; i++) {
+       VkExtensionProperties *props = &exts[i];
+@@ -293,6 +301,28 @@ vkr_physical_device_init_extensions(struct vkr_physical_device *physical_dev)
+       else if (!strcmp(props->extensionName, "VK_KHR_portability_subset"))
+          physical_dev->KHR_portability_subset = true;
+ 
++      /* MoltenVK's VK_EXT_extended_dynamic_state: with it, nothing zink
++       * draws reaches the attachments (clears do); zink works without it. */
++      if (is_moltenvk &&
++          !strcmp(props->extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME))
++         continue;
++      /* For testing: VKR_HIDE_EXTENSIONS=name,name (whole names) */
++      const char *hide = getenv("VKR_HIDE_EXTENSIONS");
++      if (hide) {
++         size_t l = strlen(props->extensionName);
++         const char *h = hide;
++         bool hidden = false;
++         while ((h = strstr(h, props->extensionName))) {
++            if ((h == hide || h[-1] == ',') && (h[l] == ',' || !h[l])) {
++               hidden = true;
++               break;
++            }
++            h += l;
++         }
++         if (hidden)
++            continue;
++      }
++
+       const uint32_t spec_ver = vkr_extension_get_spec_version(props->extensionName);
+       if (spec_ver) {
+          if (props->specVersion > spec_ver)
 -- 
 2.54.0 (Apple Git-157)
 
