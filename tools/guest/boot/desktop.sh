@@ -110,7 +110,9 @@ gpu_3d() {
 }
 
 start() {
-    running && return 0
+    # Already running (started before the Desktop was shown): take the size
+    # iSH+ offers now instead of the one it started with
+    running && { resize; return 0; }
     xorg=$(xorg) || { echo "Xorg is not installed."; return 1; }
     d=$(desktop) || { echo "No desktop or window manager is installed."; return 1; }
     session=$(echo "$d" | $B cut -f2-)
