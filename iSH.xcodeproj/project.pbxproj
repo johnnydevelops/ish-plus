@@ -100,9 +100,11 @@
 		BBECF3BC26913F1600DEC937 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = BB792B541F96D90D00FFB7A4 /* AppDelegate.m */; };
 		BBFB55662158644C00DFE6DE /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = BBFB55652158644C00DFE6DE /* libresolv.tbd */; };
 		C5BA678EA73D1B1E22A34A86 /* JITHelperHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6234104F5D7ECA6A9B59D3 /* JITHelperHandler.swift */; };
+		C772B746D2BD3CA66F1A1338 /* JITShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5735F669BFA4A1AEF2717759 /* JITShortcut.swift */; };
 		D864D6185FB3C47575C41253 /* ish.png in Resources */ = {isa = PBXBuildFile; fileRef = DD81969CD8758D3D51CF4C70 /* ish.png */; };
 		E4ABA6762629329C8F07E452 /* libqemu-aarch64-softmmu-tci.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = 477E1313748964CA68B92D2A /* libqemu-aarch64-softmmu-tci.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		F1ACF3EEC304BB68445CE94E /* ResumeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB7B4901B1A2E1D8686C0BF /* ResumeViewController.swift */; };
+		F6C082AC0BB3F1C333947CDC /* iSH+ JIT.shortcut in Resources */ = {isa = PBXBuildFile; fileRef = D578D9E050747F6390F6E6D8 /* iSH+ JIT.shortcut */; };
 		F832E7EDE71419B080DCC704 /* GuestServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B62450DCAB3F80C9FC06E4B /* GuestServices.swift */; };
 /* End PBXBuildFile section */
 
@@ -200,6 +202,7 @@
 		49FF844C2A0624AF00850B7A /* ExceptionExfiltrator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ExceptionExfiltrator.h; sourceTree = "<group>"; };
 		4B7D8B35C99F9EE30F670C46 /* QEMUMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QEMUMonitor.swift; sourceTree = "<group>"; };
 		501900BEC8B43D848CF2FB04 /* VMSettings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VMSettings.swift; sourceTree = "<group>"; };
+		5735F669BFA4A1AEF2717759 /* JITShortcut.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = JITShortcut.swift; sourceTree = "<group>"; };
 		599290A47C2DDDD7A435DFA3 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		5B62450DCAB3F80C9FC06E4B /* GuestServices.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GuestServices.swift; sourceTree = "<group>"; };
 		6391F54F532F3E4928D350AA /* TerminalSurface.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
@@ -315,6 +318,7 @@
 		BBFB557B215878C600DFE6DE /* UIApplication+OpenURL.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIApplication+OpenURL.m"; sourceTree = "<group>"; };
 		BBFB557E21587B6800DFE6DE /* ArrowBarButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArrowBarButton.h; sourceTree = "<group>"; };
 		BBFB557F21587B6800DFE6DE /* ArrowBarButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArrowBarButton.m; sourceTree = "<group>"; };
+		D578D9E050747F6390F6E6D8 /* iSH+ JIT.shortcut */ = {isa = PBXFileReference; includeInIndex = 1; name = "iSH+ JIT.shortcut"; path = "JIT/iSH+ JIT.shortcut"; sourceTree = "<group>"; };
 		D657DA6CA639A3C79F8158C0 /* BackgroundKeepAlive.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = BackgroundKeepAlive.h; sourceTree = "<group>"; };
 		D97EA159F635965A28FE3E83 /* JITViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = JITViewController.swift; sourceTree = "<group>"; };
 		DADA01E465A18DDFDE1C066B /* BackgroundKeepAlive.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = BackgroundKeepAlive.m; sourceTree = "<group>"; };
@@ -537,6 +541,8 @@
 				9A847B6DB669F691BF9EE320 /* VMState.swift */,
 				AEB7B4901B1A2E1D8686C0BF /* ResumeViewController.swift */,
 				1994B75901479C9F09071067 /* FidoBridge.swift */,
+				5735F669BFA4A1AEF2717759 /* JITShortcut.swift */,
+				D578D9E050747F6390F6E6D8 /* iSH+ JIT.shortcut */,
 			);
 			path = app;
 			sourceTree = "<group>";
@@ -832,6 +838,7 @@
 				BB3859A127BCEE6B000A1082 /* iinhash.png in Resources */,
 				BB38599727BCEE6B000A1082 /* freeiosterminal.png in Resources */,
 				D864D6185FB3C47575C41253 /* ish.png in Resources */,
+				F6C082AC0BB3F1C333947CDC /* iSH+ JIT.shortcut in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -973,6 +980,7 @@
 				2FCDBB311EEF90C0F19D14E4 /* VMState.swift in Sources */,
 				F1ACF3EEC304BB68445CE94E /* ResumeViewController.swift in Sources */,
 				AFD98AC285514E9BB14995C7 /* FidoBridge.swift in Sources */,
+				C772B746D2BD3CA66F1A1338 /* JITShortcut.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

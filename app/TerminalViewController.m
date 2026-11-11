@@ -185,6 +185,8 @@
             return done(@"No pairing file is installed.");
         [ISHJITHelperLauncher enableJITWithPairingData:pairing completion:^(NSString *error, NSArray<NSString *> *log) {
             NSLog(@"iSH+ JIT helper finished: %@\n%@", error ?: @"ok", [log componentsJoinedByString:@"\n"]);
+            // LocalDevVPN is no longer needed: the shortcut gives the user's VPN back
+            [ISHJITShortcut finish];
             done(error);
         }];
     };

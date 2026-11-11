@@ -6,6 +6,7 @@
 //
 
 #import "SceneDelegate.h"
+#import "iSHSwift.h"
 #import "AboutViewController.h"
 
 TerminalViewController *currentTerminalViewController = NULL;
@@ -54,6 +55,12 @@ static NSString *const TerminalSessions = @"TerminalSessions";
         [activity addUserInfoEntriesFromDictionary:@{TerminalSessions: vc.savedSessions}];
     }
     return activity;
+}
+
+- (void)scene:(UIScene *)scene openURLContexts:(NSSet<UIOpenURLContext *> *)URLContexts {
+    // The iSH+ JIT shortcut coming back (x-callback)
+    for (UIOpenURLContext *context in URLContexts)
+        [ISHJITShortcut handle:context.URL];
 }
 
 - (void)sceneDidBecomeActive:(UIScene *)scene {

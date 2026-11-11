@@ -52,7 +52,10 @@ Store, and iSH+ can enable JIT by itself, without a computer.
    distribution and create your account.
 
 LocalDevVPN only needs to be connected while iSH+ enables JIT, when Linux
-starts; you can switch to another VPN afterwards.
+starts; JIT stays on without it. If you use another VPN, such as Tailscale,
+add the **iSH+ JIT** shortcut during setup (or in Settings > JIT Setup), on
+iOS 27: when Linux starts, it switches to LocalDevVPN, and back to your VPN
+once JIT is on (like Madeira's JIT shortcut).
 
 Requires iOS 26 or later (iOS 27 to pair on the device).
 

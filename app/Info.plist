@@ -28,6 +28,17 @@
 	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>iSH+ uses your local network to pair with this device, so it can enable JIT by itself.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>iSH+</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ishplus</string>
+			</array>
+		</dict>
+	</array>
 	<key>NFCReaderUsageDescription</key>
 	<string>iSH+ uses your security key (YubiKey or another FIDO key) over NFC when programs in Linux, such as ssh, ask for it.</string>
 	<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>

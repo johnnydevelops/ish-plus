@@ -188,12 +188,34 @@ public final class JITViewController: UIViewController {
         failureReason = nil
         deadline = Date().addingTimeInterval(usesBuiltInEnabler ? JITViewController.helperTimeout : JITViewController.timeout)
         if usesBuiltInEnabler, let launchEnabler {
-            launchEnabler { [weak self] error in
-                guard let self, let error, self.timer != nil, !VirtualMachine.jitAvailable else { return }
+            let fail = { [weak self] (error: String) in
+                guard let self, self.timer != nil, !VirtualMachine.jitAvailable else { return }
                 self.timer?.invalidate()
                 self.timer = nil
                 self.failureReason = error
                 self.showFailed()
+            }
+            let launch = {
+                launchEnabler { error in
+                    if let error { fail(error) }
+                }
+            }
+            if JITShortcut.enabled {
+                // The iSH+ JIT shortcut switches to LocalDevVPN (and back after)
+                DispatchQueue.global().async {
+                    let connected = JITShortcut.localDevVPNConnected()
+                    DispatchQueue.main.async { [weak self] in
+                        if connected { return launch() }
+                        self?.detailLabel.text = "Switching to LocalDevVPN with the \(JITShortcut.name) shortcut. Your VPN comes back once JIT is on."
+                        JITShortcut.start { error in
+                            if let error { return fail(error) }
+                            self?.showEnabling()
+                            launch()
+                        }
+                    }
+                }
+            } else {
+                launch()
             }
         } else if JITViewController.stikDebugInstalled,
            let bundleID = Bundle.main.bundleIdentifier,

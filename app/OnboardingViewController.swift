@@ -47,7 +47,7 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
              text: "iSH+ runs a real Linux distribution in a virtual machine. Setting it up takes a few minutes: pairing iSH+ with this device so it can enable JIT and run at full speed, and choosing your distribution."),
         Step(kind: .vpn, symbol: "network.badge.shield.half.filled",
              title: "Connect LocalDevVPN",
-             text: "iSH+ talks to this device's developer services through LocalDevVPN. Install it from the App Store and connect it. It only routes traffic to this device and must be connected whenever iSH+ enables JIT."),
+             text: "iSH+ talks to this device's developer services through LocalDevVPN. Install it from the App Store and connect it. It only routes traffic to this device, and is only needed while iSH+ enables JIT. Using another VPN, like Tailscale? Add the iSH+ JIT shortcut: it switches to LocalDevVPN for JIT, then back."),
         Step(kind: .pairing, symbol: "link",
              title: "Pair iSH+",
              text: "Pair iSH+ with this device so it can attach its debugger to itself. Import a pairing file made on a computer, or pair directly on this device."),
@@ -207,6 +207,10 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
                     status = ("\(distro.title) is ready.", .systemGreen)
                 }
             }
+        case .vpn:
+            if JITShortcut.enabled {
+                status = ("The \(JITShortcut.name) shortcut switches to LocalDevVPN while JIT turns on, then back to your VPN.", .systemGreen)
+            }
         case .pairing:
             if let pairingStatus {
                 status = (pairingStatus, .secondaryLabel)
@@ -230,10 +234,15 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
             return [makeButton("Get Started", prominent: true) { [weak self] in self?.advance() },
                     makeButton("Skip for Now", prominent: false) { [weak self] in self?.finish() }]
         case .vpn:
-            return [next,
-                    makeButton("Get LocalDevVPN", prominent: false) {
-                        if let url = URL(string: "itms-apps://apps.apple.com/search?term=LocalDevVPN") { UIApplication.shared.open(url) }
-                    }]
+            var list = [next,
+                        makeButton("Get LocalDevVPN", prominent: false) {
+                            if let url = URL(string: "itms-apps://apps.apple.com/search?term=LocalDevVPN") { UIApplication.shared.open(url) }
+                        }]
+            if JITShortcut.isSupported, JITShortcut.bundledFile != nil {
+                list.append(makeButton(JITShortcut.enabled ? "Add the Shortcut Again" : "Add the \(JITShortcut.name) Shortcut",
+                                       prominent: false) { [weak self] in self?.addShortcut() })
+            }
+            return list
         case .pairing where pairing:
             return [makeButton("Cancel Pairing", prominent: false) { OnDevicePairing.cancel() }]
         case .pairing:
@@ -291,6 +300,24 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
     private func finish() {
         Onboarding.completed = true
         dismiss(animated: true) { [completion] in completion() }
+    }
+
+    // MARK: Shortcut
+
+    /// Offers the bundled iSH+ JIT shortcut to Shortcuts (share sheet).
+    private func addShortcut() {
+        guard let file = JITShortcut.bundledFile else { return }
+        let share = UIActivityViewController(activityItems: [file], applicationActivities: nil)
+        share.completionWithItemsHandler = { [weak self] _, completed, _, _ in
+            guard completed else { return }
+            JITShortcut.enabled = true
+            if let self { show(index, animated: true) }
+        }
+        if let popover = share.popoverPresentationController {
+            popover.sourceView = buttons
+            popover.sourceRect = buttons.bounds
+        }
+        present(share, animated: true)
     }
 
     // MARK: Distribution
