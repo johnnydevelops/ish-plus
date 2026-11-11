@@ -49,12 +49,6 @@
 	<array>
 		<string>_remotepairing-pairable-host._tcp</string>
 	</array>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Programs running in iSH will be allowed to track your location in the background.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Programs running in iSH will be allowed to track your location in the background.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Programs running in iSH will be allowed to see your location.</string>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>app.ish.scene</string>
@@ -85,7 +79,6 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
-		<string>location</string>
 	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>

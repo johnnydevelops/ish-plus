@@ -9,6 +9,9 @@ processor and translates Linux system calls itself; iSH+ instead runs Linux
 genuine Linux system. It needs JIT, so it is sideloaded rather than on the App
 Store, and iSH+ can enable JIT by itself, without a computer.
 
+**[Add the iSH+ source to SideStore](https://intradeus.github.io/http-protocol-redirector?r=sidestore%3A%2F%2Fsource%3Furl%3Dhttps%3A%2F%2Fraw.githubusercontent.com%2Fjohnnydevelops%2Fish-plus%2Fmain%2Fsource.json)** to get new versions as
+updates, or add `https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/source.json` as a source in SideStore, AltStore or Feather.
+
 ## Features
 
 - **Any distribution.** Alpine, Debian, Ubuntu, Arch, Artix, Fedora,

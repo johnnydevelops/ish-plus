@@ -1,0 +1,73 @@
+{
+  "name": "iSH+",
+  "identifier": "com.johnnydevelops.ish.source",
+  "subtitle": "A real Linux in a terminal",
+  "description": "A Linux terminal that runs a real Linux kernel in a virtual machine (QEMU, with JIT), with the distribution of your choice: Alpine, Debian, Ubuntu, Arch, Fedora and more. x86_64 programs run through FEX. iSH+ enables JIT by itself through LocalDevVPN once it is paired with your device.\n\nBased on iSH. Source: https://github.com/johnnydevelops/ish-plus",
+  "iconURL": "https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/design/app-icon.png",
+  "website": "https://github.com/johnnydevelops/ish-plus",
+  "tintColor": "#00C040",
+  "apps": [
+    {
+      "name": "iSH+",
+      "bundleIdentifier": "com.johnnydevelops.ish",
+      "developerName": "johnnydevelops",
+      "subtitle": "A real Linux in a terminal",
+      "localizedDescription": "A Linux terminal that runs a real Linux kernel in a virtual machine (QEMU, with JIT), with the distribution of your choice: Alpine, Debian, Ubuntu, Arch, Fedora and more. x86_64 programs run through FEX. iSH+ enables JIT by itself through LocalDevVPN once it is paired with your device.\n\nBased on iSH. Source: https://github.com/johnnydevelops/ish-plus",
+      "iconURL": "https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/design/app-icon.png",
+      "tintColor": "#00C040",
+      "category": "developer",
+      "screenshotURLs": [],
+      "versions": [
+        {
+          "version": "0.2.2",
+          "date": "2026-11-11T09:48:41Z",
+          "localizedDescription": "Use your own VPN with iSH+, plus fixes for settings, memory and security keys.\n\n## New\n\n- **The iSH+ JIT shortcut (iOS 27).** If you use another VPN, such as Tailscale, you no longer switch to LocalDevVPN by hand. Add the shortcut in Settings > JIT Setup. When Linux starts, it switches to LocalDevVPN, and once JIT is on it reconnects your VPN, or disconnects LocalDevVPN if none was on. It works like Madeira's JIT shortcut and needs no special entitlement, so it works with free accounts too (#5).\n- **Finer memory settings.** The memory slider moves in 16 MB steps.\n\n## Fixed\n\n- **No more freeze in Settings.** Switching Automatic Memory off no longer freezes iSH+ until iOS ends it (#6).\n- **Safer automatic memory on large devices.** Automatic memory is at most 60% of the memory iOS lets iSH+ use, and the maximum keeps 10% of it free. On a 12 GB iPhone, Linux got 5.5 GB of a ~6.1 GB limit, and iOS ended iSH+ once Linux used it. It now gets 3.5 GB there. 3 GB iPads keep 1 GB.\n- **Security keys: logins one right after another work.** iOS refuses a new NFC session for a moment after the last one closes, so iSH+ now waits for it and retries (#4).\n\n## Installing\n\nSideload `iSH-plus-0.2.2.ipa`; updating keeps your distributions. See the README for setup, the iSH+ JIT shortcut, and which sideloaders keep which entitlements.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v0.2.2/iSH-plus-0.2.2.ipa",
+          "size": 99548210,
+          "minOSVersion": "26.0"
+        },
+        {
+          "version": "0.2.1",
+          "date": "2026-11-10T23:50:08Z",
+          "localizedDescription": "Security key fixes, from testing on an iPhone in #1 and #3.\n\n## Fixed\n\n- **Logins after the first now work.** The NFC session from one login could close the next one, so every login after the first failed instantly. Only one NFC session is now active at a time (#3, by @schmitzoide).\n- **The NFC sheet closes once a login is done,** with \"Done. You can remove the key.\", instead of staying up for 5 seconds.\n- **If the key leaves the field mid-login,** iSH+ asks for it again instead of failing.\n\n## Improved\n\n- **One tap less per login.** The key's information is remembered, so a login only needs the key for the signature itself.\n- **Clearer failures without NFC.** On an iPad, or on a copy of iSH+ signed without the NFC Tag Reading capability, iSH+ now explains why security keys can't work. Linux also keeps seeing a FIDO2 device instead of `ssh` reporting \"device is not fido2\".\n- **README:** explains which sideloaders and accounts can provide NFC.\n\n## Installing\n\nSideload `iSH-plus-0.2.1.ipa`. Security keys need a signing profile with the NFC Tag Reading capability: a paid developer account, and a sideloader that applies it. iloader currently doesn't. Updating from 0.2.0 keeps your distributions.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v0.2.1/iSH-plus-0.2.1.ipa",
+          "size": 99516169,
+          "minOSVersion": "26.0"
+        },
+        {
+          "version": "0.2.0",
+          "date": "2026-11-10T23:15:04Z",
+          "localizedDescription": "The second preview of iSH+: Linux servers in your browser, instant resume, VM settings, security keys over NFC, and the iSH features that 0.1.0 had lost.\n\n## New\n\n- **Servers open in your browser.** Start a server in Linux and it's at `localhost:<port>` on the device: sessions menu > **Open in Browser**. Servers that only listen on Linux's own localhost (many dev servers) work too. Settings > Linux VM can share the ports with other devices on your network.\n- **Instant resume.** When iSH+ goes to the background, Linux is saved, with a checkpoint of its disk so the two match. If iOS closes iSH+, you can resume where you were: iSH+ asks after enabling JIT. With Keep Running in Background on, Linux keeps running and is saved every 10 minutes, since iOS may close iSH+ anyway.\n- **Settings > Linux VM**:\n  - **Memory:** set automatically for your device (1 GB on 3 GB iPads), or with a slider or a typed value, up to what iOS lets iSH+ use with a margin.\n  - **CPU cores.**\n  - **Open ports**, and whether they're shared on your network.\n- **Bigger disks.** Swipe a distribution in Settings > Distributions > **Disk Size**. Linux grows its file system the next time it starts.\n- **Files app.** Files > iSH+ > Shared is `/mnt/ios` in Linux, and `~/iOS` in your home folder.\n- **Clipboard.** `pbcopy` and `pbpaste` use the iOS clipboard. tmux and vim can copy to it as well.\n- **Shortcuts.** The **Run Command** action runs a command in Linux and returns its output: in the background if Linux is running, otherwise iSH+ opens to start it.\n- **Security keys over NFC** (#1, on iPhone). Linux sees a FIDO security key, so `ssh` with `sk-` keys asks you to hold your YubiKey (or another FIDO key) near the iPhone. Not yet tested with a real key: reports are welcome.\n- **x86_64 programs built for glibc.** Most prebuilt downloads now work alongside musl ones: FEX uses Ubuntu 24.04's libraries. `apt-x86 install <package>` installs x86_64 Ubuntu packages, replacing `apk-x86`.\n- **A new app icon.** iSH's original icon is still available in Settings > App Icon.\n\n## Improved\n\n- **Tailscale and VPN names.** MagicDNS names like `my-mac` resolve in Linux: DNS now goes through iOS's resolver, which follows VPNs' DNS settings.\n- **Memory goes back to iOS.** Memory Linux frees is returned to iOS, so iOS is less likely to close iSH+.\n- **Ping works for every user,** not only root.\n- **New distributions:**\n  - Faster first boot: the disk is no longer filled with zeros in the background, which also saves storage.\n  - No extra `ubuntu` account in Ubuntu.\n- **Terminal:**\n  - The history scrolls a row at a time.\n  - The margin around the text is back, as in iSH.\n  - Caps Lock as Control or Escape works again.\n  - The bell flashes the screen.\n- **JIT:**\n  - StikDebug is the fallback when the built-in enabler isn't set up or fails.\n  - The JIT helper exits once JIT is enabled.\n- **Smaller app.** The old iSH engine is gone and the QEMU libraries are stripped.\n\n## Fixed\n\n- **Close Session** removes the session and frees its console (#2). The next session on that console starts with a new shell.\n- **Disk errors:** no more I/O errors when a new distribution's disk is formatted.\n\n## Installing\n\nSideload `iSH-plus-0.2.0.ipa` (AltStore, SideStore, Feather...), keeping its entitlements; JIT needs `get-task-allow`. See the README for the setup with LocalDevVPN and pairing. Updating from 0.1.0 keeps your distributions.\n\nRequires iOS 26 or later (iOS 27 to pair on the device). Security keys need an iPhone with NFC.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v0.2.0/iSH-plus-0.2.0.ipa",
+          "size": 99509310,
+          "minOSVersion": "26.0"
+        },
+        {
+          "version": "0.1.0",
+          "date": "2026-11-10T21:43:33Z",
+          "localizedDescription": "The first preview of iSH+, a fork of iSH that runs a real Linux kernel in a virtual machine (QEMU, with JIT) instead of iSH's own emulator.\n\n## Highlights\n\n- **Real Linux.** Linux 6.18 runs in QEMU. JIT makes it fast, and iSH+ enables JIT by itself once it is paired with your device. It falls back to StikDebug, or to a much slower mode that runs without JIT.\n- **Any distribution.** Install Alpine, Debian, Ubuntu, Arch, Artix, Fedora, openSUSE, Void, Kali, Rocky, Alma and more (arm64), each with its own user account. Add, switch and delete them in Settings > Distributions.\n- **x86_64 programs** run through FEX. glibc and musl programs both work, and `apt-x86` installs x86_64 Ubuntu packages.\n- **A native terminal** (SwiftTerm) with Liquid Glass, mouse input for terminal apps, Termux-style scrolling and multiple sessions. It keeps running in the background.\n- **iOS integration.** The Shared folder in the Files app is `~/iOS` in Linux. `pbcopy` and `pbpaste` use the iOS clipboard, and the Run Command action runs a command from Shortcuts.\n\n## Installing\n\nSideload `iSH-plus-0.1.0.ipa` with AltStore, SideStore, Feather or a similar tool. Your sideloader re-signs it. Keep its entitlements, since JIT needs `get-task-allow`.\n\nThen:\n\n1. Install and connect **LocalDevVPN**.\n2. Pair iSH+ with your device. Use **Pair With This Device** in the setup (iOS 27), or import a pairing file, for example from StikPair.\n3. Choose a distribution and create your account. It downloads during setup and installs when it first starts.\n\n## Requirements\n\n- iOS 26 or later. Pairing on the device needs iOS 27.\n- Developer Mode on.\n- About 100 MB for the app, plus storage for each distribution.\n\n## Known limitations\n\n- The VM has 1 GB of memory.\n- Changing distribution requires restarting iSH+.\n- A session's history does not survive iSH+ being ended.\n- The no-JIT mode is untested.\n- Mouse input is untested with a real mouse or trackpad.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v0.1.0/iSH-plus-0.1.0.ipa",
+          "size": 99333208,
+          "minOSVersion": "26.0"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [
+          "com.apple.developer.kernel.extended-virtual-addressing",
+          "com.apple.developer.kernel.increased-memory-limit",
+          "com.apple.developer.nfc.readersession.formats",
+          "com.apple.security.application-groups",
+          "get-task-allow"
+        ],
+        "privacy": {
+          "NSLocalNetworkUsageDescription": "iSH+ uses your local network to pair with this device, so it can enable JIT by itself.",
+          "NFCReaderUsageDescription": "iSH+ uses your security key (YubiKey or another FIDO key) over NFC when programs in Linux, such as ssh, ask for it.",
+          "NSLocationAlwaysAndWhenInUseUsageDescription": "Programs running in iSH will be allowed to track your location in the background.",
+          "NSLocationAlwaysUsageDescription": "Programs running in iSH will be allowed to track your location in the background.",
+          "NSLocationWhenInUseUsageDescription": "Programs running in iSH will be allowed to see your location."
+        }
+      }
+    }
+  ],
+  "news": []
+}
