@@ -19,7 +19,7 @@ public final class VMSettingsViewController: UITableViewController {
     private let memoryField = UITextField()
     private let maximumMemory = VMSettings.maximumMemoryMB
     /// Memory slider steps
-    private static let memoryStep = 256
+    private static let memoryStep = 64
     /// What the running VM was started with, to tell when a restart is needed.
     private let startedWith = (VMSettings.memoryMB, VMSettings.cpuCount)
     /// The "Quit iSH+ to Apply" row is shown
@@ -159,7 +159,7 @@ public final class VMSettingsViewController: UITableViewController {
         updateRestartRow()
     }
 
-    /// The slider moves in steps of 256 MB (up to the maximum, which may not be one)
+    /// The slider moves in steps of 64 MB (up to the maximum, which may not be one)
     private var sliderMemory: Int {
         let value = Int(memorySlider.value.rounded())
         let stepped = (value + Self.memoryStep / 2) / Self.memoryStep * Self.memoryStep
