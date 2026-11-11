@@ -141,6 +141,8 @@ public final class VirtualMachine: NSObject {
     /// enabled. Much slower, but needs no executable memory.
     @objc public var interpreted = false
     @objc public private(set) var hasStopped = false
+    /// Linux's RAM, in MB: the setting, unless memory donors fell short
+    private var memoryMB = VMSettings.memoryMB
     private var busyConsoles = Set<Int>()
     private let lock = NSLock()
     typealias ConsoleResize = @convention(c) (UnsafePointer<CChar>, Int32, Int32) -> Int32
@@ -289,6 +291,19 @@ public final class VirtualMachine: NSObject {
         if freopen(logURL.path, "a", stderr) != nil {
             setvbuf(stderr, nil, _IONBF, 0)
         }
+        // Linux's RAM from memory donors, so it does not count toward
+        // iSH+'s memory limit (RamDonor.m). What they cannot cover is iSH+'s
+        // own memory, so Linux gets at most that plus what iSH+'s limit allows.
+        memoryMB = VMSettings.memoryMB
+        if VMSettings.memoryDonorsAvailable {
+            let donatedMB = Int(ISHRamDonorPrepare(UInt64(memoryMB) << 20) >> 20)
+            let allowed = donatedMB + VMSettings.processMaximumMemoryMB
+            if memoryMB > allowed {
+                vmLog("memory donors covered \(donatedMB) MB: Linux gets \(allowed) MB, not \(memoryMB) MB")
+                memoryMB = allowed / 16 * 16
+            }
+            ISHRamDonorInstall(handle)
+        }
         var arguments = makeArguments()
         // Instant resume: start from the state saved when iOS ended iSH+
         if VMState.shared.prepareRestore(distro: distro) {
@@ -353,7 +368,7 @@ public final class VirtualMachine: NSObject {
     private static var footprintTimer: DispatchSourceTimer?
 
     static func logMemoryFootprint() {
-        var last = 0
+        var last = 0, lastFree = 0
         let timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
         footprintTimer = timer
         timer.schedule(deadline: .now(), repeating: 10)
@@ -367,9 +382,20 @@ public final class VirtualMachine: NSObject {
             }
             guard result == KERN_SUCCESS else { return }
             let mb = Int(info.phys_footprint >> 20)
-            if abs(mb - last) >= 50 {
+            // The device's free memory too: Linux's RAM from memory donors
+            // is not in the footprint
+            var stats = vm_statistics64_data_t()
+            var statsCount = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
+            let statsResult = withUnsafeMutablePointer(to: &stats) {
+                $0.withMemoryRebound(to: integer_t.self, capacity: Int(statsCount)) {
+                    host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &statsCount)
+                }
+            }
+            let free = statsResult == KERN_SUCCESS ? Int((UInt64(stats.free_count) * UInt64(vm_kernel_page_size)) >> 20) : -1
+            if abs(mb - last) >= 50 || abs(free - lastFree) >= 100 {
                 last = mb
-                vmLog("memory footprint: \(mb) MB (available: \(os_proc_available_memory() >> 20) MB)")
+                lastFree = free
+                vmLog("memory footprint: \(mb) MB (available: \(os_proc_available_memory() >> 20) MB, device free: \(free) MB)")
             }
         }
         timer.resume()
@@ -434,7 +460,7 @@ public final class VirtualMachine: NSObject {
             // split-wx: JIT code through a second, executable mapping (iOS)
             "-accel", interpreted ? "tcg,thread=multi,tb-size=256" : "tcg,thread=multi,tb-size=256,split-wx=on",
             "-smp", "\(cpus)",
-            "-m", "\(VMSettings.memoryMB)",
+            "-m", "\(memoryMB)",
             "-kernel", kernel("vmlinuz"),
             "-initrd", kernel("initramfs"),
             // iSH+'s initramfs finds its disks by their serial (see

@@ -32,7 +32,7 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.ar.viewer</string>
 		<key>NSExtensionPrincipalClass</key>
-		<string>ISHJITHelperHandler</string>
+		<string>ISHHelperHandler</string>
 		<key>NSExtensionContextClass</key>
 		<string>NSExtensionContext</string>
 		<key>NSExtensionContextHostClass</key>

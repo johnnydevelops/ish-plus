@@ -227,6 +227,9 @@ public final class VMSettingsViewController: UITableViewController {
     public override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         switch Section(rawValue: section)! {
         case .performance:
+            if VMSettings.memoryDonorsAvailable {
+                return "Linux's memory is held by a helper process, so it does not count toward the \(VMSettings.formatMemory(VMSettings.processMemoryLimitMB)) iOS lets iSH+ itself use; Linux can have up to \(VMSettings.formatMemory(maximumMemory)) of this \(UIDevice.current.model)'s \(VMSettings.deviceMemoryGB) GB. Changes apply the next time Linux starts."
+            }
             return "iOS lets iSH+ use \(VMSettings.formatMemory(VMSettings.processMemoryLimitMB)) of this \(UIDevice.current.model)'s \(VMSettings.deviceMemoryGB) GB before ending it; QEMU itself needs some, so Linux can have up to \(VMSettings.formatMemory(maximumMemory)). Changes apply the next time Linux starts."
         case .ports:
             let ports = PortForwarder.shared.ports.isEmpty

@@ -42,6 +42,9 @@ updates, or add `https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/
 - **iOS integration.** Files > iSH+ > Shared is `~/iOS` in Linux; `pbcopy`
   and `pbpaste` use the iOS clipboard; the Run Command action runs commands
   from Shortcuts. Tailscale and other VPNs work, names included.
+- **More memory for Linux.** Linux's RAM is held by a helper process, so it
+  does not count toward the memory iOS lets iSH+ use (MeloNX's RAM donor
+  technique): Linux can have up to 60% of the device's RAM.
 - **Settings** for memory and CPU cores (automatic for your device), open
   ports, appearance and external keyboards.
 
@@ -124,6 +127,11 @@ to your own, open `iSH.xcodeproj` and run the iSH scheme on a device, or run
   commands and the open ports (`tools/guest/agent`); DNS goes through iOS's
   resolver (`DNSProxy.swift`, with a small libslirp patch); the shared folder
   is virtio-9p.
+- **Memory donors.** iOS ends a process whose memory passes its limit. Before
+  QEMU starts, iSH+ starts its helper extension as a separate process, which
+  allocates Linux's RAM and shares it over XPC; iSH+ maps it and ends the
+  helper, after which the memory counts toward neither (`RamDonor.m`,
+  `app/JITHelper/HelperHandler.m`, and a hook in QEMU's RAM allocation).
 
 ## Credits and licenses
 
@@ -143,6 +151,8 @@ used with QEMU and Linux: see `LICENSE.md`. It builds on:
   and [Armtix](https://armtix.artixlinux.org)
 - Distribution logos from [Simple Icons](https://simpleicons.org) (CC0); they
   are trademarks of their owners
+- [MeloNX](https://starforgejo.dev/projects/MeloNX)'s RAM donor technique, by
+  Stossy11 (MIT)
 - The ideas of [Madeira](https://github.com/willfaust/Madeira),
   [StikDebug](https://github.com/StikDebug/StikDebug) and StikPair for
   enabling JIT on the device

@@ -46,11 +46,32 @@ public final class VMSettings: NSObject {
     /// least 150 MB (iOS lowers the limit under memory pressure).
     private static var marginMB: Int { max(150, processMemoryLimitMB / 10) }
 
-    /// The most memory the VM can have here: iSH+'s memory limit, less QEMU's
-    /// own and a margin (about 1.2 GB on a 3 GB iPad, 5 GB on a 12 GB iPhone),
-    /// at least 512 MB.
-    @objc public static var maximumMemoryMB: Int {
+    /// The most memory the VM can have within iSH+'s own memory limit: the
+    /// limit, less QEMU's own and a margin (about 1.2 GB on a 3 GB iPad, 5 GB
+    /// on a 12 GB iPhone), at least 512 MB.
+    @objc public static var processMaximumMemoryMB: Int {
         max(512, (processMemoryLimitMB - qemuOverheadMB - marginMB) / 16 * 16)
+    }
+
+    /// Whether Linux's RAM comes from memory donors (RamDonor.m), outside
+    /// iSH+'s memory limit: when the helper extension is in this build, unless
+    /// Documents/VM/donate contains "0".
+    @objc public static var memoryDonorsAvailable: Bool {
+        guard let plugIns = Bundle.main.builtInPlugInsURL,
+              FileManager.default.fileExists(atPath: plugIns.appendingPathComponent("iSHJITHelper.appex").path) else {
+            return false
+        }
+        let flag = try? String(contentsOf: VirtualMachine.guestDirectory.appendingPathComponent("donate"), encoding: .utf8)
+        return flag?.hasPrefix("0") != true
+    }
+
+    /// The most memory the VM can have here. With memory donors, Linux's RAM
+    /// is outside iSH+'s limit, so the device's RAM decides: 60% of it (about
+    /// 1.7 GB on a 3 GB iPad, 7 GB on a 12 GB iPhone). Otherwise iSH+'s limit.
+    @objc public static var maximumMemoryMB: Int {
+        guard memoryDonorsAvailable else { return processMaximumMemoryMB }
+        let deviceMB = Int(ProcessInfo.processInfo.physicalMemory >> 20)
+        return max(processMaximumMemoryMB, deviceMB * 6 / 10 / 16 * 16)
     }
 
     /// Automatic memory (the default): from the RAM, 57% less 650 MB, but at
@@ -60,7 +81,7 @@ public final class VMSettings: NSObject {
     @objc public static var automaticMemoryMB: Int {
         let estimate = Int(Double(ProcessInfo.processInfo.physicalMemory) / 1_048_576 * 0.57) - 650
         let safe = processMemoryLimitMB * 6 / 10
-        return min(maximumMemoryMB, max(512, min(estimate, safe) / 256 * 256))
+        return min(processMaximumMemoryMB, max(512, min(estimate, safe) / 256 * 256))
     }
 
     /// The memory the user chose, or 0 for automatic.

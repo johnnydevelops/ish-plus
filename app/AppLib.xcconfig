@@ -1,2 +1,4 @@
 #include "StaticLib.xcconfig"
 HEADER_SEARCH_PATHS = $(inherited) $(SRCROOT)/app
+// Objective-C for the Swift code
+SWIFT_OBJC_BRIDGING_HEADER = app/iSH-Bridging-Header.h

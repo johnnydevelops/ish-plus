@@ -37,6 +37,8 @@
 		611DBAE48BB21E277E429F6A /* OnDevicePairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C9D381ABA749D43BCE9377 /* OnDevicePairing.swift */; };
 		62A737F846F8EF35046F8491 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 599290A47C2DDDD7A435DFA3 /* Foundation.framework */; };
 		63A76CAC87E1FE87EACBF434 /* libqemu-aarch64-softmmu.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = DF4620D19DC63C97C4EDA00A /* libqemu-aarch64-softmmu.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		A7D0D0E00000000000000003 /* RamDonor.m in Sources */ = {isa = PBXBuildFile; fileRef = A7D0D0E00000000000000001 /* RamDonor.m */; };
+		A7D0D0E00000000000000005 /* HelperHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = A7D0D0E00000000000000004 /* HelperHandler.m */; };
 		68FD8AD22DA4B3320B7ECE3A /* JITHelperLauncher.m in Sources */ = {isa = PBXBuildFile; fileRef = 9607608D73FBB17969CF5E8A /* JITHelperLauncher.m */; };
 		6A324D1B6387562B1AC3D4D0 /* QEMUMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7D8B35C99F9EE30F670C46 /* QEMUMonitor.swift */; };
 		72C57F7F9E45D97A8548D5C9 /* RunCommandIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF2EB9ACBD43D9BA161EE2A8 /* RunCommandIntent.swift */; };
@@ -216,6 +218,10 @@
 		85C9D381ABA749D43BCE9377 /* OnDevicePairing.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnDevicePairing.swift; sourceTree = "<group>"; };
 		8632A7BD219A59FB00F02325 /* UserPreferences.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UserPreferences.h; sourceTree = "<group>"; };
 		8632A7BE219A59FB00F02325 /* UserPreferences.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UserPreferences.m; sourceTree = "<group>"; };
+		A7D0D0E00000000000000001 /* RamDonor.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RamDonor.m; sourceTree = "<group>"; };
+		A7D0D0E00000000000000002 /* RamDonor.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = RamDonor.h; sourceTree = "<group>"; };
+		A7D0D0E00000000000000006 /* iSH-Bridging-Header.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "iSH-Bridging-Header.h"; sourceTree = "<group>"; };
+		A7D0D0E00000000000000004 /* HelperHandler.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = HelperHandler.m; sourceTree = "<group>"; };
 		9607608D73FBB17969CF5E8A /* JITHelperLauncher.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = JITHelperLauncher.m; sourceTree = "<group>"; };
 		9A28E4E8219A8B670073D200 /* AboutAppearanceViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AboutAppearanceViewController.h; sourceTree = "<group>"; };
 		9A28E4E9219A8B670073D200 /* AboutAppearanceViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AboutAppearanceViewController.m; sourceTree = "<group>"; };
@@ -376,6 +382,7 @@
 			isa = PBXGroup;
 			children = (
 				6A6234104F5D7ECA6A9B59D3 /* JITHelperHandler.swift */,
+				A7D0D0E00000000000000004 /* HelperHandler.m */,
 				23DF1BE7C23E37EB249CD436 /* Info.plist */,
 			);
 			name = JITHelper;
@@ -530,6 +537,9 @@
 				D97EA159F635965A28FE3E83 /* JITViewController.swift */,
 				31C1FD4EDA1E80CCD8B66426 /* OnboardingViewController.swift */,
 				9607608D73FBB17969CF5E8A /* JITHelperLauncher.m */,
+				A7D0D0E00000000000000001 /* RamDonor.m */,
+				A7D0D0E00000000000000002 /* RamDonor.h */,
+				A7D0D0E00000000000000006 /* iSH-Bridging-Header.h */,
 				AF98129378181E7CF436D4BC /* JITHelperLauncher.h */,
 				6F3ECFE55CA115CDF5C60459 /* DistroManager.swift */,
 				A650484A8360D2669C1C3344 /* DistrosViewController.swift */,
@@ -926,6 +936,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C5BA678EA73D1B1E22A34A86 /* JITHelperHandler.swift in Sources */,
+				A7D0D0E00000000000000005 /* HelperHandler.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -973,6 +984,7 @@
 				0613F6CA23E90E7A579F3A42 /* JITViewController.swift in Sources */,
 				8EE3B89ADE65613EDFE64710 /* OnboardingViewController.swift in Sources */,
 				68FD8AD22DA4B3320B7ECE3A /* JITHelperLauncher.m in Sources */,
+				A7D0D0E00000000000000003 /* RamDonor.m in Sources */,
 				513374B37BBB25AEC8C621C8 /* DistroManager.swift in Sources */,
 				4F15F87C7B8C9EADA4797559 /* DistrosViewController.swift in Sources */,
 				7C170B0049C15E6B6456497A /* DistroSetupViewController.swift in Sources */,
