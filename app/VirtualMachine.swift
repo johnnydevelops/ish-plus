@@ -279,6 +279,7 @@ public final class VirtualMachine: NSObject {
         if let symbol = dlsym(handle, "ishplus_9p_set_owner") {
             shareOwner = unsafeBitCast(symbol, to: ShareOwner.self)
         }
+        DesktopDisplay.shared.load(from: handle)
 
         try? FileManager.default.removeItem(at: socketDirectory)
         try FileManager.default.createDirectory(at: socketDirectory, withIntermediateDirectories: true)
@@ -452,6 +453,11 @@ public final class VirtualMachine: NSObject {
             // after Linux used memory, so iOS is less likely to end it
             "-device", "virtio-balloon-pci,free-page-reporting=on",
             "-device", "virtio-serial-pci",
+            // The Desktop session's display, pointer and keyboard (the guest
+            // loads their drivers only when the desktop starts)
+            "-device", "virtio-gpu-pci",
+            "-device", "virtio-tablet-pci",
+            "-device", "virtio-keyboard-pci",
             "-display", "none",
             "-monitor", "unix:\(socketDirectory.appendingPathComponent("mon").path),server=on,wait=off",
             // Early boot messages (before the virtio console exists) go to the

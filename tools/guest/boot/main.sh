@@ -19,7 +19,11 @@ $B mountpoint -q /lib/modules || $B mount --bind /.modloop/modules /lib/modules
 echo $S/bin/modprobe > /proc/sys/kernel/modprobe
 # Drivers for the devices present (network, consoles, ...), as udev would
 for alias in /sys/bus/*/devices/*/modalias; do
-    $B modprobe -q "$($B cat "$alias")" 2>/dev/null
+    a=$($B cat "$alias")
+    # Not the display and its input (virtio-gpu, virtio-input): the Desktop
+    # session loads them (boot/desktop.sh)
+    case "$a" in virtio:d00000010v*|virtio:d00000012v*) continue ;; esac
+    $B modprobe -q "$a" 2>/dev/null
 done
 $B hostname ishplus
 # Any user may ping (ICMP sockets need no privileges then): distributions'

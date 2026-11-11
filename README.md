@@ -32,6 +32,10 @@ updates, or add `https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/
 - **Servers open in your browser.** Start a server in Linux and it is at
   `localhost:<port>` on the iPad (sessions menu > Open in Browser), or on your
   network if you share it (Settings > Linux VM).
+- **A desktop.** Install Xorg and a desktop or window manager in Linux (for
+  example `apt install xorg xfce4`) and the sessions menu gets a **Desktop
+  Session**, with touch controls like UTM's: trackpad or touch mode, tap to
+  click, two-finger tap to right-click, two-finger scroll, pinch to zoom.
 - **Instant resume.** Without "Keep Running in Background", Linux is saved
   when iSH+ goes to the background; if iOS closes iSH+, you can resume where
   you were.

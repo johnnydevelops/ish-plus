@@ -54,6 +54,7 @@
 @property (nonatomic) TerminalSession *currentSession;
 @property int nextSessionNumber;
 @property UIButton *sessionsButton;
+@property UIViewController *desktopController;
 @property BOOL showingJITScreen;
 @property BOOL pendingJITScreen;
 // A session to start once the view is on screen (to present setup first)
@@ -311,15 +312,30 @@
                                                image:[UIImage systemImageNamed:@"terminal"]
                                           identifier:nil
                                              handler:^(UIAction *action) {
+            [weakSelf hideDesktop];
             weakSelf.currentSession = session;
         }];
-        action.state = session == self.currentSession ? UIMenuElementStateOn : UIMenuElementStateOff;
+        action.state = session == self.currentSession && !self.desktopShown ? UIMenuElementStateOn : UIMenuElementStateOff;
         [sessionItems addObject:action];
+    }
+    // Linux's X11 desktop, when Xorg and a desktop or window manager are installed
+    NSString *desktop = ISHDesktopSession.availableName;
+    if (desktop != nil || self.desktopShown) {
+        UIAction *action = [UIAction actionWithTitle:@"Desktop Session"
+                                               image:[UIImage systemImageNamed:@"desktopcomputer"]
+                                          identifier:nil
+                                             handler:^(UIAction *action) {
+            [weakSelf showDesktop];
+        }];
+        action.subtitle = desktop;
+        action.state = self.desktopShown ? UIMenuElementStateOn : UIMenuElementStateOff;
+        [sessionItems insertObject:action atIndex:0];
     }
     UIAction *new = [UIAction actionWithTitle:@"New Session"
                                         image:[UIImage systemImageNamed:@"plus"]
                                    identifier:nil
                                       handler:^(UIAction *action) {
+        [weakSelf hideDesktop];
         [weakSelf startNewSession];
     }];
     UIAction *close = [UIAction actionWithTitle:@"Close Session"
@@ -331,7 +347,8 @@
     close.attributes = UIMenuElementAttributesDestructive;
     NSMutableArray<UIMenuElement *> *menu = [NSMutableArray arrayWithArray:@[
         [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:sessionItems],
-        [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[new, close]],
+        [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline
+                     children:self.desktopShown ? @[new] : @[new, close]],
     ]];
     // Servers running in Linux, forwarded to the iPad
     NSMutableArray<UIMenuElement *> *portItems = [NSMutableArray new];
@@ -356,7 +373,10 @@
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     __weak typeof(self) weakSelf = self;
     button.menu = [UIMenu menuWithChildren:@[[UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
-        completion(weakSelf.sessionsMenuElements ?: @[]);
+        // Whether there is a desktop to offer (asked of Linux, briefly)
+        [ISHDesktopSession checkAvailabilityWithTimeout:1.5 completion:^(NSString *name) {
+            completion(weakSelf.sessionsMenuElements ?: @[]);
+        }];
     }]]];
     button.showsMenuAsPrimaryAction = YES;
     button.accessibilityLabel = @"Sessions";
@@ -369,6 +389,30 @@
     self.barControls = [self.barControls arrayByAddingObject:button];
     self.sessionsButton = button;
     [self _updateSessionsButton];
+}
+
+#pragma mark Desktop session
+
+- (BOOL)desktopShown {
+    return self.desktopController != nil && self.presentedViewController == self.desktopController;
+}
+
+- (void)showDesktop {
+    if (self.desktopShown)
+        return;
+    __weak typeof(self) weakSelf = self;
+    // Made once: the desktop keeps its state (zoom, input mode) between visits
+    if (self.desktopController == nil) {
+        self.desktopController = [ISHDesktopSession makeViewControllerWithMenuProvider:^NSArray<UIMenuElement *> *{
+            return weakSelf.sessionsMenuElements ?: @[];
+        }];
+    }
+    [self presentViewController:self.desktopController animated:YES completion:nil];
+}
+
+- (void)hideDesktop {
+    if (self.desktopShown)
+        [self.desktopController dismissViewControllerAnimated:YES completion:nil];
 }
 
 - (void)_updateSessionsButton {
