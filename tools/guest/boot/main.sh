@@ -26,6 +26,13 @@ for alias in /sys/bus/*/devices/*/modalias; do
     $B modprobe -q "$a" 2>/dev/null
 done
 $B hostname ishplus
+# A machine ID, which systemd would make on first boot (D-Bus and desktops
+# need one; distribution images ship it empty, or "uninitialized")
+if ! $B grep -qE '^[0-9a-f]{32}$' /etc/machine-id 2>/dev/null; then
+    $B tr -dc 0-9a-f < /dev/urandom | $B head -c 32 > /etc/machine-id
+    echo >> /etc/machine-id
+fi
+[ -d /var/lib/dbus ] && [ ! -s /var/lib/dbus/machine-id ] && $B ln -sf /etc/machine-id /var/lib/dbus/machine-id
 # Any user may ping (ICMP sockets need no privileges then): distributions'
 # ping relies on file capabilities, which unpacking their archive loses
 echo "0 2147483647" > /proc/sys/net/ipv4/ping_group_range
