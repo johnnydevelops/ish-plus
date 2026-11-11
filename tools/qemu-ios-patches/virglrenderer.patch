@@ -1,0 +1,33 @@
+diff --git a/src/mesa/util/anon_file.c b/src/mesa/util/anon_file.c
+index c3638917..8f7f99ee 100644
+--- a/src/mesa/util/anon_file.c
++++ b/src/mesa/util/anon_file.c
+@@ -47,6 +47,7 @@
+ #endif
+ 
+ #if defined(__APPLE__)
++#include <TargetConditionals.h>
+ #ifndef PSHMNAMLEN
+ #define PSHMNAMLEN (31)
+ #endif
+@@ -179,6 +180,20 @@ os_create_anonymous_file(off_t size, const char *debug_name)
+      if (errno != EEXIST)
+        break;
+    }
++#if TARGET_OS_IPHONE
++   /* iOS apps without an app group may not create POSIX shared memory: an
++    * unlinked file in the app's temporary directory instead (iSH+) */
++   if (fd < 0) {
++      const char *dir = getenv("TMPDIR");
++      char template[1024];
++      snprintf(template, sizeof(template), "%s/mesa-shared-XXXXXX", dir ? dir : "/tmp");
++      fd = mkstemp(template);
++      if (fd >= 0) {
++         fcntl(fd, F_SETFD, FD_CLOEXEC);
++         unlink(template);
++      }
++   }
++#endif
+ #elif defined(__OpenBSD__)
+    char template[] = "/tmp/mesa-XXXXXXXXXX";
+    fd = shm_mkstemp(template);

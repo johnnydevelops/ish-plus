@@ -13,6 +13,7 @@ import os
 public final class VMSettings: NSObject {
     private static let memoryKey = "VM Memory"
     private static let cpuKey = "VM CPUs"
+    private static let gpuKey = "VM GPU Acceleration"
 
     /// RAM in this device, in GB (rounded, so 2.8 GB of usable memory is 3).
     @objc public static var deviceMemoryGB: Int {
@@ -112,6 +113,21 @@ public final class VMSettings: NSObject {
     /// The vCPUs the VM gets.
     @objc public static var cpuCount: Int {
         chosenCPUCount > 0 ? min(chosenCPUCount, maximumCPUCount) : automaticCPUCount
+    }
+
+    /// Whether this build has the GPU libraries: ANGLE (OpenGL ES over Metal),
+    /// which QEMU's virglrenderer draws the guest's OpenGL with.
+    @objc public static var gpuAvailable: Bool {
+        FileManager.default.fileExists(atPath:
+            Bundle.main.privateFrameworksURL!.appendingPathComponent("libGLESv2.dylib").path)
+    }
+
+    /// GPU acceleration for the Desktop (VirGL: the guest's OpenGL drawn
+    /// with Metal), chosen by the user; off by default. Linux cannot be saved
+    /// for an instant resume while it is on (QEMU cannot save virgl's state).
+    @objc public static var gpuAcceleration: Bool {
+        get { gpuAvailable && UserDefaults.standard.bool(forKey: gpuKey) }
+        set { UserDefaults.standard.set(newValue, forKey: gpuKey) }
     }
 
     /// "1 GB", "1.25 GB", "512 MB"

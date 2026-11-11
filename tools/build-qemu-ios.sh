@@ -6,10 +6,17 @@
 # (user-mode networking) and libucontext (coroutines; iOS has no makecontext).
 # The libraries are upstream releases.
 #
-# Usage: tools/build-qemu-ios.sh [stage...]
-#   stages: fetch deps qemu qemu-tci (default: all)
+# GPU acceleration (VirGL, for the Desktop): ANGLE (OpenGL ES over Metal,
+# from UTM's WebKit fork), libepoxy and virglrenderer (UTM's forks), at the
+# commits UTM pins. QEMU's JIT build gets OpenGL and virglrenderer when the
+# gpu stage was built; ANGLE's libEGL.dylib and libGLESv2.dylib are embedded
+# next to the QEMU libraries (libepoxy loads them from there).
 #
-# Requires Homebrew meson, ninja, pkg-config, glib (for glib-mkenums).
+# Usage: tools/build-qemu-ios.sh [stage...]
+#   stages: fetch deps gpu qemu qemu-tci (default: all)
+#
+# Requires Homebrew meson, ninja, pkg-config, glib (for glib-mkenums), and
+# Xcode (ANGLE is built with its Xcode project).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -25,6 +32,10 @@ GLIB_SRC="https://download.gnome.org/sources/glib/2.90/glib-2.90.1.tar.xz"
 PIXMAN_SRC="https://www.cairographics.org/releases/pixman-0.46.4.tar.gz"
 SLIRP_SRC="https://gitlab.freedesktop.org/slirp/libslirp/-/archive/v4.9.7/libslirp-v4.9.7.tar.gz"
 LIBUCONTEXT_SRC="https://github.com/kaniini/libucontext/archive/refs/tags/libucontext-1.5.2.tar.gz"
+# GPU (git: repo commit)
+WEBKIT_REPO="https://github.com/utmapp/WebKit.git ed78ab6e1a37f4f11583a0bd038f22ec91f3ff10"
+EPOXY_REPO="https://github.com/utmapp/libepoxy.git bf98587477fe68d07b93319ece7b40a7d0e2eabe"
+VIRGL_REPO="https://github.com/utmapp/virglrenderer.git 65cc14eb896f121ffc5130ce04815a923a03c41d"
 
 # ---------------------------------------------------------------- toolchain
 MINVER="15.0"
@@ -68,12 +79,32 @@ fetch() { # url [dir name] -> extracted into $SRC/<name>, patched from tools/qem
     fi
 }
 
+fetch_git() { # "url commit" name [sparse dirs...] -> $SRC/<name>, patched from tools/qemu-ios-patches
+    local url="${1% *}" commit="${1#* }" name="$2"; shift 2
+    [ -d "$SRC/$name" ] && return
+    log "Cloning $name"
+    git clone --filter=tree:0 --no-checkout "$url" "$SRC/$name"
+    if [ $# -gt 0 ]; then
+        git -C "$SRC/$name" sparse-checkout init --cone
+        git -C "$SRC/$name" sparse-checkout set "$@"
+    fi
+    git -C "$SRC/$name" checkout -q "$commit"
+    local patch="$ROOT/tools/qemu-ios-patches/$name.patch"
+    if [ -f "$patch" ]; then
+        log "Patching $name"
+        (cd "$SRC/$name" && patch -p1 < "$patch")
+    fi
+}
+
 stage_fetch() {
     fetch "$FFI_SRC"
     fetch "$GLIB_SRC"
     fetch "$PIXMAN_SRC"
     fetch "$SLIRP_SRC"
     fetch "$LIBUCONTEXT_SRC" libucontext-1.5.2
+    fetch_git "$WEBKIT_REPO" angle Source/ThirdParty/ANGLE Configurations Tools/ccache
+    fetch_git "$EPOXY_REPO" libepoxy
+    fetch_git "$VIRGL_REPO" virglrenderer
 }
 
 # ---------------------------------------------------------------- builders
@@ -101,7 +132,7 @@ nm = '$NM'
 ranlib = '$RANLIB'
 strip = ['$STRIP', '-x']
 pkg-config = '$(command -v pkg-config)'
-python = '$(command -v python3)'
+python = '${PYTHON:-$(command -v python3)}'
 glib-mkenums = '$(command -v glib-mkenums)'
 glib-compile-resources = '$(command -v glib-compile-resources)'
 [host_machine]
@@ -141,6 +172,31 @@ stage_deps() {
     mesonb "$SRC/libucontext-1.5.2" darwin -Ddefault_library=static -Dfreestanding=true
 }
 
+# ANGLE (libEGL.dylib, libGLESv2.dylib with @rpath ids, and its headers),
+# libepoxy and virglrenderer (static, linked into QEMU)
+stage_gpu() {
+    log "Building ANGLE"
+    mkdir -p "$PREFIX/lib" "$PREFIX/include"
+    local angle="$SRC/angle/Source/ThirdParty/ANGLE"
+    # Xcode's newer clang warns about ANGLE's code: no -Werror
+    (cd "$angle" && env -i PATH="$PATH" HOME="$HOME" xcodebuild archive -archivePath "$WORK/angle/ANGLE" \
+        -scheme ANGLE -sdk iphoneos -arch arm64 -configuration Release -derivedDataPath "$WORK/angle/dd" \
+        WEBCORE_LIBRARY_DIR=/usr/local/lib NORMAL_UMBRELLA_FRAMEWORKS_DIR="" CODE_SIGNING_ALLOWED=NO \
+        IPHONEOS_DEPLOYMENT_TARGET="$MINVER" GCC_TREAT_WARNINGS_AS_ERRORS=NO \
+        'OTHER_CFLAGS=$(inherited) -Wno-error' \
+        'OTHER_CPLUSPLUSFLAGS=$(inherited) -Wno-error -Wno-unnecessary-virtual-specifier')
+    for l in libEGL libGLESv2; do
+        cp "$WORK/angle/ANGLE.xcarchive/Products/usr/local/lib/$l.dylib" "$PREFIX/lib/"
+        install_name_tool -id "@rpath/$l.dylib" "$PREFIX/lib/$l.dylib"
+    done
+    rsync -a "$angle/include/" "$PREFIX/include/"
+    mesonb "$SRC/libepoxy" darwin -Ddefault_library=static -Dtests=false -Dglx=no -Degl=yes -Dx11=false
+    # virglrenderer's build needs PyYAML
+    python3 -m venv "$WORK/venv" && "$WORK/venv/bin/pip" -q install pyyaml
+    PYTHON="$WORK/venv/bin/python3" mesonb "$SRC/virglrenderer" darwin -Ddefault_library=static \
+        -Dtests=false -Dcheck-gl-errors=false -Dvtest=false -Dplatforms=egl
+}
+
 configure_qemu() { # build-dir prefix target-list extra-args...
     local build="$1" prefix="$2" targets="$3"; shift 3
     mkdir -p "$build"
@@ -149,7 +205,7 @@ configure_qemu() { # build-dir prefix target-list extra-args...
         --enable-shared-lib --enable-ucontext --with-coroutine=libucontext \
         --enable-tcg --enable-slirp --disable-slirp-smbd \
         --disable-hvf --disable-cocoa --disable-sdl --disable-gtk --disable-coreaudio \
-        --disable-vmnet --disable-vnc --disable-spice --disable-opengl --disable-curses \
+        --disable-vmnet --disable-vnc --disable-spice --disable-curses \
         --disable-tools --disable-guest-agent --disable-docs --disable-debug-info \
         --disable-gnutls --disable-nettle --disable-gcrypt --disable-curl --disable-libssh \
         --disable-libusb --disable-usb-redir --disable-smartcard --disable-capstone \
@@ -161,11 +217,13 @@ configure_qemu() { # build-dir prefix target-list extra-args...
 # JIT build: libqemu-{aarch64,x86_64}-softmmu.dylib
 stage_qemu() {
     log "Building QEMU (deps/qemu)"
+    local gpu=--disable-opengl
+    [ -f "$PREFIX/lib/libvirglrenderer.a" ] && gpu="--enable-opengl --enable-virglrenderer"
     # -O3 and link-time optimization: about 10% faster guests, mostly from
     # inlining the lookup QEMU does at every guest indirect branch (it spans
     # several files); without QOM's runtime type checks on every cast.
     configure_qemu "$WORK/qemu-build" "$PREFIX" aarch64-softmmu,x86_64-softmmu \
-        --enable-lto --disable-qom-cast-debug --extra-cflags=-O3
+        --enable-lto --disable-qom-cast-debug --extra-cflags=-O3 $gpu
     # Debug info and local symbols: about half the size (exports stay)
     xcrun strip -x -S "$PREFIX/lib/libqemu-aarch64-softmmu.dylib"
 }
@@ -174,7 +232,7 @@ stage_qemu() {
 # (much faster than QEMU's TCI): libqemu-aarch64-softmmu-tci.dylib
 stage_qemu-tci() {
     log "Building QEMU with the threaded interpreter (TCTI)"
-    configure_qemu "$WORK/qemu-build-tci" "$WORK/tci-install" aarch64-softmmu \
+    configure_qemu "$WORK/qemu-build-tci" "$WORK/tci-install" aarch64-softmmu --disable-opengl \
         --enable-tcg-threaded-interpreter --extra-cflags=-Wno-unused-command-line-argument \
         --extra-ldflags=-Wl,-no_deduplicate --extra-ldflags=-Wl,-no_compact_unwind
     cp "$WORK/tci-install/lib/libqemu-aarch64-softmmu.dylib" "$PREFIX/lib/libqemu-aarch64-softmmu-tci.dylib"
@@ -183,6 +241,6 @@ stage_qemu-tci() {
 }
 
 stages=("$@")
-[ ${#stages[@]} -eq 0 ] && stages=(fetch deps qemu qemu-tci)
+[ ${#stages[@]} -eq 0 ] && stages=(fetch deps gpu qemu qemu-tci)
 for s in "${stages[@]}"; do "stage_$s"; done
 log "Done: $PREFIX"

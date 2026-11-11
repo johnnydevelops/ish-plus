@@ -140,6 +140,9 @@ public final class VirtualMachine: NSObject {
     /// Run QEMU's TCG interpreter instead of its JIT, for when JIT cannot be
     /// enabled. Much slower, but needs no executable memory.
     @objc public var interpreted = false
+    /// The VM has the GPU (virtio-gpu-gl): chosen when it starts, only with
+    /// JIT (the interpreter build has no OpenGL).
+    @objc public private(set) var gpuAccelerated = false
     @objc public private(set) var hasStopped = false
     /// Linux's RAM, in MB: the setting, unless memory donors fell short
     private var memoryMB = VMSettings.memoryMB
@@ -260,6 +263,11 @@ public final class VirtualMachine: NSObject {
         }
         self.distro = distro
         installing = !distro.installed
+        // Diagnostics: a file named gpu containing "1" in the VM folder turns
+        // GPU acceleration on (until Settings has a switch for it).
+        let gpuFlag = (try? String(contentsOf: VirtualMachine.guestDirectory.appendingPathComponent("gpu"),
+                                   encoding: .utf8))?.hasPrefix("1") ?? false
+        gpuAccelerated = (VMSettings.gpuAcceleration || gpuFlag) && VMSettings.gpuAvailable && !interpreted
 
         let library = VirtualMachine.library(interpreted: interpreted)
         guard let handle = dlopen(library.path, RTLD_NOW | RTLD_LOCAL),
@@ -494,10 +502,14 @@ public final class VirtualMachine: NSObject {
             "-device", "virtio-serial-pci",
             // The Desktop session's display, pointer and keyboard (the guest
             // loads their drivers only when the desktop starts)
-            "-device", "virtio-gpu-pci",
+            // With GPU acceleration, virtio-gpu-gl: the guest's OpenGL runs
+            // in virglrenderer on ANGLE (Metal), and egl-headless reads each
+            // frame back into the console's surface, which DesktopDisplay
+            // shows as before.
+            "-device", gpuAccelerated ? "virtio-gpu-gl-pci" : "virtio-gpu-pci",
             "-device", "virtio-tablet-pci",
             "-device", "virtio-keyboard-pci",
-            "-display", "none",
+            "-display", gpuAccelerated ? "egl-headless" : "none",
             "-monitor", "unix:\(socketDirectory.appendingPathComponent("mon").path),server=on,wait=off",
             // Early boot messages (before the virtio console exists) go to the
             // emulated serial port, saved for diagnosing boot problems.

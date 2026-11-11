@@ -1,0 +1,21 @@
+diff --git a/Source/ThirdParty/ANGLE/src/common/system_utils.cpp b/Source/ThirdParty/ANGLE/src/common/system_utils.cpp
+index 83beb4aff2..91b1aced6b 100644
+--- a/Source/ThirdParty/ANGLE/src/common/system_utils.cpp
++++ b/Source/ThirdParty/ANGLE/src/common/system_utils.cpp
+@@ -218,12 +218,10 @@ void *OpenSystemLibraryAndGetError(const char *libraryName,
+                                    SearchType searchType,
+                                    std::string *errorOut)
+ {
+-#if defined(ANGLE_PLATFORM_MACOS)
+-    std::string frameworkPath = std::string(libraryName) + ".framework/Versions/Current/" + std::string(libraryName);
+-    return OpenSystemLibraryWithExtensionAndGetError(frameworkPath.c_str(), SearchType::SystemDir, errorOut);
+-#elif defined(ANGLE_PLATFORM_IOS_FAMILY)
+-    std::string frameworkPath = std::string(libraryName) + ".framework/" + std::string(libraryName);
+-    return OpenSystemLibraryWithExtensionAndGetError(frameworkPath.c_str(), SearchType::SystemDir, errorOut);
++#if defined(ANGLE_PLATFORM_APPLE)
++    // iSH+: loose lib<name>.dylib files next to each other (the app's Frameworks)
++    std::string dylibPath = std::string("lib") + libraryName + ".dylib";
++    return OpenSystemLibraryWithExtensionAndGetError(dylibPath.c_str(), searchType, errorOut);
+ #else
+     std::string libraryWithExtension = std::string(libraryName);
+     std::string dotExtension         = std::string(".") + GetSharedLibraryExtension();

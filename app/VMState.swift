@@ -102,6 +102,12 @@ public final class VMState: NSObject {
     /// Whether to start QEMU waiting for a saved state (adds -incoming).
     func prepareRestore(distro: Distro) -> Bool {
         guard savedDate != nil else { return false }
+        // Saved without the GPU; a VM with it has other devices
+        if VirtualMachine.shared.gpuAccelerated {
+            vmLog("not resuming: GPU acceleration is on")
+            discard()
+            return false
+        }
         // The disk as it was then, before QEMU opens it
         do {
             _ = try FileManager.default.replaceItemAt(distro.diskURL, withItemAt: diskURL)
@@ -188,6 +194,11 @@ public final class VMState: NSObject {
     /// after if asked. On failure Linux keeps running.
     private func save(continueAfter: Bool) -> Bool {
         guard let distro = DistroManager.shared.active else { return false }
+        // QEMU cannot save virgl's state (a migration blocker)
+        guard !VirtualMachine.shared.gpuAccelerated else {
+            vmLog("not saving Linux: GPU acceleration is on")
+            return false
+        }
         let start = Date()
         let (status, output) = runInGuest("sh /opt/ishplus/boot/suspend.sh", timeout: 15)
         guard status == 0, output.contains("ready") else {
