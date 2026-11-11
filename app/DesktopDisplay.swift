@@ -4,12 +4,15 @@
 //
 //  The VM's display (virtio-gpu) and pointer and keyboard (virtio-tablet,
 //  virtio-keyboard), through iSH+'s bridge in QEMU (deps/qemu,
-//  ui/ishplus-display.c). QEMU reports frames on its main loop thread; they
-//  are copied into a buffer of our own, which the Desktop view shows.
+//  ui/ishplus-display.c). QEMU reports frames on its main loop thread.
+//  Without GPU acceleration they are copied into a buffer of our own, which
+//  the Desktop view shows; with it, QEMU draws the guest's screen into
+//  IOSurfaces on the GPU, which the view shows as they are (no copies).
 //
 
 import CoreGraphics
 import Foundation
+import IOSurface
 
 final class DesktopDisplay {
     static let shared = DesktopDisplay()
@@ -21,6 +24,8 @@ final class DesktopDisplay {
     private typealias Button = @convention(c) (Int32, Int32) -> Void
     private typealias Scroll = @convention(c) (Int32, Int32) -> Void
     private typealias Key = @convention(c) (Int32, Int32) -> Void
+    private typealias GPUFrameCallback = @convention(c) (UnsafeMutableRawPointer?, UnsafeMutableRawPointer?, Int32, Int32) -> Void
+    private typealias SetGPUFrames = @convention(c) (UnsafeMutableRawPointer?, GPUFrameCallback?) -> Void
 
     private typealias SurfaceCallback = @convention(c) (UnsafeMutableRawPointer?, UnsafeRawPointer?, Int32, Int32, Int32) -> Void
     private typealias UpdateCallback = @convention(c) (UnsafeMutableRawPointer?, Int32, Int32, Int32, Int32) -> Void
@@ -34,6 +39,7 @@ final class DesktopDisplay {
     private var buttonFunction: Button?
     private var scrollFunction: Scroll?
     private var keyFunction: Key?
+    private var setGPUFramesFunction: SetGPUFrames?
 
     /// QEMU's library is loaded (the VM ran) and has the bridge.
     var isAvailable: Bool { attachFunction != nil }
@@ -50,6 +56,7 @@ final class DesktopDisplay {
         buttonFunction = symbol("ishplus_input_button", Button.self)
         scrollFunction = symbol("ishplus_input_scroll", Scroll.self)
         keyFunction = symbol("ishplus_input_key", Key.self)
+        setGPUFramesFunction = symbol("ishplus_display_set_gpu_frames", SetGPUFrames.self)
     }
 
     // MARK: Frames
@@ -83,8 +90,9 @@ final class DesktopDisplay {
         }
     }
 
-    /// Main thread: a new frame to show (nil: no display yet).
-    var onFrame: ((CGImage?) -> Void)?
+    /// Main thread: a new frame to show, a CGImage or an IOSurface (layer
+    /// contents), and its size in pixels (nil: no display yet).
+    var onFrame: ((AnyObject?, CGSize) -> Void)?
     /// Main thread: the guest's cursor (image, hot spot), nil to hide it.
     var onCursor: ((CGImage?, CGPoint) -> Void)?
     /// Main thread: where the guest put its cursor.
@@ -97,25 +105,69 @@ final class DesktopDisplay {
     private var presentScheduled = false
     private var callbacks: UnsafeMutablePointer<UnsafeRawPointer?>?
 
+    /// GPU frames: the newest IOSurface QEMU drew (held with a use count, so
+    /// QEMU draws into others), and the one on screen.
+    private var gpuSurface: IOSurfaceRef?
+    private var gpuSize = CGSize.zero
+    private var shownSurface: IOSurfaceRef?
+    private var newGPUFrame = false
+    /// The screen is QEMU's GPU frames, not the copy.
+    private var gpuMode = false
+    /// The software surface's size while in GPU mode (copied when it ends)
+    private var sourceSize = (width: 0, height: 0)
+
     /// The guest's screen size, in pixels.
     var size: CGSize {
         lock.lock(); defer { lock.unlock() }
+        if gpuMode { return gpuSize }
         return frame.map { CGSize(width: $0.width, height: $0.height) } ?? .zero
+    }
+
+    private func copyAll(_ pixels: UnsafeRawPointer, width: Int, height: Int, stride: Int) {
+        let frame = Frame(width: width, height: height)
+        for row in 0..<height {
+            memcpy(frame.data + row * frame.stride, pixels + row * stride, width * 4)
+        }
+        self.frame = frame
     }
 
     private func surface(_ pixels: UnsafeRawPointer?, width: Int, height: Int, stride: Int) {
         lock.lock()
         if let pixels, width > 0, height > 0 {
-            let frame = Frame(width: width, height: height)
-            for row in 0..<height {
-                memcpy(frame.data + row * frame.stride, pixels + row * stride, width * 4)
-            }
-            self.frame = frame
             source = pixels
             sourceStride = stride
+            sourceSize = (width, height)
+            if gpuMode {
+                frame = nil    // copied if the GPU frames end
+            } else {
+                copyAll(pixels, width: width, height: height, stride: stride)
+            }
         } else {
             frame = nil
             source = nil
+        }
+        let gpu = gpuMode
+        lock.unlock()
+        if !gpu { schedulePresent() }
+    }
+
+    /// QEMU's thread: a GPU frame, or nil when the screen is back to software.
+    private func gpuFrame(_ surface: IOSurfaceRef?, width: Int, height: Int) {
+        lock.lock()
+        // One use count each for the newest and the shown surface (once if
+        // the same); QEMU redraws a held one only when all are held.
+        if let surface, surface !== gpuSurface, surface !== shownSurface { IOSurfaceIncrementUseCount(surface) }
+        if let old = gpuSurface, old !== shownSurface, old !== surface { IOSurfaceDecrementUseCount(old) }
+        gpuSurface = surface
+        newGPUFrame = surface != nil
+        if surface != nil {
+            gpuMode = true
+            gpuSize = CGSize(width: width, height: height)
+        } else {
+            gpuMode = false
+            if let source, sourceSize.width > 0 {
+                copyAll(source, width: sourceSize.width, height: sourceSize.height, stride: sourceStride)
+            }
         }
         lock.unlock()
         schedulePresent()
@@ -123,7 +175,7 @@ final class DesktopDisplay {
 
     private func update(x: Int, y: Int, width: Int, height: Int) {
         lock.lock()
-        if let frame, let source {
+        if !gpuMode, let frame, let source {
             let x0 = max(0, min(x, frame.width)), x1 = max(x0, min(x + width, frame.width))
             let y0 = max(0, min(y, frame.height)), y1 = max(y0, min(y + height, frame.height))
             if x1 > x0 {
@@ -145,9 +197,36 @@ final class DesktopDisplay {
         DispatchQueue.main.async { [self] in
             lock.lock()
             presentScheduled = false
+            if gpuMode, let surface = gpuSurface {
+                guard newGPUFrame else { lock.unlock(); return }
+                newGPUFrame = false
+                let size = gpuSize
+                let previous = shownSurface
+                shownSurface = surface
+                lock.unlock()
+                onFrame?(surface, size)
+                // Free for QEMU once the layer shows the new one (the render
+                // server holds the surface it shows)
+                if let previous, previous !== surface { releaseAfterCommit(previous) }
+                return
+            }
             let frame = self.frame
+            let previous = shownSurface
+            shownSurface = nil
             lock.unlock()
-            onFrame?(frame?.image())
+            onFrame?(frame?.image(), frame.map { CGSize(width: $0.width, height: $0.height) } ?? .zero)
+            if let previous { releaseAfterCommit(previous) }
+        }
+    }
+
+    /// Main thread: lets QEMU draw into a surface again once the layer that
+    /// showed it has moved on (the render server holds its own use).
+    private func releaseAfterCommit(_ surface: IOSurfaceRef) {
+        DispatchQueue.main.async { [self] in
+            lock.lock()
+            let held = surface === gpuSurface || surface === shownSurface
+            lock.unlock()
+            if !held { IOSurfaceDecrementUseCount(surface) }
         }
     }
 
@@ -195,7 +274,13 @@ final class DesktopDisplay {
             table[4] = unsafeBitCast(position, to: UnsafeRawPointer.self)
             callbacks = table
         }
-        return attachFunction(UnsafeRawPointer(callbacks!)) == 0
+        guard attachFunction(UnsafeRawPointer(callbacks!)) == 0 else { return false }
+        let gpuFrame: GPUFrameCallback = { _, surface, width, height in
+            let surface = surface.map { Unmanaged<IOSurfaceRef>.fromOpaque($0).takeUnretainedValue() }
+            DesktopDisplay.shared.gpuFrame(surface, width: Int(width), height: Int(height))
+        }
+        setGPUFramesFunction?(nil, gpuFrame)
+        return true
     }
 
     /// Stops receiving frames (Linux keeps its desktop).
@@ -204,6 +289,10 @@ final class DesktopDisplay {
         lock.lock()
         frame = nil
         source = nil
+        // The surface on screen stays until the view is gone
+        if let surface = gpuSurface, surface !== shownSurface { IOSurfaceDecrementUseCount(surface) }
+        gpuSurface = nil
+        gpuMode = false
         lock.unlock()
     }
 

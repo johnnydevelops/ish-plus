@@ -155,7 +155,7 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        display.onFrame = { [weak self] image in self?.show(image) }
+        display.onFrame = { [weak self] contents, size in self?.show(contents, size: size) }
         display.onCursor = { [weak self] image, hotSpot in self?.setCursor(image, hotSpot: hotSpot) }
         display.onCursorPosition = { [weak self] point, visible in
             guard let self, self.mode == .touch || !self.pointerMovedLocally else { return }
@@ -206,9 +206,9 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
 
     // MARK: Screen
 
-    private func show(_ image: CGImage?) {
-        guard let image else { return }
-        let size = CGSize(width: image.width, height: image.height)
+    /// A CGImage, or an IOSurface QEMU drew on the GPU (shown as it is).
+    private func show(_ contents: AnyObject?, size: CGSize) {
+        guard let contents, size.width > 0, size.height > 0 else { return }
         if size != guestSize || !statusLabel.isHidden {
             guestSize = size
             pointer = CGPoint(x: min(pointer.x, size.width - 1), y: min(pointer.y, size.height - 1))
@@ -216,7 +216,9 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
         }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        screenLayer.contents = image
+        // The same IOSurface again (redrawn): the layer only notices a change
+        if screenLayer.contents as AnyObject? === contents { screenLayer.contents = nil }
+        screenLayer.contents = contents
         layoutScreenLocked()
         CATransaction.commit()
     }
