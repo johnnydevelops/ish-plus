@@ -414,7 +414,8 @@ public final class VirtualMachine: NSObject {
         // Chosen in Settings > Linux VM (automatic by default)
         var cpus = VMSettings.cpuCount
         // Developer overrides, for comparing settings without rebuilding:
-        // Documents/VM/cpu (a -cpu value) and Documents/VM/smp (a count).
+        // Documents/VM/cpu (a -cpu value), Documents/VM/smp (a count) and
+        // Documents/VM/append (more kernel arguments).
         func override(_ name: String) -> String? {
             (try? String(contentsOfFile: file(name), encoding: .utf8))?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -438,7 +439,13 @@ public final class VirtualMachine: NSObject {
             "-initrd", kernel("initramfs"),
             // iSH+'s initramfs finds its disks by their serial (see
             // tools/guest/boot/init); boot messages go to the first session.
-            "-append", "earlycon=pl011,0x9000000 console=ttyAMA0 console=hvc0 loglevel=4",
+            // Kernel hardening that costs the most under emulation, for no
+            // gain inside the app's sandbox: a random kernel stack offset on
+            // every system call (about 6% of a system call here) and zeroing
+            // every kernel allocation.
+            "-append", "earlycon=pl011,0x9000000 console=ttyAMA0 console=hvc0 loglevel=4"
+                + " randomize_kstack_offset=off init_on_alloc=0"
+                + (override("append").map { " " + $0 } ?? ""),
             "-drive", "if=none,file=\(distro!.diskURL.path),format=raw,id=root,cache=writeback,discard=unmap,detect-zeroes=unmap",
             "-device", "virtio-blk-pci,drive=root,serial=ishplus-root,discard_granularity=4096",
             "-drive", "if=none,file=\(kernel("modloop")),format=raw,id=modloop,readonly=on",
