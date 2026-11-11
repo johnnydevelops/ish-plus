@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.0",
+          "buildVersion": "6",
+          "date": "2026-11-11T22:40:35Z",
+          "localizedDescription": "iSH+ 1.0: GPU acceleration, more memory for Linux, and a much faster emulator. The emulator changes are large: please report anything that behaves differently from 0.2.3.\n\n## New\n\n- **GPU acceleration** (Settings › Linux VM › Graphics, off by default). Linux's OpenGL runs on the iPad's GPU through VirGL and ANGLE on Metal, and the Desktop Session is drawn on the GPU end to end, with no copies by the CPU. glxgears went from about 25–50 FPS in software to about 285 FPS on an A13 iPad, and the desktop itself is accelerated. Linux pauses its GPU work while iSH+ is in the background.\n- **Vulkan** (experimental, with GPU acceleration). Venus gives Linux a Vulkan 1.4 device on the iPad's GPU through MoltenVK, and zink provides OpenGL 3.1 on top of it. On A13 and older GPUs, flat-shaded geometry takes its colour from the first vertex instead of the last.\n- **More memory for Linux.** Linux's RAM is held by a helper process, so it no longer counts toward the memory iOS lets iSH+ use (MeloNX's RAM donor technique). Linux can now have up to 60% of the device's RAM, and memory it frees goes back to iOS. On a 3 GB iPad, Linux using 1.4 GB kept iSH+ itself under 500 MB.\n- **Pinch to change the text size** in the terminal, as in Termux.\n\n## Faster\n\nOn an A13 iPad, compared with 0.2.3:\n- **Floating point about 2× faster.** Linux's floating point now runs on the iPad's own FPU, in the generated code, with results and flags identical to real hardware.\n- **SHA-1/256/512 and CRC32 on the iPad's own instructions** (about 3× and 8× faster). This speeds up package installs, git, SSH and compression.\n- **Faster memory access**, from TLB fills that reuse huge-page mappings, a larger jump cache, and inline lookups for indirect jumps. Byte stores are about 1.5× faster and system calls about 12% faster.\n- **Lighter guest kernel settings** for features that only cost time under emulation.\n\n## Fixed\n\n- The Desktop now takes the right size when Linux started it before the Desktop Session was opened.\n\n## Installing\n\nSideload `iSH-plus-1.0.0.ipa`, or update from the SideStore source; updating keeps your distributions. To try GPU acceleration, turn it on in Settings › Linux VM and restart Linux. Instant resume is off while it is on.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.0.0/iSH-plus-1.0.0.ipa",
+          "size": 103519414,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "0.2.3",
           "buildVersion": "5",
           "date": "2026-11-11T17:22:45Z",
