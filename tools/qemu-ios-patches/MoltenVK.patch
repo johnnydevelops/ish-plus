@@ -68,11 +68,67 @@ index ea656405..64bb0ecb 100644
  					[cmdEncoder->_mtlRenderEncoder drawMeshThreadgroups:MTLSizeMake(threadCount, _instanceCount, 1)
  											threadsPerObjectThreadgroup:MTLSizeMake(1, 1, 1)
  											  threadsPerMeshThreadgroup:MTLSizeMake(1, 1, 1)];
+diff --git a/MoltenVK/MoltenVK/GPUObjects/MVKDevice.h b/MoltenVK/MoltenVK/GPUObjects/MVKDevice.h
+index 6d960149..e8efe9d4 100644
+--- a/MoltenVK/MoltenVK/GPUObjects/MVKDevice.h
++++ b/MoltenVK/MoltenVK/GPUObjects/MVKDevice.h
+@@ -408,6 +408,9 @@ public:
+ 	/** Populates the specified structure with the Metal-specific features of this device. */
+ 	const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() const { return &_metalFeatures; }
+ 
++	/** Whether geometry shaders can be emulated: Metal mesh shaders are supported. */
++	bool supportsMeshShaders();
++
+ 	/** Returns whether argument buffers are in use. */
+ 	bool isUsingMetalArgumentBuffers() const { return _isUsingMetalArgumentBuffers; }
+ 
+diff --git a/MoltenVK/MoltenVK/GPUObjects/MVKDevice.mm b/MoltenVK/MoltenVK/GPUObjects/MVKDevice.mm
+index 612a5270..feab6f30 100644
+--- a/MoltenVK/MoltenVK/GPUObjects/MVKDevice.mm
++++ b/MoltenVK/MoltenVK/GPUObjects/MVKDevice.mm
+@@ -2749,6 +2749,12 @@
+ 	_metalFeatures.nativeTextureSwizzle = true;
+ }
+ 
++bool MVKPhysicalDevice::supportsMeshShaders() {
++	const char* noMesh = getenv("MVK_NO_MESH");
++	if (noMesh && noMesh[0] == '1') { return false; }
++	return supportsMTLGPUFamily(Apple7) || supportsMTLGPUFamily(Mac2);
++}
++
+ bool MVKPhysicalDevice::isTier2MetalArgumentBuffers() {
+ 	return _isUsingMetalArgumentBuffers && (_metalFeatures.argumentBuffersTier >= MTLArgumentBuffersTier2);
+ }
+@@ -2760,7 +2766,9 @@
+     _features.robustBufferAccess = true; // NOTE: Required by spec, not fully supported by non-Apple GPUs.
+     _features.fullDrawIndexUint32 = true;
+     _features.independentBlend = true;
+-    _features.geometryShader = true;  // XXX Required by DXVK for D3D10
++    // Geometry shaders are emulated with Metal mesh shaders, which need an
++    // Apple7 (A14, M1) or Mac2 GPU. MVK_NO_MESH=1 pretends there is none.
++    _features.geometryShader = supportsMeshShaders();
+     _features.sampleRateShading = true;
+ 	_features.logicOp = getMVKConfig().useMetalPrivateAPI;
+     _features.depthBiasClamp = true;
 diff --git a/MoltenVK/MoltenVK/GPUObjects/MVKPipeline.mm b/MoltenVK/MoltenVK/GPUObjects/MVKPipeline.mm
-index fbead640..3dc456c3 100644
+index fbead640..d0eaf94d 100644
 --- a/MoltenVK/MoltenVK/GPUObjects/MVKPipeline.mm
 +++ b/MoltenVK/MoltenVK/GPUObjects/MVKPipeline.mm
-@@ -1762,12 +1762,24 @@ static void addCommonImplicitBuffersToShaderConfig(SPIRVToMSLConversionConfigura
+@@ -1194,6 +1194,13 @@ static bool usesConstantColor(MVKRenderStateFlags dynamic, const VkPipelineColor
+         [rastPLDesc release];    // temp release
+ #if MVK_XCODE_14
+ 	} else if (isGeometryPipeline()) {
++		// Without mesh shaders (A13 and older), Metal rejects mesh pipelines.
++		// MVK_NO_MESH=fail also fails them here, without hiding the feature.
++		const char* noMesh = getenv("MVK_NO_MESH");
++		if (!getPhysicalDevice()->supportsMeshShaders() || (noMesh && !strcmp(noMesh, "fail"))) {
++			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Geometry shaders need Metal mesh shaders, which this device does not support."));
++			return;
++		}
+ 		MTLMeshRenderPipelineDescriptor* plDesc = newMTLMeshRenderPipelineDescriptor(pCreateInfo, reflectData, pVertexSS, pVertexFB, pGeometrySS, pGeometryFB, pFragmentSS, pFragmentFB);    // temp retain
+ 		if (plDesc) getOrCompilePipeline(plDesc, _mtlPipelineState);
+ 		else _hasValidMTLPipelineStates = false;
+@@ -1762,12 +1769,24 @@ static void addCommonImplicitBuffersToShaderConfig(SPIRVToMSLConversionConfigura
  	shaderConfig.options.mslOptions.robust_image_access2 = shouldEnableRobustImageAccess2(this, pCreateInfo, pVertexSS);
  
  	auto mtlPrimitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(_vkPrimitiveTopology);
@@ -98,7 +154,7 @@ index fbead640..3dc456c3 100644
  	else
  		reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "Unsupported topology: %lu", mtlPrimitiveType);
  
-@@ -1807,12 +1819,24 @@ static void addCommonImplicitBuffersToShaderConfig(SPIRVToMSLConversionConfigura
+@@ -1807,12 +1826,24 @@ static void addCommonImplicitBuffersToShaderConfig(SPIRVToMSLConversionConfigura
  	shaderConfig.options.mslOptions.robust_image_access2 = shouldEnableRobustImageAccess2(this, pCreateInfo, pGeometrySS);
  
  	auto mtlPrimitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(_vkPrimitiveTopology);

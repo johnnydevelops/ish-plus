@@ -1,7 +1,7 @@
 From 13ac6d29dc1906a395bad3a76a8aae9117985f2a Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 14:16:47 +0000
-Subject: [PATCH 1/6] util/anon_file: on iOS, fall back to a temporary file
+Subject: [PATCH 1/7] util/anon_file: on iOS, fall back to a temporary file
 
 iOS apps without an app group may not create POSIX shared memory.
 ---
@@ -48,7 +48,7 @@ index c3638917..8f7f99ee 100644
 From c307a867c18e8c67f76bb620c30c599a3ed414b2 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 14:16:47 +0000
-Subject: [PATCH 2/6] vrend: write gl_PointSize on GLES hosts
+Subject: [PATCH 2/7] vrend: write gl_PointSize on GLES hosts
 
 GLES leaves the size of points undefined unless the last vertex stage
 writes gl_PointSize. ANGLE on Metal draws them huge: glamor's core-font
@@ -93,7 +93,7 @@ index 39895cec..c4597722 100644
 From c6452b055749d1c25a87fbff1d872c49c7e22ae0 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 14:16:47 +0000
-Subject: [PATCH 3/6] vrend: base vertex through EXT_base_instance; no
+Subject: [PATCH 3/7] vrend: base vertex through EXT_base_instance; no
  dual-source blend on ANGLE Metal
 
 - ANGLE on Metal has GL_EXT_base_instance but not
@@ -181,7 +181,7 @@ index e6ae0074..829b4ac8 100644
 From 4187faf8f6040680323c7f567eae4f2385cf9c74 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 15:06:27 +0000
-Subject: [PATCH 4/6] Render server in a thread without eventfd (macOS, iOS):
+Subject: [PATCH 4/7] Render server in a thread without eventfd (macOS, iOS):
  retire fences, own fence table
 
 - Without an eventfd, VIRGL_RENDERER_THREAD_SYNC is dropped, so the
@@ -556,7 +556,7 @@ index 71076727..75602089 100644
 From 86de1bee7f49b7f9600fb08e66b734ce99609d01 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 15:06:27 +0000
-Subject: [PATCH 5/6] vkr: on Apple systems, load MoltenVK next to the library
+Subject: [PATCH 5/7] vkr: on Apple systems, load MoltenVK next to the library
  (or VKR_VULKAN_LIBRARY)
 
 iOS apps embed MoltenVK.framework in their Frameworks folder; with
@@ -604,7 +604,7 @@ index dc1f42c4..133ef806 100644
 From 0c62e3afa2eba7296390426a6de0fecc22cf5973 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 17:32:36 +0000
-Subject: [PATCH 6/6] vkr: don't advertise VK_EXT_extended_dynamic_state on
+Subject: [PATCH 6/7] vkr: don't advertise VK_EXT_extended_dynamic_state on
  MoltenVK
 
 With it, nothing zink draws reaches the attachments (clears do); zink
@@ -669,6 +669,98 @@ index e8558156..616fcc7b 100644
        const uint32_t spec_ver = vkr_extension_get_spec_version(props->extensionName);
        if (spec_ver) {
           if (props->specVersion > spec_ver)
+-- 
+2.54.0 (Apple Git-157)
+
+
+From 90ad1e5949b9f93579e81022ff65d17e1d5faac2 Mon Sep 17 00:00:00 2001
+From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
+Date: Wed, 11 Nov 2026 18:54:01 +0000
+Subject: [PATCH 7/7] vkr: lose the context, not the process, on null pipeline,
+ layout or descriptor-set handles
+
+A guest can bind a pipeline whose creation failed (VK_NULL_HANDLE), as
+zink did when MoltenVK could not build a mesh pipeline on an A13; the
+host driver then dereferences null. Check the handles the bind and push
+commands require, and mark the context fatal instead.
+---
+ src/venus/vkr_command_buffer.c | 36 +++++++++++++++++++++++++++++++---
+ 1 file changed, 33 insertions(+), 3 deletions(-)
+
+diff --git a/src/venus/vkr_command_buffer.c b/src/venus/vkr_command_buffer.c
+index dc42c5a1..f06ea822 100644
+--- a/src/venus/vkr_command_buffer.c
++++ b/src/venus/vkr_command_buffer.c
+@@ -21,6 +21,30 @@
+       _vk->cmd_name(args->commandBuffer, ##__VA_ARGS__);                                 \
+    } while (0)
+ 
++/* A required handle the guest left null, e.g. a pipeline whose creation
++ * failed (so it has none on the host): the host driver would crash on it.
++ * Skip the command and lose the guest's context instead.
++ */
++#define VKR_CMD_REQUIRE(dispatch, cond, cmd_name)                                        \
++   do {                                                                                  \
++      if (unlikely(!(cond))) {                                                           \
++         vkr_log(#cmd_name ": a required handle is null");                              \
++         vkr_context_set_fatal((dispatch)->data);                                        \
++         return;                                                                         \
++      }                                                                                  \
++   } while (0)
++
++static bool
++vkr_handles_present(const void *handles, uint32_t count)
++{
++   const VkDescriptorSet *sets = handles;
++   for (uint32_t i = 0; i < count; i++) {
++      if (!sets[i])
++         return false;
++   }
++   return true;
++}
++
+ static void
+ vkr_dispatch_vkCreateCommandPool(struct vn_dispatch_context *dispatch,
+                                  struct vn_command_vkCreateCommandPool *args)
+@@ -142,9 +166,10 @@ vkr_dispatch_vkEndCommandBuffer(UNUSED struct vn_dispatch_context *dispatch,
+ }
+ 
+ static void
+-vkr_dispatch_vkCmdBindPipeline(UNUSED struct vn_dispatch_context *dispatch,
++vkr_dispatch_vkCmdBindPipeline(struct vn_dispatch_context *dispatch,
+                                struct vn_command_vkCmdBindPipeline *args)
+ {
++   VKR_CMD_REQUIRE(dispatch, args->pipeline, vkCmdBindPipeline);
+    VKR_CMD_CALL(CmdBindPipeline, args, args->pipelineBindPoint, args->pipeline);
+ }
+ 
+@@ -215,9 +240,13 @@ vkr_dispatch_vkCmdSetStencilReference(UNUSED struct vn_dispatch_context *dispatc
+ }
+ 
+ static void
+-vkr_dispatch_vkCmdBindDescriptorSets(UNUSED struct vn_dispatch_context *dispatch,
++vkr_dispatch_vkCmdBindDescriptorSets(struct vn_dispatch_context *dispatch,
+                                      struct vn_command_vkCmdBindDescriptorSets *args)
+ {
++   VKR_CMD_REQUIRE(dispatch,
++                   args->layout && (!args->descriptorSetCount || args->pDescriptorSets) &&
++                      vkr_handles_present(args->pDescriptorSets, args->descriptorSetCount),
++                   vkCmdBindDescriptorSets);
+    VKR_CMD_CALL(CmdBindDescriptorSets, args, args->pipelineBindPoint, args->layout,
+                 args->firstSet, args->descriptorSetCount, args->pDescriptorSets,
+                 args->dynamicOffsetCount, args->pDynamicOffsets);
+@@ -490,9 +519,10 @@ vkr_dispatch_vkCmdCopyQueryPoolResults(UNUSED struct vn_dispatch_context *dispat
+ }
+ 
+ static void
+-vkr_dispatch_vkCmdPushConstants(UNUSED struct vn_dispatch_context *dispatch,
++vkr_dispatch_vkCmdPushConstants(struct vn_dispatch_context *dispatch,
+                                 struct vn_command_vkCmdPushConstants *args)
+ {
++   VKR_CMD_REQUIRE(dispatch, args->layout, vkCmdPushConstants);
+    VKR_CMD_CALL(CmdPushConstants, args, args->layout, args->stageFlags, args->offset,
+                 args->size, args->pValues);
+ }
 -- 
 2.54.0 (Apple Git-157)
 
