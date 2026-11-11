@@ -465,12 +465,18 @@ public final class VirtualMachine: NSObject {
             "-initrd", kernel("initramfs"),
             // iSH+'s initramfs finds its disks by their serial (see
             // tools/guest/boot/init); boot messages go to the first session.
-            // Kernel hardening that costs the most under emulation, for no
-            // gain inside the app's sandbox: a random kernel stack offset on
-            // every system call (about 6% of a system call here) and zeroing
-            // every kernel allocation.
+            // Kernel hardening and features that cost the most under
+            // emulation, for no gain inside the app's sandbox: a random
+            // kernel stack offset on every system call (about 6% of a system
+            // call here), zeroing every kernel allocation, branch target
+            // checks (BTI) and memory tags (MTE) the emulated CPU would
+            // check, audit, AppArmor, usercopy checks, Spectre mitigations
+            // and KFENCE (about 5% faster starting programs). Programs see
+            // the same CPU features and system calls.
             "-append", "earlycon=pl011,0x9000000 console=ttyAMA0 console=hvc0 loglevel=4"
                 + " randomize_kstack_offset=off init_on_alloc=0"
+                + " arm64.nobti arm64.nomte audit=0 lsm=capability,landlock,yama"
+                + " hardened_usercopy=off mitigations=off kfence.sample_interval=0"
                 + (override("append").map { " " + $0 } ?? ""),
             "-drive", "if=none,file=\(distro!.diskURL.path),format=raw,id=root,cache=writeback,discard=unmap,detect-zeroes=unmap",
             "-device", "virtio-blk-pci,drive=root,serial=ishplus-root,discard_granularity=4096",
