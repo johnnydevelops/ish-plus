@@ -1,7 +1,7 @@
 From 13ac6d29dc1906a395bad3a76a8aae9117985f2a Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 14:16:47 +0000
-Subject: [PATCH 1/7] util/anon_file: on iOS, fall back to a temporary file
+Subject: [PATCH 1/8] util/anon_file: on iOS, fall back to a temporary file
 
 iOS apps without an app group may not create POSIX shared memory.
 ---
@@ -48,7 +48,7 @@ index c3638917..8f7f99ee 100644
 From c307a867c18e8c67f76bb620c30c599a3ed414b2 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 14:16:47 +0000
-Subject: [PATCH 2/7] vrend: write gl_PointSize on GLES hosts
+Subject: [PATCH 2/8] vrend: write gl_PointSize on GLES hosts
 
 GLES leaves the size of points undefined unless the last vertex stage
 writes gl_PointSize. ANGLE on Metal draws them huge: glamor's core-font
@@ -93,7 +93,7 @@ index 39895cec..c4597722 100644
 From c6452b055749d1c25a87fbff1d872c49c7e22ae0 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 14:16:47 +0000
-Subject: [PATCH 3/7] vrend: base vertex through EXT_base_instance; no
+Subject: [PATCH 3/8] vrend: base vertex through EXT_base_instance; no
  dual-source blend on ANGLE Metal
 
 - ANGLE on Metal has GL_EXT_base_instance but not
@@ -181,7 +181,7 @@ index e6ae0074..829b4ac8 100644
 From 4187faf8f6040680323c7f567eae4f2385cf9c74 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 15:06:27 +0000
-Subject: [PATCH 4/7] Render server in a thread without eventfd (macOS, iOS):
+Subject: [PATCH 4/8] Render server in a thread without eventfd (macOS, iOS):
  retire fences, own fence table
 
 - Without an eventfd, VIRGL_RENDERER_THREAD_SYNC is dropped, so the
@@ -556,7 +556,7 @@ index 71076727..75602089 100644
 From 86de1bee7f49b7f9600fb08e66b734ce99609d01 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 15:06:27 +0000
-Subject: [PATCH 5/7] vkr: on Apple systems, load MoltenVK next to the library
+Subject: [PATCH 5/8] vkr: on Apple systems, load MoltenVK next to the library
  (or VKR_VULKAN_LIBRARY)
 
 iOS apps embed MoltenVK.framework in their Frameworks folder; with
@@ -604,7 +604,7 @@ index dc1f42c4..133ef806 100644
 From 0c62e3afa2eba7296390426a6de0fecc22cf5973 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 17:32:36 +0000
-Subject: [PATCH 6/7] vkr: don't advertise VK_EXT_extended_dynamic_state on
+Subject: [PATCH 6/8] vkr: don't advertise VK_EXT_extended_dynamic_state on
  MoltenVK
 
 With it, nothing zink draws reaches the attachments (clears do); zink
@@ -676,7 +676,7 @@ index e8558156..616fcc7b 100644
 From 90ad1e5949b9f93579e81022ff65d17e1d5faac2 Mon Sep 17 00:00:00 2001
 From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
 Date: Wed, 11 Nov 2026 18:54:01 +0000
-Subject: [PATCH 7/7] vkr: lose the context, not the process, on null pipeline,
+Subject: [PATCH 7/8] vkr: lose the context, not the process, on null pipeline,
  layout or descriptor-set handles
 
 A guest can bind a pipeline whose creation failed (VK_NULL_HANDLE), as
@@ -761,6 +761,62 @@ index dc42c5a1..f06ea822 100644
     VKR_CMD_CALL(CmdPushConstants, args, args->layout, args->stageFlags, args->offset,
                  args->size, args->pValues);
  }
+-- 
+2.54.0 (Apple Git-157)
+
+
+From c1f77ff6fc98e68ab71e0f03dfd0018c825d30ec Mon Sep 17 00:00:00 2001
+From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
+Date: Wed, 11 Nov 2026 20:51:49 +0000
+Subject: [PATCH 8/8] vkr: don't advertise host image copy on MoltenVK
+
+With VK_EXT_host_image_copy (or Vulkan 1.4's hostImageCopy feature),
+zink asks for depth images with host-transfer usage, which MoltenVK
+cannot make, and ends up with no depth buffers at all: glxgears drew its
+back faces over the front ones. Hide the extension and the feature when
+the host is a portability driver.
+---
+ src/venus/vkr_physical_device.c | 19 +++++++++++++++++--
+ 1 file changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/src/venus/vkr_physical_device.c b/src/venus/vkr_physical_device.c
+index 616fcc7b..d7998fec 100644
+--- a/src/venus/vkr_physical_device.c
++++ b/src/venus/vkr_physical_device.c
+@@ -302,9 +302,13 @@ vkr_physical_device_init_extensions(struct vkr_physical_device *physical_dev)
+          physical_dev->KHR_portability_subset = true;
+ 
+       /* MoltenVK's VK_EXT_extended_dynamic_state: with it, nothing zink
+-       * draws reaches the attachments (clears do); zink works without it. */
++       * draws reaches the attachments (clears do); zink works without it.
++       * Its VK_EXT_host_image_copy: zink then asks for host-transfer depth
++       * images, which MoltenVK cannot make, and gets none (no depth
++       * buffers: glxgears draws its back faces over the front ones). */
+       if (is_moltenvk &&
+-          !strcmp(props->extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME))
++          (!strcmp(props->extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME) ||
++           !strcmp(props->extensionName, VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME)))
+          continue;
+       /* For testing: VKR_HIDE_EXTENSIONS=name,name (whole names) */
+       const char *hide = getenv("VKR_HIDE_EXTENSIONS");
+@@ -736,6 +740,17 @@ vkr_dispatch_vkGetPhysicalDeviceFeatures2(
+ 
+    vn_replace_vkGetPhysicalDeviceFeatures2_args_handle(args);
+    vk->GetPhysicalDeviceFeatures2(args->physicalDevice, args->pFeatures);
++
++   /* Host image copy is core in Vulkan 1.4: hide the feature as well as the
++    * extension on MoltenVK (see vkr_physical_device_init_extensions) */
++   if (physical_dev->KHR_portability_subset) {
++      for (VkBaseOutStructure *s = (VkBaseOutStructure *)args->pFeatures; s; s = s->pNext) {
++         if (s->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES)
++            ((VkPhysicalDeviceVulkan14Features *)s)->hostImageCopy = VK_FALSE;
++         else if (s->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES)
++            ((VkPhysicalDeviceHostImageCopyFeatures *)s)->hostImageCopy = VK_FALSE;
++      }
++   }
+ }
+ 
+ static void
 -- 
 2.54.0 (Apple Git-157)
 

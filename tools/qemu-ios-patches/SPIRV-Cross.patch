@@ -1,5 +1,5 @@
 diff --git a/spirv_msl.cpp b/spirv_msl.cpp
-index d4252fcf..2825b0b9 100644
+index d4252fcf..8ae41760 100644
 --- a/spirv_msl.cpp
 +++ b/spirv_msl.cpp
 @@ -1859,6 +1859,11 @@ static int vertex_count_in_primitive(CompilerMSL::Options::PrimitiveTopology top
@@ -62,7 +62,7 @@ index d4252fcf..2825b0b9 100644
  			statement("int vertexCount = 2;");
  		}
  		else if (msl_options.input_primitive_type == Options::PrimitiveTopology::LineStrip)
-@@ -2014,12 +2023,28 @@ void CompilerMSL::emit_mesh_wrapper()
+@@ -2014,40 +2023,58 @@ void CompilerMSL::emit_mesh_wrapper()
  			statement("int startingIndex = positionInGrid.x;");
  			statement("int vertexCount = 1;");
  		}
@@ -91,15 +91,41 @@ index d4252fcf..2825b0b9 100644
  
  		statement("for (int i = 0; i < vertexCount; ++i)");
  		begin_scope();
-@@ -2048,6 +2073,7 @@ void CompilerMSL::emit_mesh_wrapper()
+ 		statement("uint vertexIndex;");
++		statement("int k = i;");
+ 
+ 		statement("if (drawInfo->indexed)");
+ 		begin_scope();
+ 
+ 		statement(R"END(
+ 		if (drawInfo->indexSize == 1) {
+-			vertexIndex = ((constant uchar *)drawInfo->indexBuffer)[startingIndex + i];
++			vertexIndex = ((constant uchar *)drawInfo->indexBuffer)[startingIndex + k];
+ 			if (vertexIndex == 0xff) {
+ 				return;
+ 			}
+ 		} else if (drawInfo->indexSize == 2) {
+-			vertexIndex = ((constant ushort *)drawInfo->indexBuffer)[startingIndex + i];
++			vertexIndex = ((constant ushort *)drawInfo->indexBuffer)[startingIndex + k];
+ 			if (vertexIndex == 0xffff) {
+ 				return;
+ 			}
+ 		} else {
+-			vertexIndex = ((constant uint *)drawInfo->indexBuffer)[startingIndex + i];
++			vertexIndex = ((constant uint *)drawInfo->indexBuffer)[startingIndex + k];
+ 			if (vertexIndex == 0xffffffff) {
+ 				return;
+ 			}
+ 		})END");
  
  		end_scope();
- 		statement("else vertexIndex = startingIndex + i;");
+-		statement("else vertexIndex = startingIndex + i;");
++		statement("else vertexIndex = startingIndex + k;");
 +		statement("vertexIndex += drawInfo->baseVertex;");
  
  		if (stage_in_var_id)
  		{
-@@ -2133,6 +2159,20 @@ void CompilerMSL::emit_mesh_wrapper()
+@@ -2133,6 +2160,20 @@ void CompilerMSL::emit_mesh_wrapper()
  
  		for (auto &resource : resources)
  		{
@@ -120,7 +146,7 @@ index d4252fcf..2825b0b9 100644
  			statement(need_comma ? ", " : "", resource.name);
  			need_comma = true;
  		}
-@@ -2182,6 +2222,7 @@ void CompilerMSL::emit_mesh_wrapper()
+@@ -2182,6 +2223,7 @@ void CompilerMSL::emit_mesh_wrapper()
  		// Emit the payload struct
  		statement("struct Payload");
  		begin_scope();
@@ -128,7 +154,7 @@ index d4252fcf..2825b0b9 100644
  		statement("struct");
  		begin_scope();
  
-@@ -2252,6 +2293,15 @@ void CompilerMSL::emit_mesh_wrapper()
+@@ -2252,6 +2294,15 @@ void CompilerMSL::emit_mesh_wrapper()
  			if (is_hidden_variable(var, true))
  				return;
  
@@ -144,7 +170,7 @@ index d4252fcf..2825b0b9 100644
  			statement("if (i < sizeof(", name, ") / sizeof(", name, "[0]))");
  			statement("\t", name, "[i] = out.", name, ";");
  		});
-@@ -2275,7 +2325,38 @@ void CompilerMSL::emit_mesh_wrapper()
+@@ -2275,7 +2326,42 @@ void CompilerMSL::emit_mesh_wrapper()
  		auto resources = get_sorted_entry_point_args(false);
  
  		for (auto &resource : resources)
@@ -161,11 +187,15 @@ index d4252fcf..2825b0b9 100644
 +		}
 +
 +		// The built-in inputs the function takes, in its parameters' order
++		// (each once, see entry_point_args_builtin)
++		std::unordered_set<uint32_t> passed_builtins;
 +		ir.for_each_typed_id<SPIRVariable>([&](uint32_t var_id, SPIRVariable &var)
 +		{
 +			if (var.storage != StorageClassInput || !is_builtin_variable(var))
 +				return;
 +			if (!interface_variable_exists_in_entry_point(var_id) || is_hidden_variable(var, true))
++				return;
++			if (!passed_builtins.insert(get_decoration(var_id, DecorationBuiltIn)).second)
 +				return;
 +			switch (BuiltIn(get_decoration(var_id, DecorationBuiltIn)))
 +			{
@@ -183,7 +213,7 @@ index d4252fcf..2825b0b9 100644
  
  		statement(");");
  		end_scope();
-@@ -10165,9 +10246,21 @@ void CompilerMSL::access_chain_internal_append_index(std::string &expr, uint32_t
+@@ -10165,9 +10251,21 @@ void CompilerMSL::access_chain_internal_append_index(std::string &expr, uint32_t
  			bool is_runtime_array = is_runtime_size_array(*type);
  			bool is_fixed_array = is_array(*type) && !is_runtime_array;
  
@@ -206,7 +236,7 @@ index d4252fcf..2825b0b9 100644
  				string idx_expr = to_unpacked_expression(index, register_expression_read);
  
  				// Create clamped index: min(idx, max(count - 1, 0))
-@@ -14829,11 +14922,43 @@ string CompilerMSL::get_robust_image_zero_value(const SPIRType &result_type, uin
+@@ -14829,11 +14927,43 @@ string CompilerMSL::get_robust_image_zero_value(const SPIRType &result_type, uin
  	}
  }
  
@@ -252,7 +282,7 @@ index d4252fcf..2825b0b9 100644
  		uint32_t stride = get_decoration(type.self, DecorationArrayStride);
  		if (stride == 0 && type.parent_type)
  		{
-@@ -14849,7 +14974,7 @@ string CompilerMSL::get_robust_buffer_array_length(const SPIRType &type, uint32_
+@@ -14849,7 +14979,7 @@ string CompilerMSL::get_robust_buffer_array_length(const SPIRType &type, uint32_
  		string declared_length = to_string(to_array_size_literal(type));
  		if (msl_options.robust_buffer_access2)
  		{
@@ -261,6 +291,25 @@ index d4252fcf..2825b0b9 100644
  			if (!size_expr.empty())
  			{
  				uint32_t stride = get_decoration(type.self, DecorationArrayStride);
+@@ -16133,6 +16263,9 @@ void CompilerMSL::entry_point_args_builtin(string &ep_args)
+ {
+ 	// Builtin variables
+ 	SmallVector<pair<SPIRVariable *, BuiltIn>, 8> active_builtins;
++	// A geometry shader can declare a built-in input twice (zink's
++	// gl_PrimitiveIDIn): as plain parameters, they would share a name
++	std::unordered_set<uint32_t> mesh_builtin_params;
+ 	ir.for_each_typed_id<SPIRVariable>([&](uint32_t var_id, SPIRVariable &var) {
+ 		if (var.storage != StorageClassInput)
+ 			return;
+@@ -16155,6 +16288,8 @@ void CompilerMSL::entry_point_args_builtin(string &ep_args)
+ 
+ 			if (is_direct_input_builtin(bi_type))
+ 			{
++				if (msl_options.for_mesh_pipeline && !mesh_builtin_params.insert(bi_type).second)
++					return;
+ 				if (!ep_args.empty())
+ 					ep_args += ", ";
+ 
 diff --git a/spirv_msl.hpp b/spirv_msl.hpp
 index 94a23dea..d4e31c29 100644
 --- a/spirv_msl.hpp
