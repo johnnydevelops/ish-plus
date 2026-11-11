@@ -19,6 +19,14 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "0.2.3",
+          "date": "2026-11-11T17:22:45Z",
+          "localizedDescription": "A desktop for Linux, and about 10–15% faster Linux.\n\n## New\n\n- **Desktop Session.** Install an X11 desktop or window manager in Linux (for example `sudo apt install xorg xfce4` on Debian or Ubuntu), and \"Desktop Session\" appears in the session switcher. It shows Linux's desktop with touch controls like UTM's: tap to click, two-finger tap to right-click, drag the pointer like a trackpad or touch directly, two-finger scroll, pinch to zoom, and a keyboard with Esc, Tab, Ctrl, Alt and arrow keys. Trackpads, mice and hardware keyboards work too. Xfce, MATE, LXQt, LXDE and window managers such as Openbox are found automatically. The desktop is drawn in software for now; graphics acceleration is in progress.\n- **SideStore source.** Add `https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/source.json` to SideStore, AltStore or Feather to get new releases as updates.\n\n## Faster\n\n- **About 10–15% faster Linux.** QEMU is now built with full optimization and link-time optimization, which speeds up the lookup it does at every jump in Linux's code. Measured on an iPad: system calls, starting programs, file work, Python and apt are all 10–15% faster.\n- **Lighter kernel hardening.** Two kernel hardening features that cost a lot under emulation and add nothing inside iSH+'s sandbox are off: a random stack offset on every system call, and zeroing every kernel allocation.\n\n## Fixed\n\n- **Distributions without a machine ID** now get one at boot, so D-Bus and desktops start.\n- **Logging out of the desktop** ends all of its programs.\n- **Alert buttons** say \"OK\" instead of iSH's \"k\".\n\n## Installing\n\nSideload `iSH-plus-0.2.3.ipa`, or update from the SideStore source; updating keeps your distributions.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v0.2.3/iSH-plus-0.2.3.ipa",
+          "size": 99623904,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "0.2.2",
           "date": "2026-11-11T09:48:41Z",
           "localizedDescription": "Use your own VPN with iSH+, plus fixes for settings, memory and security keys.\n\n## New\n\n- **The iSH+ JIT shortcut (iOS 27).** If you use another VPN, such as Tailscale, you no longer switch to LocalDevVPN by hand. Add the shortcut in Settings > JIT Setup. When Linux starts, it switches to LocalDevVPN, and once JIT is on it reconnects your VPN, or disconnects LocalDevVPN if none was on. It works like Madeira's JIT shortcut and needs no special entitlement, so it works with free accounts too (#5).\n- **Finer memory settings.** The memory slider moves in 16 MB steps.\n\n## Fixed\n\n- **No more freeze in Settings.** Switching Automatic Memory off no longer freezes iSH+ until iOS ends it (#6).\n- **Safer automatic memory on large devices.** Automatic memory is at most 60% of the memory iOS lets iSH+ use, and the maximum keeps 10% of it free. On a 12 GB iPhone, Linux got 5.5 GB of a ~6.1 GB limit, and iOS ended iSH+ once Linux used it. It now gets 3.5 GB there. 3 GB iPads keep 1 GB.\n- **Security keys: logins one right after another work.** iOS refuses a new NFC session for a moment after the last one closes, so iSH+ now waits for it and retries (#4).\n\n## Installing\n\nSideload `iSH-plus-0.2.2.ipa`; updating keeps your distributions. See the README for setup, the iSH+ JIT shortcut, and which sideloaders keep which entitlements.\n",
@@ -61,10 +69,7 @@
         ],
         "privacy": {
           "NSLocalNetworkUsageDescription": "iSH+ uses your local network to pair with this device, so it can enable JIT by itself.",
-          "NFCReaderUsageDescription": "iSH+ uses your security key (YubiKey or another FIDO key) over NFC when programs in Linux, such as ssh, ask for it.",
-          "NSLocationAlwaysAndWhenInUseUsageDescription": "Programs running in iSH will be allowed to track your location in the background.",
-          "NSLocationAlwaysUsageDescription": "Programs running in iSH will be allowed to track your location in the background.",
-          "NSLocationWhenInUseUsageDescription": "Programs running in iSH will be allowed to see your location."
+          "NFCReaderUsageDescription": "iSH+ uses your security key (YubiKey or another FIDO key) over NFC when programs in Linux, such as ssh, ask for it."
         }
       }
     }
