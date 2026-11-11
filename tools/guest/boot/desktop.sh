@@ -156,11 +156,21 @@ resize() {
     return 0
 }
 
-stop() {
-    for p in session xorg; do
-        [ -f $R/$p.pid ] && $B kill "$($B cat $R/$p.pid)" 2>/dev/null
+# Every program of the desktop (they have its DISPLAY), then Xorg
+desktop_pids() {
+    for p in /proc/[0-9]*; do
+        [ "${p#/proc/}" = "$$" ] && continue
+        { $B tr '\0' '\n' < "$p/environ"; } 2>/dev/null | $B grep -qx 'DISPLAY=:0' && echo "${p#/proc/}"
     done
+}
+
+stop() {
+    pids=$(desktop_pids)
+    [ -n "$pids" ] && $B kill $pids 2>/dev/null
+    [ -f $R/xorg.pid ] && $B kill "$($B cat $R/xorg.pid)" 2>/dev/null
     $B sleep 1
+    pids=$(desktop_pids)
+    [ -n "$pids" ] && $B kill -9 $pids 2>/dev/null
     [ -f $R/xorg.pid ] && $B kill -9 "$($B cat $R/xorg.pid)" 2>/dev/null
     $B rm -f $R/xorg.pid $R/session.pid
     return 0
