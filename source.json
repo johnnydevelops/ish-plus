@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.4",
+          "buildVersion": "10",
+          "date": "2026-11-12T21:20:43Z",
+          "localizedDescription": "## Faster\n\nLinux in iSH+ is noticeably faster at the things that use the kernel a lot. Measured on an iPad (9th generation), compared with 1.0.3:\n\n| | 1.0.3 | 1.0.4 | |\n|---|---|---|---|\n| Starting programs | 0.78 s | 0.58 s | 26% faster |\n| Pipes between programs | 0.26 s | 0.20 s | 24% faster |\n| System calls | 0.32 s | 0.26 s | 21% faster |\n| Creating files | 0.41 s | 0.37 s | 10% faster |\n| apt-cache search | 3.35 s | 3.20 s | 5% faster |\n\nShell scripts, package installs and anything that starts many small programs benefit most.\n\nWhat changed in the emulator:\n- The kernel's code and memory mappings now stay cached when Linux switches between programs; before, every switch threw them away.\n- Entering and leaving the kernel (every system call) skips recomputing the CPU state when nothing changed.\n- Every block of emulated code runs 3 fewer instructions, and more unused flag calculations are skipped.\n\nInstant resume starts fresh once after updating.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.0.4/iSH-plus-1.0.4.ipa",
+          "size": 103595894,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "1.0.3",
           "buildVersion": "9",
           "date": "2026-11-12T12:02:22Z",
