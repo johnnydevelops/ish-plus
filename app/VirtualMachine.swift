@@ -531,7 +531,10 @@ public final class VirtualMachine: NSObject {
             "-device", "virtio-blk-pci,drive=modloop,serial=ishplus-modloop",
             "-drive", "if=none,file=\(kernel("support.img")),format=raw,id=support,readonly=on",
             "-device", "virtio-blk-pci,drive=support,serial=ishplus-support",
-            "-netdev", "user,id=net",
+            // No IPv6: QEMU gives Linux an IPv6 route even when iOS has no
+            // IPv6, and then programs that try IPv6 first (xbps) fail with
+            // "No route to host" instead of using IPv4.
+            "-netdev", "user,id=net,ipv6=off",
             "-device", "virtio-net-pci,netdev=net,romfile=",
             "-device", "virtio-rng-pci",
             // Linux reports the memory it frees, which QEMU gives back to
