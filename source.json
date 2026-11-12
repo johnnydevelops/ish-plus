@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.3",
+          "buildVersion": "9",
+          "date": "2026-11-12T12:02:22Z",
+          "localizedDescription": "## Fixed\n\n- **GPU acceleration for your own programs on the Desktop**: the GPU was only usable by root, so programs you ran as your user fell back to slow software OpenGL, and Vulkan-based OpenGL (zink) failed with \"failed to choose pdev\". It now works for your user, as on a normal Linux system.\n\nTip: kitty needs OpenGL 3.3. With the Vulkan setting on, it runs with:\n\n    MESA_LOADER_DRIVER_OVERRIDE=zink MESA_GL_VERSION_OVERRIDE=3.3 MESA_GLSL_VERSION_OVERRIDE=330 kitty\n\nInstant resume starts fresh once after updating.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.0.3/iSH-plus-1.0.3.ipa",
+          "size": 103593132,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "1.0.2",
           "buildVersion": "8",
           "date": "2026-11-12T09:14:36Z",
