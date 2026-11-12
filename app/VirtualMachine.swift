@@ -498,7 +498,7 @@ public final class VirtualMachine: NSObject {
         // max: ARMv8.x features (FEX needs v8.2+ and LSE). Pointer
         // authentication and SVE are off: emulating them only costs time
         // (pauth runs on every function call in the guest kernel).
-        let cpu = override("cpu") ?? "max,pauth=off,sve=off,sme=off"
+        let cpu = override("cpu") ?? "max,pauth=off,sve=off,sme=off,bti=off,pmu=off"
         var args = [
             "qemu-system-aarch64",
             "-nodefaults", "-no-user-config",
