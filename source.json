@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.1",
+          "buildVersion": "7",
+          "date": "2026-11-12T09:09:48Z",
+          "localizedDescription": "## Faster\n\nLinux runs faster, especially system calls, process switches and memory-heavy programs:\n\n- System calls about 30% faster, pipes about 45% faster; Python, apt and compiling a few percent faster.\n- Memory copies about twice as fast; matrix and floating-point math 15–20% faster; programs that jump around in memory up to 4× faster.\n- QEMU keeps each program's page tables and translated code across process switches, instead of throwing them away.\n\n## Fixed\n\n- **\"No route to host\" when installing packages** (Void's xbps and others): Linux no longer gets an IPv6 route that iOS can't use, so connections go over IPv4.\n- **iPhone screens with rounded corners**: the terminal no longer goes under the home indicator, and the Desktop stays clear of the notch or Dynamic Island and the corners. Square-screen devices are unchanged.\n- **iPhone in landscape**: the welcome, JIT and resume screens scroll instead of being cut off.\n\nInstant resume starts fresh once after updating.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.0.1/iSH-plus-1.0.1.ipa",
+          "size": 103588722,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "1.0.0",
           "buildVersion": "6",
           "date": "2026-11-11T22:40:35Z",
