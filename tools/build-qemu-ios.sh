@@ -243,6 +243,12 @@ stage_qemu() {
     log "Building QEMU (deps/qemu)"
     local gpu=--disable-opengl
     [ -f "$PREFIX/lib/libvirglrenderer.a" ] && gpu="--enable-opengl --enable-virglrenderer"
+    # ANGLE without virglrenderer: a QEMU without GPU support would be packaged
+    # with the GPU switches, and fail to start with them on
+    if [ -f "$PREFIX/lib/libEGL.dylib" ] && [ "$gpu" = --disable-opengl ]; then
+        echo "error: ANGLE is built but libvirglrenderer.a is missing: run the gpu stage" >&2
+        exit 1
+    fi
     # -O3 and link-time optimization: about 10% faster guests, mostly from
     # inlining the lookup QEMU does at every guest indirect branch (it spans
     # several files); without QOM's runtime type checks on every cast.
