@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.2",
+          "buildVersion": "8",
+          "date": "2026-11-12T09:14:36Z",
+          "localizedDescription": "## Fixed\n\n- **iPads and other square screens**: 1.0.1 left an empty strip at the bottom of the terminal and Desktop, because iPadOS reports a bottom safe area even on screens without rounded corners. iSH+ now keeps clear of the screen edges only on screens with rounded corners (iPhones with Face ID, newer iPads).\n\nInstant resume starts fresh once after updating.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.0.2/iSH-plus-1.0.2.ipa",
+          "size": 103593279,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "1.0.1",
           "buildVersion": "7",
           "date": "2026-11-12T09:09:48Z",
