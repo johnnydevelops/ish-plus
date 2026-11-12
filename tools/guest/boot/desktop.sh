@@ -121,6 +121,11 @@ start() {
     $B modprobe -q virtio_input; $B modprobe -q evdev; $B modprobe -q virtio-gpu
     i=0; while [ ! -e /dev/dri/card0 ] && [ $i -lt 50 ]; do $B sleep 0.1; i=$((i + 1)); done
     $B sleep 0.5
+    # The GPU for the user's programs (OpenGL and Vulkan: virgl, zink, Venus),
+    # as udev's rules would (render node for everyone, card for "video");
+    # devtmpfs makes them root's only
+    $B chmod 0666 /dev/dri/renderD* 2>/dev/null
+    $B chgrp video /dev/dri/card* 2>/dev/null && $B chmod 0660 /dev/dri/card* 2>/dev/null
     udev_db
     accel=none
     gpu_3d && accel=glamor
