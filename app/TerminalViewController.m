@@ -618,11 +618,12 @@ static int nextVMTerminalNumber;
 }
 
 /*
- * The terminal ends above the keyboard, and never below the safe area: the
- * home indicator and the screen's rounded corners (0 on square screens).
+ * The terminal ends above the keyboard, and on a screen with rounded corners
+ * never below the safe area (the home indicator and the corners).
  */
 - (void)updateBottomPad {
-    self.bottomConstraint.constant = MAX(self.keyboardPad, self.view.safeAreaInsets.bottom);
+    CGFloat safe = ISHScreenShape.isRounded ? self.view.safeAreaInsets.bottom : 0;
+    self.bottomConstraint.constant = MAX(self.keyboardPad, safe);
 }
 
 - (void)viewSafeAreaInsetsDidChange {

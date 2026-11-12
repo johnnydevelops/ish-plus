@@ -21,6 +21,24 @@ import UIKit
 
 // MARK: - Availability and control (in the guest, as root)
 
+/// Whether the display has rounded corners (and so maybe a notch, Dynamic
+/// Island or home indicator to keep clear of). Square screens report safe
+/// area insets too (iPadOS: 20 points at the bottom), which there would only
+/// waste space.
+@objc(ISHScreenShape)
+public final class ScreenShape: NSObject {
+    @objc public static var isRounded: Bool {
+        let key = "_displayCornerRadius"
+        guard UIScreen.main.responds(to: NSSelectorFromString(key)) else { return true }
+        return ((UIScreen.main.value(forKey: key) as? CGFloat) ?? 1) > 0
+    }
+
+    /// @insets on a rounded screen, none on a square one.
+    @objc public static func insets(_ insets: UIEdgeInsets) -> UIEdgeInsets {
+        isRounded ? insets : .zero
+    }
+}
+
 @objc(ISHDesktopSession)
 public final class DesktopSession: NSObject {
     private static let script = "sh /opt/ishplus/boot/desktop.sh"
@@ -230,9 +248,9 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
 
     /// The part of the view the guest's screen goes in: clear of the
     /// rounded corners, notch or Dynamic Island and home indicator, where the
-    /// display has them (the safe area; all of it on square screens).
+    /// display has them (the safe area; all of the view on square screens).
     private var screenArea: CGRect {
-        let area = view.bounds.inset(by: view.safeAreaInsets)
+        let area = view.bounds.inset(by: ScreenShape.insets(view.safeAreaInsets))
         return area.width > 0 && area.height > 0 ? area : view.bounds
     }
 
