@@ -15,7 +15,9 @@
 //
 
 import Foundation
+#if !targetEnvironment(simulator)
 import StikJIT
+#endif
 
 @objc(ISHJITHelperHandler)
 final class JITHelperHandler: NSObject, NSExtensionRequestHandling {
@@ -52,6 +54,10 @@ final class JITHelperHandler: NSObject, NSExtensionRequestHandling {
                 // Blocks until iSH+ asks the script to detach. The script is
                 // needed on iOS 26+ even without TXM: iSH+ cannot make its own
                 // pages executable, the debugger has to allocate them.
+#if targetEnvironment(simulator)
+                // (The simulator has no StikJIT, nor JIT through a debugger)
+                throw NSError(domain: "iSH+", code: 1, userInfo: [NSLocalizedDescriptionKey: "No JIT in the simulator"])
+#else
                 try StikJIT.enableJIT(targetPID: Int32(pid),
                                       pairingFile: pairingURL,
                                       ddiPaths: .default(in: root),
@@ -59,6 +65,7 @@ final class JITHelperHandler: NSObject, NSExtensionRequestHandling {
                                       forceScript: true,
                                       preparationProgress: { stage in note("\(stage)") },
                                       progress: { note($0) })
+#endif
                 note("Detached")
                 Self.respond(context, ok: true, error: nil, log: log)
             } catch {

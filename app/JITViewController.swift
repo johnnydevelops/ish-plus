@@ -78,12 +78,10 @@ public final class JITViewController: UIViewController {
         stack.spacing = 16
         stack.setCustomSpacing(28, after: detailLabel)
         stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
+        view.addCenteredScrolling(stack)
         NSLayoutConstraint.activate([
-            stack.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor),
             stack.leadingAnchor.constraint(greaterThanOrEqualTo: view.layoutMarginsGuide.leadingAnchor),
             stack.trailingAnchor.constraint(lessThanOrEqualTo: view.layoutMarginsGuide.trailingAnchor),
-            stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             {
                 // A definite width; without it the column (and its labels) can collapse.
                 let width = stack.widthAnchor.constraint(equalToConstant: 440)

@@ -51,10 +51,8 @@ public final class ResumeViewController: UIViewController {
         stack.spacing = 16
         stack.setCustomSpacing(32, after: detail)
         stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
+        view.addCenteredScrolling(stack)
         NSLayoutConstraint.activate([
-            stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            stack.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor),
             stack.leadingAnchor.constraint(greaterThanOrEqualTo: view.layoutMarginsGuide.leadingAnchor),
             stack.trailingAnchor.constraint(lessThanOrEqualTo: view.layoutMarginsGuide.trailingAnchor),
             {

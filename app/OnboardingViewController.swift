@@ -129,10 +129,8 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
         stack.axis = .vertical
         stack.spacing = 32
         stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
+        view.addCenteredScrolling(stack)
         NSLayoutConstraint.activate([
-            stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            stack.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor),
             stack.leadingAnchor.constraint(greaterThanOrEqualTo: view.layoutMarginsGuide.leadingAnchor),
             stack.trailingAnchor.constraint(lessThanOrEqualTo: view.layoutMarginsGuide.trailingAnchor),
             stack.widthAnchor.constraint(equalToConstant: 460).withPriority(.defaultHigh),
@@ -414,6 +412,35 @@ private extension UIFont {
     func bold() -> UIFont {
         guard let descriptor = fontDescriptor.withSymbolicTraits(.traitBold) else { return self }
         return UIFont(descriptor: descriptor, size: 0)
+    }
+}
+
+extension UIView {
+    /// Adds @content centered in this view, in a scroll view so it can still
+    /// be reached where it does not fit (an iPhone in landscape).
+    func addCenteredScrolling(_ content: UIView) {
+        let scroll = UIScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.showsHorizontalScrollIndicator = false
+        addSubview(scroll)
+        scroll.addSubview(content)
+        let page = scroll.contentLayoutGuide
+        let fill = page.heightAnchor.constraint(equalTo: safeAreaLayoutGuide.heightAnchor)
+        fill.priority = .defaultLow
+        NSLayoutConstraint.activate([
+            scroll.topAnchor.constraint(equalTo: topAnchor),
+            scroll.bottomAnchor.constraint(equalTo: bottomAnchor),
+            scroll.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: trailingAnchor),
+            page.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor),
+            // At least the visible height (centered), or the content's
+            page.heightAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.heightAnchor),
+            fill,
+            content.topAnchor.constraint(greaterThanOrEqualTo: page.topAnchor, constant: 20),
+            content.bottomAnchor.constraint(lessThanOrEqualTo: page.bottomAnchor, constant: -20),
+            content.centerYAnchor.constraint(equalTo: page.centerYAnchor),
+            content.centerXAnchor.constraint(equalTo: page.centerXAnchor),
+        ])
     }
 }
 

@@ -192,6 +192,11 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
         display.onCursorPosition = nil
     }
 
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        view.setNeedsLayout()
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         layoutScreen()
@@ -223,16 +228,26 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
         CATransaction.commit()
     }
 
+    /// The part of the view the guest's screen goes in: clear of the
+    /// rounded corners, notch or Dynamic Island and home indicator, where the
+    /// display has them (the safe area; all of it on square screens).
+    private var screenArea: CGRect {
+        let area = view.bounds.inset(by: view.safeAreaInsets)
+        return area.width > 0 && area.height > 0 ? area : view.bounds
+    }
+
     /// Where the guest's screen is in the view (aspect fit, zoomed).
     private var screenRect: CGRect {
-        guard guestSize.width > 0, guestSize.height > 0 else { return view.bounds }
-        let bounds = view.bounds
-        let fit = min(bounds.width / guestSize.width, bounds.height / guestSize.height) * zoom
+        let area = screenArea
+        guard guestSize.width > 0, guestSize.height > 0 else { return area }
+        let fit = min(area.width / guestSize.width, area.height / guestSize.height) * zoom
         let size = CGSize(width: guestSize.width * fit, height: guestSize.height * fit)
-        var origin = CGPoint(x: bounds.midX - center.x * size.width, y: bounds.midY - center.y * size.height)
-        // Keep the screen on the view (centered when smaller than it)
-        origin.x = size.width <= bounds.width ? (bounds.width - size.width) / 2 : min(0, max(bounds.width - size.width, origin.x))
-        origin.y = size.height <= bounds.height ? (bounds.height - size.height) / 2 : min(0, max(bounds.height - size.height, origin.y))
+        var origin = CGPoint(x: area.midX - center.x * size.width, y: area.midY - center.y * size.height)
+        // Keep the screen on the area (centered when smaller than it)
+        origin.x = size.width <= area.width ? area.minX + (area.width - size.width) / 2
+            : min(area.minX, max(area.maxX - size.width, origin.x))
+        origin.y = size.height <= area.height ? area.minY + (area.height - size.height) / 2
+            : min(area.minY, max(area.maxY - size.height, origin.y))
         return CGRect(origin: origin, size: size)
     }
 
@@ -265,10 +280,10 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
         layoutScreen()
     }
 
-    /// The guest's screen follows the view's size: its points, at least
+    /// The guest's screen follows the view's safe area: its points, at least
     /// 1024 wide, so small screens still fit a desktop.
     private func requestSize(force: Bool) {
-        let bounds = view.bounds.size
+        let bounds = screenArea.size
         guard bounds.width > 0, bounds.height > 0 else { return }
         let factor = max(1, 1024 / bounds.width)
         let width = Int((bounds.width * factor / 8).rounded()) * 8
@@ -500,10 +515,10 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
     private func followPointer() {
         let rect = screenRect, scale = self.scale
         let p = CGPoint(x: rect.minX + pointer.x * scale, y: rect.minY + pointer.y * scale)
-        let margin: CGFloat = 40
+        let margin: CGFloat = 40, area = screenArea
         var dx: CGFloat = 0, dy: CGFloat = 0
-        if p.x < margin { dx = p.x - margin } else if p.x > view.bounds.width - margin { dx = p.x - (view.bounds.width - margin) }
-        if p.y < margin { dy = p.y - margin } else if p.y > view.bounds.height - margin { dy = p.y - (view.bounds.height - margin) }
+        if p.x < area.minX + margin { dx = p.x - (area.minX + margin) } else if p.x > area.maxX - margin { dx = p.x - (area.maxX - margin) }
+        if p.y < area.minY + margin { dy = p.y - (area.minY + margin) } else if p.y > area.maxY - margin { dy = p.y - (area.maxY - margin) }
         guard dx != 0 || dy != 0 else { return }
         center.x += dx / rect.width
         center.y += dy / rect.height

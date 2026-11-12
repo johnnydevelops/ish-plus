@@ -29,6 +29,7 @@
 @property UITapGestureRecognizer *tapRecognizer;
 @property (weak, nonatomic) IBOutlet TerminalView *termView;
 @property (weak, nonatomic) IBOutlet NSLayoutConstraint *bottomConstraint;
+@property CGFloat keyboardPad;
 
 @property (weak, nonatomic) IBOutlet UIButton *tabKey;
 @property (weak, nonatomic) IBOutlet UIButton *controlKey;
@@ -616,6 +617,19 @@ static int nextVMTerminalNumber;
     return UserPreferences.shared.hideStatusBar;
 }
 
+/*
+ * The terminal ends above the keyboard, and never below the safe area: the
+ * home indicator and the screen's rounded corners (0 on square screens).
+ */
+- (void)updateBottomPad {
+    self.bottomConstraint.constant = MAX(self.keyboardPad, self.view.safeAreaInsets.bottom);
+}
+
+- (void)viewSafeAreaInsetsDidChange {
+    [super viewSafeAreaInsetsDidChange];
+    [self updateBottomPad];
+}
+
 - (void)keyboardDidSomething:(NSNotification *)notification {
     if (self.ignoreKeyboardMotion)
         return;
@@ -629,6 +643,8 @@ static int nextVMTerminalNumber;
     if (CGRectEqualToRect(keyboardFrame, CGRectZero))
         return;
     CGRect intersection = CGRectIntersection(keyboardFrame, self.view.bounds);
+    if (CGRectIsNull(intersection))
+        intersection = CGRectMake(0, CGRectGetMaxY(self.view.bounds), self.view.bounds.size.width, 0);
     keyboardFrame = intersection;
     NSLog(@"%@ %@", notification.name, @(keyboardFrame));
     self.hasExternalKeyboard = keyboardFrame.size.height < 100;
@@ -641,7 +657,8 @@ static int nextVMTerminalNumber;
         pad = MAX(self.view.safeAreaInsets.bottom, self.termView.inputAccessoryView.frame.size.height);
     }
     // NSLog(@"pad %f", pad);
-    self.bottomConstraint.constant = pad;
+    self.keyboardPad = pad;
+    [self updateBottomPad];
 
     BOOL initialLayout = self.termView.needsUpdateConstraints;
     [self.view setNeedsUpdateConstraints];
