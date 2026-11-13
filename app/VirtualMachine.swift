@@ -501,7 +501,13 @@ public final class VirtualMachine: NSObject {
         // max: ARMv8.x features (FEX needs v8.2+ and LSE). Pointer
         // authentication and SVE are off: emulating them only costs time
         // (pauth runs on every function call in the guest kernel).
-        let cpu = override("cpu") ?? "max,pauth=off,sve=off,sme=off,bti=off,pmu=off"
+        // a13=on: the guest's CPU features capped to the A13's (ARMv8.4),
+        // which every supported iPad and iPhone has; ishjit=on: QEMU's
+        // ARM-to-ARM translator (deps/qemu target/arm/tcg/ishjit.c), which
+        // runs most guest instructions as themselves and needs those
+        // features on the host. Not with the interpreter.
+        let cpu = override("cpu") ?? "max,pauth=off,sve=off,sme=off,bti=off,pmu=off,a13=on"
+            + (interpreted ? "" : ",ishjit=on")
         var args = [
             "qemu-system-aarch64",
             "-nodefaults", "-no-user-config",
