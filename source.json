@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.5",
+          "buildVersion": "11",
+          "date": "2026-11-13T08:08:15Z",
+          "localizedDescription": "## Fixed\n\n- **Half-precision (FP16) vector math gave wrong results**: the vector instructions `FMLA` and `FMLS` by element on 16-bit floating-point values returned one of their inputs instead of the multiply-add result. Programs using FP16 vector code (some machine-learning, image and audio code) could compute wrong values. Found by new randomized instruction tests that compare the emulator with real ARM hardware.\n\n## Also\n\n- The emulated interrupt controller checks only the interrupts Linux actually uses, so the emulator's timer thread uses less CPU (a little less battery while Linux runs).\n\nInstant resume starts fresh once after updating.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.0.5/iSH-plus-1.0.5.ipa",
+          "size": 103597666,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "1.0.4",
           "buildVersion": "10",
           "date": "2026-11-12T21:20:43Z",
