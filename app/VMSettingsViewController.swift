@@ -3,19 +3,21 @@
 //  iSH+
 //
 //  Settings > Linux VM: memory and CPU cores (automatic by default, from
-//  this iPad's RAM and performance cores), GPU acceleration, and the servers
-//  forwarded from Linux (shared with the network or not).
+//  this iPad's RAM and performance cores), GPU acceleration, the memory page
+//  size (16 KB, or 4 KB: not recommended), and the servers forwarded from
+//  Linux (shared with the network or not).
 //
 
 import UIKit
 
 @objc(ISHVMSettingsViewController)
 public final class VMSettingsViewController: UITableViewController {
-    private enum Section: Int, CaseIterable { case performance, graphics, ports }
+    private enum Section: Int, CaseIterable { case performance, graphics, pages, ports }
     private let networkSwitch = UISwitch()
     private let automaticMemorySwitch = UISwitch()
     private let gpuSwitch = UISwitch()
     private let vulkanSwitch = UISwitch()
+    private let pages4KSwitch = UISwitch()
     private let memorySlider = UISlider()
     /// The memory, in MB; can be typed
     private let memoryField = UITextField()
@@ -25,6 +27,7 @@ public final class VMSettingsViewController: UITableViewController {
     /// What the running VM was started with, to tell when a restart is needed.
     private let startedWith = (VMSettings.memoryMB, VMSettings.cpuCount)
     private let startedWithGPU = (VirtualMachine.shared.gpuAccelerated, VirtualMachine.shared.vulkan)
+    private let startedWith4K = VMSettings.pages4K
     /// The "Quit iSH+ to Apply" row is shown
     private var showingRestart = false
 
@@ -36,6 +39,7 @@ public final class VMSettingsViewController: UITableViewController {
     private lazy var networkCell = UITableViewCell(style: .default, reuseIdentifier: nil)
     private lazy var gpuCell = UITableViewCell(style: .default, reuseIdentifier: nil)
     private lazy var vulkanCell = UITableViewCell(style: .default, reuseIdentifier: nil)
+    private lazy var pages4KCell = UITableViewCell(style: .default, reuseIdentifier: nil)
     private let memoryTitle = UILabel()
 
     @objc public init() {
@@ -55,6 +59,8 @@ public final class VMSettingsViewController: UITableViewController {
         vulkanSwitch.isOn = VMSettings.vulkan
         vulkanSwitch.isEnabled = VMSettings.gpuAcceleration
         vulkanSwitch.addTarget(self, action: #selector(vulkanChanged), for: .valueChanged)
+        pages4KSwitch.isOn = VMSettings.pages4K
+        pages4KSwitch.addTarget(self, action: #selector(pages4KChanged), for: .valueChanged)
         automaticMemorySwitch.isOn = VMSettings.chosenMemoryMB == 0
         automaticMemorySwitch.addTarget(self, action: #selector(automaticMemoryChanged), for: .valueChanged)
         memorySlider.minimumValue = 512
@@ -118,6 +124,14 @@ public final class VMSettingsViewController: UITableViewController {
         vulkanContent.secondaryText = "Experimental"
         vulkanContent.secondaryTextProperties.color = .secondaryLabel
         vulkanCell.contentConfiguration = vulkanContent
+
+        pages4KCell.selectionStyle = .none
+        pages4KCell.accessoryView = pages4KSwitch
+        var pagesContent = UIListContentConfiguration.subtitleCell()
+        pagesContent.text = "4K Pages"
+        pagesContent.secondaryText = "Not recommended"
+        pagesContent.secondaryTextProperties.color = .secondaryLabel
+        pages4KCell.contentConfiguration = pagesContent
 
         networkCell.selectionStyle = .none
         networkCell.accessoryView = networkSwitch
@@ -255,13 +269,19 @@ public final class VMSettingsViewController: UITableViewController {
         updateRestartRow()
     }
 
+    @objc private func pages4KChanged() {
+        VMSettings.pages4K = pages4KSwitch.isOn
+        updateRestartRow()
+    }
+
     @objc private func networkChanged() {
         PortForwarder.shared.setSharedOnNetwork(networkSwitch.isOn)
     }
 
     private var needsRestart: Bool {
         VirtualMachine.shared.isRunning && ((VMSettings.memoryMB, VMSettings.cpuCount) != startedWith ||
-            (VMSettings.gpuAcceleration, VMSettings.vulkan) != startedWithGPU)
+            (VMSettings.gpuAcceleration, VMSettings.vulkan) != startedWithGPU ||
+            VMSettings.pages4K != startedWith4K)
     }
 
     // MARK: Table
@@ -272,6 +292,7 @@ public final class VMSettingsViewController: UITableViewController {
         switch Section(rawValue: section)! {
         case .performance: return showingRestart ? 4 : 3
         case .graphics: return VMSettings.gpuAvailable ? (VMSettings.vulkanAvailable ? 2 : 1) : 0
+        case .pages: return 1
         case .ports: return 1 + PortForwarder.shared.ports.count
         }
     }
@@ -280,6 +301,7 @@ public final class VMSettingsViewController: UITableViewController {
         switch Section(rawValue: section)! {
         case .performance: return "Performance"
         case .graphics: return VMSettings.gpuAvailable ? "Graphics" : nil
+        case .pages: return "Memory Pages"
         case .ports: return "Open Ports"
         }
     }
@@ -298,6 +320,8 @@ public final class VMSettingsViewController: UITableViewController {
                 text += " Vulkan also gives Linux's programs Vulkan; it is experimental, and Linux is paused while iSH+ is in the background."
             }
             return text + " Changes apply the next time Linux starts."
+        case .pages:
+            return "Linux uses 16 KB memory pages, as iOS does, which makes ARM programs run faster. 4K pages are only for the rare program that requires them: they slow down every ARM program. x86 programs work the same either way. Changes apply the next time Linux starts."
         case .ports:
             let ports = PortForwarder.shared.ports.isEmpty
                 ? "Servers started in Linux appear here, and open at localhost on this \(UIDevice.current.model). "
@@ -312,6 +336,7 @@ public final class VMSettingsViewController: UITableViewController {
         case (.performance, 1): return memoryCell
         case (.graphics, 0): return gpuCell
         case (.graphics, 1): return vulkanCell
+        case (.pages, 0): return pages4KCell
         case (.ports, 0): return networkCell
         default: break
         }
@@ -330,7 +355,7 @@ public final class VMSettingsViewController: UITableViewController {
             content = .cell()
             content.text = "Quit iSH+ to Apply"
             content.textProperties.color = .systemRed
-        case (.graphics, _):
+        case (.graphics, _), (.pages, _):
             break
         case (.ports, let row):
             let port = PortForwarder.shared.ports[row - 1]

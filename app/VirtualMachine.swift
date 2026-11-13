@@ -196,13 +196,16 @@ public final class VirtualMachine: NSObject {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("VM")
     }
 
-    /// The kernel side, shared by every distribution: bundled with the app
-    /// (tools/make-guest-kernel.sh, make-guest-support.sh). Copies in
-    /// Documents/VM/dev replace them, for testing.
+    /// The kernel side, shared by every distribution: bundled with the app.
+    /// Guest/ holds the default 16 KB-page kernel (make-guest-kernel-16k.sh)
+    /// and the support disk (make-guest-support.sh), Guest/4k the 4 KB-page
+    /// one (make-guest-kernel.sh), for Settings > Linux VM > 4K Pages. Copies
+    /// in Documents/VM/dev (or dev/4k) replace them, for testing.
     private static func kernelFile(_ name: String) -> URL? {
-        let dev = guestDirectory.appendingPathComponent("dev/\(name)")
+        let set = name != "support.img" && VMSettings.pages4K ? "/4k" : ""
+        let dev = guestDirectory.appendingPathComponent("dev\(set)/\(name)")
         if FileManager.default.fileExists(atPath: dev.path) { return dev }
-        return Bundle.main.url(forResource: name, withExtension: nil, subdirectory: "Guest")
+        return Bundle.main.url(forResource: name, withExtension: nil, subdirectory: "Guest\(set)")
     }
     private static let kernelFiles = ["vmlinuz", "initramfs", "modloop", "support.img"]
 
@@ -502,7 +505,9 @@ public final class VirtualMachine: NSObject {
         var args = [
             "qemu-system-aarch64",
             "-nodefaults", "-no-user-config",
-            "-M", "virt",
+            // ishplus-pagebits: QEMU's own pages as large as the kernel's
+            // (16 KB), see VMSettings.pages4K
+            "-M", VMSettings.pages4K ? "virt" : "virt,ishplus-pagebits=14",
             "-cpu", cpu,
             // split-wx: JIT code through a second, executable mapping (iOS)
             "-accel", interpreted ? "tcg,thread=multi,tb-size=256" : "tcg,thread=multi,tb-size=256,split-wx=on",

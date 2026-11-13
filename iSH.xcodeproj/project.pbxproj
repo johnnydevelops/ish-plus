@@ -892,6 +892,9 @@
 				"$(SRCROOT)/build-guest/kernel/vmlinuz",
 				"$(SRCROOT)/build-guest/kernel/initramfs",
 				"$(SRCROOT)/build-guest/kernel/modloop",
+				"$(SRCROOT)/build-guest/kernel16k/vmlinuz",
+				"$(SRCROOT)/build-guest/kernel16k/initramfs",
+				"$(SRCROOT)/build-guest/kernel16k/modloop",
 				"$(SRCROOT)/build-guest/support.img",
 			);
 			name = "Bundle Linux Guest";
@@ -901,11 +904,14 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Guest/vmlinuz",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Guest/initramfs",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Guest/modloop",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Guest/4k/vmlinuz",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Guest/4k/initramfs",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Guest/4k/modloop",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Guest/support.img",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# The VM kernel side (tools/make-guest-kernel.sh, tools/make-guest-support.sh)\nset -e\nG=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/Guest\"\nmkdir -p \"$G\"\nfor f in kernel/vmlinuz kernel/initramfs kernel/modloop support.img; do\n  cp \"$SRCROOT/build-guest/$f\" \"$G/\"\ndone\n";
+			shellScript = "# The VM kernel side: the default 16 KB-page kernel (tools/make-guest-kernel-16k.sh)\n# in Guest, the 4 KB-page one (tools/make-guest-kernel.sh) in Guest/4k, and the\n# support disk (tools/make-guest-support.sh)\nset -e\nG=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/Guest\"\nmkdir -p \"$G/4k\"\nfor f in vmlinuz initramfs modloop; do\n  cp \"$SRCROOT/build-guest/kernel16k/$f\" \"$G/\"\n  cp \"$SRCROOT/build-guest/kernel/$f\" \"$G/4k/\"\ndone\ncp \"$SRCROOT/build-guest/support.img\" \"$G/\"\n";
 		};
 		BB4A922A24ED9421002F5A96 /* Add icons to Info.plist */ = {
 			isa = PBXShellScriptBuildPhase;

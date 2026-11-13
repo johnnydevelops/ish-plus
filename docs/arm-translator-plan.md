@@ -204,3 +204,53 @@ previous phase. Commits go to deps/qemu `ishplus`, new code in
   the same saved state on a copy of the touched memory, and compares
   registers and memory (development only).
 - The existing workload, stress test (COW, gcc correctness) and boot tests.
+
+## Status (2026-11-13)
+
+Done (deps/qemu `ishplus`, local commits, off unless `-cpu max,...,a13=on,ishjit=on`):
+phases 0-4, phase 3 (FP/SIMD loads/stores and data processing), phase 5
+start (atomics, exclusives, ordered accesses, SVC/BRK/ERET, barriers, hints,
+CLREX, thread-pointer MRS/MSR). Each step passes the randomized tests
+against native hardware (build/fastmem/rtest), the CPU benchmark checksums,
+the Ubuntu workload and the stress test.
+
+Measured on the Mac (CPU benchmark vs TCG, same CPU model): sieve -41%,
+matmul -20%, nbody -17%, copy -11%, sort -8%, fib -3%, chase 0, crc32 +21%.
+Real programs (Ubuntu workload) were 20-140% slower than TCG before the
+phase 5 work: they cross between ishjit and TCG code often, and every
+crossing stores or loads all 26 guest registers and NZCV.
+
+Lessons:
+- Never split a basic block between ishjit and TCG: a loop then pays two
+  full crossings per iteration (ishjit declines blocks cut short by an
+  untranslated instruction unless 16+ insns are translated).
+- What TCG owns (gen_insn_data is a per-translation pool buffer; TB fields
+  only the translator loop sets, like ishplus_cover_lo) must not be borrowed.
+- Hand-made encodings need range checks: a tbnz (32KB reach) to an exit
+  placed after the rest of a 60KB TB sent execution into other code.
+- Verify decoders against LLVM: it found reserved encodings accepted
+  (UNDEFINED on hardware, SIGILL in QEMU).
+
+Phase 6 so far: shared save/load routines, V registers per block, DAIF
+set/clear inline, LDTR/STTR, SVC/ERET without a trip through cpu_exec,
+shorter memory and entry checks. Ubuntu workload vs TCG (4 KB): syscalls -4%,
+pipes -8%, faults -22%, xz -5%, apt -10%; forkexec +21%, gcc +6%.
+
+## 16 KB pages (the default)
+
+Linux runs Debian's prebuilt 16 KB-page kernel (tools/make-guest-kernel-16k.sh,
+nothing compiled) with QEMU's own pages at 16 KB (`-M virt,ishplus-pagebits=14`),
+so each TLB entry and fill covers a whole guest page. The 4 KB kernel stays as
+Settings > Linux VM > 4K Pages (not recommended). Ubuntu workload, 16 KB vs
+4 KB, both with ishjit: forkexec -24%, untar -16%, python -15%, gcc -12%,
+faults -10%, xz -9%, apt -5%, syscalls -4%. Every item is faster than TCG.
+
+x86 programs (FEX) keep 4 KB-page semantics: QEMU enforces 4 KB protections
+(guard pages, single-page mprotect) for FEX through a paravirtual call and a
+small loadable guest module that turns the fault into SIGSEGV; pages with such
+protections take QEMU's slow path. A FEX fork handles only the mapping layout
+(4 KB-offset file mappings, 4 KB-aligned mmap).
+
+Next: syscall path (ERET inline, system registers, fewer full stores), V
+registers live across TBs, FEX on the 16 KB kernel, host-MMU direct mapping
+(16 KB pages remove its main problem), iOS testing.

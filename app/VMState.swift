@@ -62,13 +62,13 @@ public final class VMState: NSObject {
     }
 
     /// What a saved state must match: the same VM (distribution, memory,
-    /// CPUs) and the same app build (kernel, QEMU, devices).
+    /// CPUs, page size) and the same app build (kernel, QEMU, devices).
     private func fingerprint(distro: Distro) -> String {
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
         let executable = Bundle.main.executableURL.flatMap {
             try? FileManager.default.attributesOfItem(atPath: $0.path)[.modificationDate] as? Date
         }?.timeIntervalSince1970 ?? 0
-        return "\(build)|\(executable)|\(distro.id)|\(VMSettings.memoryMB)|\(VMSettings.cpuCount)"
+        return "\(build)|\(executable)|\(distro.id)|\(VMSettings.memoryMB)|\(VMSettings.cpuCount)|\(VMSettings.pages4K ? 4 : 16)"
     }
 
     // MARK: Launch

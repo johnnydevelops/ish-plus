@@ -15,6 +15,7 @@ public final class VMSettings: NSObject {
     private static let cpuKey = "VM CPUs"
     private static let gpuKey = "VM GPU Acceleration"
     private static let vulkanKey = "VM Vulkan"
+    private static let pages4KKey = "VM 4K Pages"
 
     /// RAM in this device, in GB (rounded, so 2.8 GB of usable memory is 3).
     @objc public static var deviceMemoryGB: Int {
@@ -140,6 +141,16 @@ public final class VMSettings: NSObject {
     /// Vulkan for Linux (Venus, on MoltenVK), with GPU acceleration;
     /// experimental and off by default. Linux is paused while iSH+ is in the
     /// background, as iOS allows no GPU work then.
+    /// Linux with 4 KB memory pages (Alpine's kernel) instead of the default
+    /// 16 KB (Debian's 16k kernel, with QEMU's own pages at 16 KB too, so
+    /// that each emulated memory access and TLB fill covers 4 times more).
+    /// x86 programs (FEX) see 4 KB pages either way. Applied when the VM
+    /// starts; a saved state is only resumed with the setting it was made with.
+    @objc public static var pages4K: Bool {
+        get { UserDefaults.standard.bool(forKey: pages4KKey) }
+        set { UserDefaults.standard.set(newValue, forKey: pages4KKey) }
+    }
+
     @objc public static var vulkan: Bool {
         get { gpuAcceleration && vulkanAvailable && UserDefaults.standard.bool(forKey: vulkanKey) }
         set { UserDefaults.standard.set(newValue, forKey: vulkanKey) }
