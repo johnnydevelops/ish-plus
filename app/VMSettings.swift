@@ -146,8 +146,15 @@ public final class VMSettings: NSObject {
     /// that each emulated memory access and TLB fill covers 4 times more).
     /// x86 programs (FEX) see 4 KB pages either way. Applied when the VM
     /// starts; a saved state is only resumed with the setting it was made with.
+    /// Documents/VM/pages ("4" or "16") overrides it, for comparing the two.
     @objc public static var pages4K: Bool {
-        get { UserDefaults.standard.bool(forKey: pages4KKey) }
+        get {
+            let file = VirtualMachine.guestDirectory.appendingPathComponent("pages")
+            if let pages = try? String(contentsOf: file, encoding: .utf8) {
+                return pages.trimmingCharacters(in: .whitespacesAndNewlines) == "4"
+            }
+            return UserDefaults.standard.bool(forKey: pages4KKey)
+        }
         set { UserDefaults.standard.set(newValue, forKey: pages4KKey) }
     }
 
