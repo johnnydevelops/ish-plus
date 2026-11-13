@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.6",
+          "buildVersion": "12",
+          "date": "2026-11-13T19:38:58Z",
+          "localizedDescription": "## Faster Linux: 16 KB pages and a new ARM-to-ARM translator\n\n**16 KB memory pages by default.** Linux now runs a 16 KB-page kernel (Debian's prebuilt `linux-image-arm64-16k`), the same page size as iOS, with QEMU's own pages at 16 KB too. Measured on an iPad (9th generation), compared with 4 KB pages:\n- starting processes: 26% faster\n- copying files with tar: 19% faster\n- first run of Python: 14% faster\n- first run of gcc: 11% faster\n- system calls: 10% faster\n\nThe previous 4 KB kernel is still included: **Settings > Linux VM > Memory Pages > 4K Pages**. It's not recommended: it slows down every ARM program, and is only for the rare program that requires 4 KB pages. Your existing distributions boot with either setting.\n\n**New ARM-to-ARM translator.** Most of Linux's instructions now run on the CPU as themselves instead of going through QEMU's general-purpose translator. On the iPad, compared with QEMU's translator:\n- system calls: 18% faster\n- first run of Python: 32% faster\n- first run of gcc: 28% faster\n\nStarting processes is about 4% slower and copying with tar about 5% slower. The interpreter fallback (no JIT) works as before.\n\n**Also:**\n- System calls avoid QEMU's global lock on return to programs (about 5% faster even without the translator).\n- Instant resume only restores a saved state with the page size it was saved with.\n\n**Known issue:** rarely, Linux doesn't start on the first launch after installing or updating. Quitting and reopening iSH+ fixes it.\n\nNote: this exact build wasn't run on the iPad before release; its changes were each tested on the iPad and on a Mac.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.0.6/iSH-plus-1.0.6.ipa",
+          "size": 158380042,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "1.0.5",
           "buildVersion": "11",
           "date": "2026-11-13T08:08:15Z",
