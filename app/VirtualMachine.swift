@@ -153,11 +153,17 @@ public final class VirtualMachine: NSObject {
     private var soundAvailable = false
 
     /// Playback, mixed with other apps' sound (also what keeps iSH+ running
-    /// in the background, BackgroundKeepAlive.m).
-    static func activateAudioSession() {
+    /// in the background, BackgroundKeepAlive.m), and recording too once the
+    /// microphone is allowed (Linux's sound card records from it).
+    @objc public static func activateAudioSession() {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playback, options: [.mixWithOthers])
+            if Permissions.microphone == .allowed {
+                try session.setCategory(.playAndRecord,
+                                        options: [.mixWithOthers, .defaultToSpeaker, .allowBluetoothA2DP])
+            } else {
+                try session.setCategory(.playback, options: [.mixWithOthers])
+            }
             try session.setActive(true)
         } catch {
             vmLog("sound: could not activate the audio session: \(error.localizedDescription)")

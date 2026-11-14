@@ -39,6 +39,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>iSH+ shares the microphone with Linux, so programs there can record: voice calls, recording apps, speech recognition. It records only while a program in Linux does.</string>
 	<key>NFCReaderUsageDescription</key>
 	<string>iSH+ uses your security key (YubiKey or another FIDO key) over NFC when programs in Linux, such as ssh, ask for it.</string>
 	<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>

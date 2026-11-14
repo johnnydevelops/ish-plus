@@ -82,17 +82,11 @@
 - (void)startPlaying {
     NSError *error = nil;
     AVAudioSession *session = AVAudioSession.sharedInstance;
-    // Mix with other audio so music and videos in other apps keep playing.
-    if (![session setCategory:AVAudioSessionCategoryPlayback
-                  withOptions:AVAudioSessionCategoryOptionMixWithOthers
-                        error:&error]) {
-        NSLog(@"keep alive: could not set audio category: %@", error);
-        return;
-    }
-    if (![session setActive:YES error:&error]) {
-        NSLog(@"keep alive: could not activate audio session: %@", error);
-        return;
-    }
+    // Mixed with other audio so music and videos in other apps keep
+    // playing; the same session as Linux's sound card (recording too when
+    // the microphone is allowed)
+    [ISHVirtualMachine activateAudioSession];
+    (void) session;
     if (self.player == nil) {
         self.player = [[AVAudioPlayer alloc] initWithData:[BackgroundKeepAlive silence] error:&error];
         if (self.player == nil) {

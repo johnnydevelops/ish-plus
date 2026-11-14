@@ -7,8 +7,11 @@
 //  Madeira), without StikDebug.
 //
 
+import AVFoundation
+import Network
 import UIKit
 import UniformTypeIdentifiers
+import UserNotifications
 
 @objc(ISHOnboarding)
 public final class Onboarding: NSObject {
@@ -28,11 +31,111 @@ public final class Onboarding: NSObject {
     @objc public static var hasPairing: Bool {
         FileManager.default.fileExists(atPath: pairingFileURL.path)
     }
+
+    /// The permissions step was seen (it came with 1.2.1: people who set up
+    /// iSH+ before see it once, to decide about the microphone).
+    private static let permissionsKey = "Permissions Reviewed 1"
+    @objc public static var permissionsReviewed: Bool {
+        get { UserDefaults.standard.bool(forKey: permissionsKey) }
+        set { UserDefaults.standard.set(newValue, forKey: permissionsKey) }
+    }
+}
+
+// MARK: - Permissions
+
+/// What iSH+ may use, as asked in setup: the local network (pairing with
+/// this device for JIT), the microphone (shared with Linux) and
+/// notifications (the pairing code, while pairing in Settings).
+enum Permissions {
+    enum State { case unknown, allowed, denied }
+
+    static var microphone: State {
+        if #available(iOS 17.0, *) {
+            switch AVAudioApplication.shared.recordPermission {
+            case .granted: return .allowed
+            case .denied: return .denied
+            default: return .unknown
+            }
+        }
+        switch AVAudioSession.sharedInstance().recordPermission {
+        case .granted: return .allowed
+        case .denied: return .denied
+        default: return .unknown
+        }
+    }
+
+    static func requestMicrophone(_ done: @escaping () -> Void) {
+        let finish: (Bool) -> Void = { granted in
+            DispatchQueue.main.async {
+                // Linux's sound card records only with a play-and-record session
+                if granted { VirtualMachine.activateAudioSession() }
+                done()
+            }
+        }
+        if #available(iOS 17.0, *) {
+            AVAudioApplication.requestRecordPermission(completionHandler: finish)
+        } else {
+            AVAudioSession.sharedInstance().requestRecordPermission(finish)
+        }
+    }
+
+    static func notifications(_ answer: @escaping (State) -> Void) {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            let state: State
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral: state = .allowed
+            case .denied: state = .denied
+            default: state = .unknown
+            }
+            DispatchQueue.main.async { answer(state) }
+        }
+    }
+
+    static func requestNotifications(_ done: @escaping () -> Void) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in
+            DispatchQueue.main.async(execute: done)
+        }
+    }
+
+    /// iOS has no way to ask whether the local network is allowed: browsing
+    /// for the pairing service asks for it (once), and the browser then
+    /// runs (allowed) or waits with a policy error (not allowed).
+    private(set) static var localNetwork: State = .unknown
+    private static var browser: NWBrowser?
+
+    static func requestLocalNetwork(_ done: @escaping () -> Void) {
+        browser?.cancel()
+        let browser = NWBrowser(for: .bonjour(type: "_remotepairing-pairable-host._tcp", domain: nil), using: .tcp)
+        self.browser = browser
+        var answered = false
+        let answer: (State) -> Void = { state in
+            DispatchQueue.main.async {
+                guard !answered else { return }
+                answered = true
+                localNetwork = state
+                browser.cancel()
+                if Self.browser === browser { Self.browser = nil }
+                done()
+            }
+        }
+        browser.stateUpdateHandler = { state in
+            switch state {
+            case .ready: answer(.allowed)
+            case .waiting(let error), .failed(let error):
+                if case .dns(let code) = error, code == -65570 { answer(.denied) } // kDNSServiceErr_PolicyDenied
+            default: break
+            }
+        }
+        browser.start(queue: .main)
+        // No answer while the prompt is up, and none when allowed with no
+        // service around: what is known after a while
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20) { answer(localNetwork) }
+    }
 }
 
 @objc(ISHOnboardingViewController)
 public final class OnboardingViewController: UIViewController, UIDocumentPickerDelegate {
-    private enum StepKind { case welcome, vpn, pairing, distro, done }
+    private enum StepKind { case welcome, permissions, vpn, pairing, distro, done }
 
     private struct Step {
         let kind: StepKind
@@ -45,6 +148,9 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
         Step(kind: .welcome, symbol: "cpu",
              title: "Welcome to iSH+",
              text: "iSH+ runs a real Linux distribution in a virtual machine. Setting it up takes a few minutes: pairing iSH+ with this device so it can enable JIT and run at full speed, and choosing your distribution."),
+        Step(kind: .permissions, symbol: "hand.raised",
+             title: "Permissions",
+             text: "iSH+ can use these. Allow the ones you want: you can change them later in the Settings app.\n\nLocal Network: to pair with this device and enable JIT by itself.\nMicrophone: shared with Linux, so programs there can record.\nNotifications: to show the pairing code while you pair in Settings."),
         Step(kind: .vpn, symbol: "network.badge.shield.half.filled",
              title: "Connect LocalDevVPN",
              text: "iSH+ talks to this device's developer services through LocalDevVPN. Install it from the App Store and connect it. It only routes traffic to this device, and is only needed while iSH+ enables JIT. Using another VPN, like Tailscale? Add the iSH+ JIT shortcut: it switches to LocalDevVPN for JIT, then back."),
@@ -59,10 +165,16 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
              text: "iSH+ will enable JIT by itself whenever it starts the Linux VM. Keep LocalDevVPN connected. You can redo this setup from Settings at any time."),
     ]
 
-    /// From Settings (JIT Setup) the distribution step is left out.
+    /// From Settings (JIT Setup) the distribution step is left out; for
+    /// people who set up iSH+ before the permissions step, only that.
     private var steps: [Step] {
-        fromSettings ? Self.allSteps.filter { $0.kind != .distro } : Self.allSteps
+        if onlyPermissions { return Self.allSteps.filter { $0.kind == .permissions } }
+        return fromSettings ? Self.allSteps.filter { $0.kind != .distro } : Self.allSteps
     }
+
+    /// Only the permissions step (shown once to people who set up iSH+ before it).
+    @objc public var onlyPermissions = false
+    private var notificationsState: Permissions.State = .unknown
 
     private var index = 0
     private let completion: () -> Void
@@ -107,6 +219,7 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
         buttons.axis = .vertical
         buttons.spacing = 12
         pageControl.numberOfPages = steps.count
+        pageControl.isHidden = steps.count < 2
         NotificationCenter.default.addObserver(self, selector: #selector(distrosChanged),
                                                name: DistroManager.didChangeNotification, object: nil)
         pageControl.isUserInteractionEnabled = false
@@ -165,6 +278,14 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
             titleLabel.text = step.title
             textLabel.text = step.text
             pageControl.currentPage = index
+            if step.kind == .permissions {
+                Permissions.notifications { [weak self] state in
+                    guard let self, self.steps[self.index].kind == .permissions else { return }
+                    self.notificationsState = state
+                    self.updateStatus()
+                    self.setButtons(self.buttonsForStep())
+                }
+            }
             updateStatus()
             setButtons(buttonsForStep())
         }
@@ -205,6 +326,17 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
                     status = ("\(distro.title) is ready.", .systemGreen)
                 }
             }
+        case .permissions:
+            func line(_ name: String, _ state: Permissions.State) -> String {
+                switch state {
+                case .allowed: return "\(name): allowed"
+                case .denied: return "\(name): not allowed (Settings > iSH+ to change)"
+                case .unknown: return "\(name): not asked yet"
+                }
+            }
+            status = ([line("Local Network", Permissions.localNetwork),
+                       line("Microphone", Permissions.microphone),
+                       line("Notifications", notificationsState)].joined(separator: "\n"), .secondaryLabel)
         case .vpn:
             if JITShortcut.enabled {
                 status = (JITShortcut.restoresVPN
@@ -233,6 +365,26 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
         case .welcome:
             return [makeButton("Get Started", prominent: true) { [weak self] in self?.advance() },
                     makeButton("Skip for Now", prominent: false) { [weak self] in self?.finish() }]
+        case .permissions:
+            let refresh: () -> Void = { [weak self] in
+                guard let self else { return }
+                Permissions.notifications { state in
+                    self.notificationsState = state
+                    self.updateStatus()
+                    self.setButtons(self.buttonsForStep())
+                }
+            }
+            var list = [onlyPermissions ? makeButton("Done", prominent: true) { [weak self] in self?.finish() } : next]
+            if Permissions.localNetwork != .allowed {
+                list.append(makeButton("Allow Local Network", prominent: false) { Permissions.requestLocalNetwork(refresh) })
+            }
+            if Permissions.microphone == .unknown {
+                list.append(makeButton("Allow Microphone", prominent: false) { Permissions.requestMicrophone(refresh) })
+            }
+            if notificationsState == .unknown {
+                list.append(makeButton("Allow Notifications", prominent: false) { Permissions.requestNotifications(refresh) })
+            }
+            return list
         case .vpn:
             var list = [next,
                         makeButton("Get LocalDevVPN", prominent: false) {
@@ -298,6 +450,11 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
     }
 
     private func finish() {
+        Onboarding.permissionsReviewed = true
+        if onlyPermissions {
+            dismiss(animated: true) { [completion] in completion() }
+            return
+        }
         Onboarding.completed = true
         dismiss(animated: true) { [completion] in completion() }
     }

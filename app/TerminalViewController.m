@@ -526,6 +526,11 @@ static int nextVMTerminalNumber;
         [self presentOnboardingThenStartSession];
         return 0;
     }
+    // Set up before the permissions step existed: shown once, to decide about the microphone and the rest
+    if (!vm.isRunning && !ISHOnboarding.permissionsReviewed) {
+        [self presentPermissionsThenStartSession];
+        return 0;
+    }
     if (!vm.isRunning && !ISHDistroManager.shared.hasBootableDistro) {
         [self presentDistroChooserThenStartSession];
         return 0;
@@ -566,6 +571,19 @@ static int nextVMTerminalNumber;
     };
     [self addSessionWithTerminal:terminal pid:0];
     return 0;
+}
+
+- (void)presentPermissionsThenStartSession {
+    if (self.showingJITScreen || ![self canPresentNow])
+        return;
+    self.showingJITScreen = YES;
+    __weak typeof(self) weakSelf = self;
+    ISHOnboardingViewController *permissions = [[ISHOnboardingViewController alloc] initWithCompletion:^{
+        weakSelf.showingJITScreen = NO;
+        [weakSelf startSession];
+    }];
+    permissions.onlyPermissions = YES;
+    [self presentViewController:permissions animated:NO completion:nil];
 }
 
 - (void)presentOnboardingThenStartSession {
@@ -645,6 +663,10 @@ static int nextVMTerminalNumber;
  * shapes, the keyboard, the bar) on the simulator's devices.
  */
 - (int)startDummySession {
+    if (!ISHOnboarding.permissionsReviewed) {
+        [self presentPermissionsThenStartSession];
+        return 0;
+    }
     Terminal *terminal = [Terminal terminalWithType:VM_CONSOLE_MAJOR number:nextVMTerminalNumber++];
     __weak Terminal *weakTerminal = terminal;
     void (^print)(NSString *) = ^(NSString *text) {
