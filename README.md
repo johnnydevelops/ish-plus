@@ -1,12 +1,14 @@
 # iSH+
 
-A Linux terminal for iPad and iPhone that runs a **real Linux kernel** in a
-virtual machine, with the distribution of your choice.
+**Turn your iPhone or iPad into a real Linux PC.** iSH+ runs a **real Linux
+kernel** in a virtual machine, with the distribution of your choice, its own
+init system and services, and a desktop. Connect a monitor and your device
+becomes the keyboard and trackpad of a Linux laptop.
 
 iSH+ is a fork of [iSH](https://github.com/ish-app/ish). iSH emulates an x86
 processor and translates Linux system calls itself; iSH+ instead runs Linux
-6.18 in [QEMU](https://www.qemu.org) (arm64, with JIT), so programs see a
-genuine Linux system. It needs JIT, so it is sideloaded rather than on the App
+(Debian's 6.12 kernel) in [QEMU](https://www.qemu.org) (arm64, with JIT), so
+programs see a genuine Linux system. It needs JIT, so it is sideloaded rather than on the App
 Store, and iSH+ can enable JIT by itself, without a computer.
 
 **[Add the iSH+ source to SideStore](https://intradeus.github.io/http-protocol-redirector?r=sidestore%3A%2F%2Fsource%3Furl%3Dhttps%3A%2F%2Fraw.githubusercontent.com%2Fjohnnydevelops%2Fish-plus%2Fmain%2Fsource.json)** to get new versions as
@@ -18,10 +20,15 @@ updates, or add `https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/
   openSUSE, Void, Kali, Rocky, Alma and more, downloaded in the app
   (Settings > Distributions), each with your own user account. Switch between
   them, grow their disks, delete them.
+- **Its own init system.** Distributions boot with theirs, as on a computer:
+  systemd (Debian, Ubuntu, Fedora, Arch, openSUSE...), OpenRC (Alpine), runit
+  (Void) or sysvinit (Devuan), so services, timers and `systemctl` work.
+  iSH+'s lighter init is still there, for the least memory: see below.
 - **Fast.** QEMU's JIT, enabled in the app: iSH+ pairs with your device (iOS
   27, like StikPair) or uses a pairing file, and attaches a debugger to
-  itself through LocalDevVPN. StikDebug works as a fallback, and Linux can
-  also run without JIT, much more slowly.
+  itself through LocalDevVPN. Most instructions run on the CPU as themselves
+  (an ARM-to-ARM translator), with 16 KB memory pages like iOS's. StikDebug
+  works as a fallback, and Linux can also run without JIT, much more slowly.
 - **x86_64 programs** run through [FEX](https://fex-emu.com): just run them.
   `apt-x86 install <package>` adds x86_64 Ubuntu packages and `x86 <command>`
   runs them; glibc and musl programs both work.
@@ -32,10 +39,23 @@ updates, or add `https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/
 - **Servers open in your browser.** Start a server in Linux and it is at
   `localhost:<port>` on the iPad (sessions menu > Open in Browser), or on your
   network if you share it (Settings > Linux VM).
-- **A desktop.** Install Xorg and a desktop or window manager in Linux (for
-  example `apt install xorg xfce4`) and the sessions menu gets a **Desktop
-  Session**, with touch controls like UTM's: trackpad or touch mode, tap to
-  click, two-finger tap to right-click, two-finger scroll, pinch to zoom.
+- **A desktop, X11 or Wayland.** Install a desktop or window manager in Linux
+  (for example `apt install xorg xfce4`) and the sessions menu gets a
+  **Desktop Session**, one for each desktop installed: X11 sessions and
+  window managers, and Wayland ones (sway, labwc, Xfce on Wayland, weston,
+  GNOME, KDE Plasma). Touch controls like UTM's: trackpad mode (the pointer
+  moves like a mouse) or touch mode (it goes where you touch), tap to click,
+  two-finger tap to right-click, two-finger scroll, pinch to zoom.
+- **Mouse capture.** On iPad, capture a mouse or trackpad (the desktop's
+  mouse button): it moves Linux's pointer with no screen edges in the way, as
+  on a computer and as games expect. Control-Option releases it.
+- **Laptop mode.** Connect a monitor (HDMI or AirPlay) and iSH+ shows the
+  terminal session or the desktop on it, at its full resolution, while your
+  iPad or iPhone becomes a laptop's lower half: a full keyboard (Esc, F1-F12,
+  Control, Alt, Super; keys combine as on a real keyboard) and a trackpad,
+  with the sessions menu to choose what the monitor shows. An **iPhone Duo**
+  half folded is a mini laptop: the screen above the fold, the keyboard and
+  trackpad below.
 - **GPU acceleration** (Settings > Linux VM > Graphics, off by default) for
   the desktop and for OpenGL and Vulkan programs: see below.
 - **Instant resume.** Without "Keep Running in Background", Linux is saved
@@ -46,7 +66,8 @@ updates, or add `https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/
   from Shortcuts. Tailscale and other VPNs work, names included.
 - **More memory for Linux.** Linux's RAM is held by a helper process, so it
   does not count toward the memory iOS lets iSH+ use (MeloNX's RAM donor
-  technique): Linux can have up to 60% of the device's RAM.
+  technique): Linux can have up to 60% of the device's RAM. On top of it,
+  compressed swap in RAM (zram) keeps programs running under memory pressure.
 - **Settings** for memory and CPU cores (automatic for your device), open
   ports, appearance and external keyboards.
 
@@ -69,7 +90,16 @@ add the **iSH+ JIT** shortcut during setup (or in Settings > JIT Setup), on
 iOS 27: when Linux starts, it switches to LocalDevVPN, and back to your VPN
 once JIT is on (like Madeira's JIT shortcut).
 
-Requires iOS 26 or later (iOS 27 to pair on the device).
+Requires iOS 26 or later (iOS 27 to pair on the device and for laptop mode
+on a monitor; iOS 27.1 on the iPhone Duo).
+
+### iSH+'s own init
+
+Distributions boot with their own init system. For the least memory (it
+saves about 10 MB on Alpine and 60 MB on Ubuntu), iSH+'s own init can start
+them instead, as earlier versions did, without services: put
+`ishplus.init=own` in the file **VM/append** in iSH+'s folder (Files > iSH+),
+and restart Linux.
 
 ### Sideloaders and entitlements
 
@@ -125,7 +155,8 @@ tools/build-qemu-ios.sh      # QEMU and its libraries for iOS (deps/qemu),
                              # with GPU acceleration (ANGLE, virglrenderer,
                              # MoltenVK); without it: ... fetch deps qemu qemu-tci
 tools/fetch-stikjit.sh       # StikJIT, for the JIT helper
-tools/make-guest-kernel.sh   # the Linux kernel, initramfs and modules
+tools/make-guest-kernel.sh   # the 4 KB-page kernel (Alpine's), initramfs and modules
+tools/make-guest-kernel-16k.sh  # the default kernel, Debian's with 16 KB pages
 tools/make-guest-support.sh  # the guest support disk (FEX, iSH+'s init and tools)
 ```
 
@@ -144,11 +175,21 @@ to your own, open `iSH.xcodeproj` and run the iSH scheme on a device, or run
   attach to iSH+ through LocalDevVPN and serve QEMU's requests for executable
   memory (`brk #0xf00d`, as in Madeira and StikDebug). Pairing on the device
   is `ffi/rppairing`, around [idevice](https://github.com/jkcoxson/idevice).
-- **The guest.** Every distribution boots Alpine's `linux-virt` kernel with
-  iSH+'s initramfs (`tools/guest/boot/init`), which installs distributions on
-  first boot and then starts iSH+'s own init from the support disk
-  (`tools/guest/boot/main.sh`): network, FEX, the shared folder, and a shell on
-  each console. The distribution's own init system does not run.
+- **The guest.** Every distribution boots Debian's 16 KB-page kernel (or,
+  with 4K Pages in Settings, Alpine's `linux-virt`) with iSH+'s initramfs
+  (`tools/guest/boot/init`), which installs distributions on first boot and
+  then starts the distribution's own init system, with iSH+'s part as one of
+  its services (`tools/guest/boot/native.sh`): network, FEX, the shared
+  folder, swap, and a shell on each console (`tools/guest/boot/main.sh`).
+  With `ishplus.init=own`, `main.sh` is process 1 itself.
+- **The desktop.** `tools/guest/boot/desktop.sh` starts Xorg or a Wayland
+  compositor on virtio-gpu, with seat access from logind or seatd; iSH+ shows
+  virtio-gpu's screen and cursor and sends input to an absolute tablet (touch
+  mode) or a relative mouse (trackpad mode, a captured mouse).
+- **Laptop mode** (`app/LaptopMode.swift`): the monitor is a scene accessory
+  of the terminal's view controller (iOS 27's `registerSceneAccessory`, as
+  MeloNX does), and the iPhone Duo's fold comes from `UIHingeInteraction` and
+  the screen's division region.
 - **Talking to iOS.** virtio-serial ports carry the clipboard, Shortcuts
   commands and the open ports (`tools/guest/agent`); DNS goes through iOS's
   resolver (`DNSProxy.swift`, with a small libslirp patch); the shared folder
@@ -184,8 +225,9 @@ used with QEMU and Linux: see `LICENSE.md`. It builds on:
   and [Armtix](https://armtix.artixlinux.org)
 - Distribution logos from [Simple Icons](https://simpleicons.org) (CC0); they
   are trademarks of their owners
-- [MeloNX](https://starforgejo.dev/projects/MeloNX)'s RAM donor technique, by
-  Stossy11 (MIT)
+- [MeloNX](https://starforgejo.dev/projects/MeloNX)'s RAM donor technique and
+  its way of presenting on external displays, by Stossy11 (MIT)
+- [Debian](https://www.debian.org)'s 16 KB-page arm64 kernel
 - The ideas of [Madeira](https://github.com/willfaust/Madeira),
   [StikDebug](https://github.com/StikDebug/StikDebug) and StikPair for
   enabling JIT on the device
