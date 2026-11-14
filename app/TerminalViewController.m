@@ -132,6 +132,11 @@
     [center addObserver:self
                selector:@selector(keyboardDidSomething:)
                    name:UIKeyboardDidChangeFrameNotification
+             object:nil];
+    // Hidden: nothing to keep clear of but the safe area
+    [center addObserver:self
+               selector:@selector(keyboardWillHide:)
+                   name:UIKeyboardWillHideNotification
                  object:nil];
 
 
@@ -626,8 +631,52 @@ static int nextVMTerminalNumber;
 
 // iSH+ runs every session in the Linux VM; iSH's own kernel is not used.
 - (int)startSession {
+#if TARGET_OS_SIMULATOR
+    return [self startDummySession];
+#else
     return [self startVMSession];
+#endif
 }
+
+#if TARGET_OS_SIMULATOR
+/*
+ * The simulator has no JIT and no Linux: a session that shows a screenful of
+ * text and echoes what is typed, for trying the terminal's layout (screen
+ * shapes, the keyboard, the bar) on the simulator's devices.
+ */
+- (int)startDummySession {
+    Terminal *terminal = [Terminal terminalWithType:VM_CONSOLE_MAJOR number:nextVMTerminalNumber++];
+    __weak Terminal *weakTerminal = terminal;
+    void (^print)(NSString *) = ^(NSString *text) {
+        NSData *data = [text dataUsingEncoding:NSUTF8StringEncoding];
+        [weakTerminal sendOutput:data.bytes length:(int) data.length];
+    };
+    NSString *prompt = @"\033[1;32muser@simulator\033[0m:\033[1;34m~\033[0m$ ";
+    terminal.inputHandler = ^(NSData *data) {
+        NSString *text = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] ?: @"";
+        text = [text stringByReplacingOccurrencesOfString:@"\r" withString:[@"\r\n" stringByAppendingString:prompt]];
+        text = [text stringByReplacingOccurrencesOfString:@"\x7f" withString:@"\b \b"];
+        print(text);
+    };
+    [self addSessionWithTerminal:terminal pid:0];
+    // After the view has its size: lines numbered from the top, to see both ends
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t) (0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        NSMutableString *text = [NSMutableString new];
+        for (int i = 1; i <= 120; i++)
+            [text appendFormat:@"%03d The quick brown fox jumps over the lazy dog. 0123456789 ABCDEFGHIJ %03d\r\n", i, i];
+        [text appendString:prompt];
+        print(text);
+    });
+    // Testing the layout without the keyboard (simctl spawn ... defaults
+    // write <app> ISHSimulatorHideKeyboard -bool YES)
+    if ([NSUserDefaults.standardUserDefaults boolForKey:@"ISHSimulatorHideKeyboard"]) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t) (2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [self.termView resignFirstResponder];
+        });
+    }
+    return 0;
+}
+#endif
 
 - (void)showMessage:(NSString *)message subtitle:(NSString *)subtitle {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -706,6 +755,30 @@ static int nextVMTerminalNumber;
 
 - (void)viewSafeAreaInsetsDidChange {
     [super viewSafeAreaInsetsDidChange];
+    [self updateCornerInset];
+    [self updateBottomPad];
+}
+
+/*
+ * On a screen with rounded corners, the first line keeps clear of the top
+ * corners even where the safe area does not (no status bar, iPadOS's window
+ * modes): at least half the corner radius from the top.
+ */
+- (void)updateCornerInset {
+    CGFloat radius = ISHScreenShape.cornerRadius;
+    UIView *window = self.view.window;
+    if (window == nil)
+        return;
+    // The system's safe area (the window's), without our addition
+    CGFloat extra = MAX(0, radius / 2 - window.safeAreaInsets.top);
+    if (self.additionalSafeAreaInsets.top != extra)
+        self.additionalSafeAreaInsets = UIEdgeInsetsMake(extra, 0, 0, 0);
+}
+
+- (void)keyboardWillHide:(NSNotification *)notification {
+    if (self.ignoreKeyboardMotion)
+        return;
+    self.keyboardPad = 0;
     [self updateBottomPad];
 }
 
@@ -718,9 +791,14 @@ static int nextVMTerminalNumber;
     // notification.object is nil before iOS 16.1 and the correct UIScreen after iOS 16.1
     if (notification.object != nil)
         screen = notification.object;
-    CGRect keyboardFrame = [self.view convertRect:screenKeyboardFrame fromCoordinateSpace:screen.coordinateSpace];
-    if (CGRectEqualToRect(keyboardFrame, CGRectZero))
+    // No frame (iPadOS reports one when the keyboard goes away): no keyboard,
+    // rather than keeping the last one's height as a gap
+    if (CGRectEqualToRect(screenKeyboardFrame, CGRectZero)) {
+        self.keyboardPad = 0;
+        [self updateBottomPad];
         return;
+    }
+    CGRect keyboardFrame = [self.view convertRect:screenKeyboardFrame fromCoordinateSpace:screen.coordinateSpace];
     CGRect intersection = CGRectIntersection(keyboardFrame, self.view.bounds);
     if (CGRectIsNull(intersection))
         intersection = CGRectMake(0, CGRectGetMaxY(self.view.bounds), self.view.bounds.size.width, 0);
@@ -735,6 +813,11 @@ static int nextVMTerminalNumber;
     if (pad != keyboardFrame.size.height && keyboardFrame.size.width != UIScreen.mainScreen.bounds.size.width) {
         pad = MAX(self.view.safeAreaInsets.bottom, self.termView.inputAccessoryView.frame.size.height);
     }
+    // Not typing into the terminal: no keyboard (or bar) of ours is up, but
+    // iPadOS can still report one, as a strip at the bottom with nothing in
+    // it (79 points on an iPad mini), which left a gap under the terminal
+    if (!self.terminal.surface.isFirstResponder)
+        pad = 0;
     // NSLog(@"pad %f", pad);
     self.keyboardPad = pad;
     [self updateBottomPad];

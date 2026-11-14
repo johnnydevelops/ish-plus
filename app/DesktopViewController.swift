@@ -34,6 +34,13 @@ public final class ScreenShape: NSObject {
         return ((UIScreen.main.value(forKey: key) as? CGFloat) ?? 1) > 0
     }
 
+    /// The display's corner radius, in points (0 on a square one).
+    @objc public static var cornerRadius: CGFloat {
+        let key = "_displayCornerRadius"
+        guard UIScreen.main.responds(to: NSSelectorFromString(key)) else { return 0 }
+        return (UIScreen.main.value(forKey: key) as? CGFloat) ?? 0
+    }
+
     /// @insets on a rounded screen, none on a square one.
     @objc public static func insets(_ insets: UIEdgeInsets) -> UIEdgeInsets {
         isRounded ? insets : .zero
