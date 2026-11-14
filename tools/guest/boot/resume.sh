@@ -3,4 +3,4 @@
 # and the iOS share again.
 B=/opt/ishplus/bin/busybox
 [ -n "$1" ] && $B date -s "@$1" >/dev/null
-$B mountpoint -q /mnt/ios || $B mount -t 9p -o trans=virtio,version=9p2000.L,msize=1048576,cache=mmap ishplus-share /mnt/ios
+$B mountpoint -q /mnt/ios || $B mount -t 9p -o trans=virtio,version=9p2000.L,msize=1048576,cache=readahead ishplus-share /mnt/ios

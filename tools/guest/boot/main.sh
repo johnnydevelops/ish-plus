@@ -53,9 +53,12 @@ has_addr || $B udhcpc -b -q -n -t 5 -i eth0 -s $S/boot/udhcpc.script >/dev/null 
 $B sh $S/boot/swap.sh
 # The Files app share: iSH+'s Documents/Shared folder, at /mnt/ios, and as
 # iOS in the user's home
+# (cache=readahead: reads are cached, writes go to iOS at once. cache=mmap
+# also held writes in the page cache, and under memory pressure on iOS
+# some reached the file wrong: 16 KB blocks zeroed or misplaced.)
 $B modprobe -q 9pnet_virtio; $B modprobe -q 9p
 $B mkdir -p /mnt/ios
-$B mount -t 9p -o trans=virtio,version=9p2000.L,msize=1048576,cache=mmap ishplus-share /mnt/ios 2>/dev/null
+$B mount -t 9p -o trans=virtio,version=9p2000.L,msize=1048576,cache=readahead ishplus-share /mnt/ios 2>/dev/null
 user=$($B cat /etc/ishplus/user 2>/dev/null)
 home=/root
 [ -n "$user" ] && home=$($B awk -F: -v u="$user" '$1 == u { print $6 }' /etc/passwd)
