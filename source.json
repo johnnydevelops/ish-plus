@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.2.1",
+          "buildVersion": "19",
+          "date": "2026-11-14T15:50:19Z",
+          "localizedDescription": "## Microphone, permissions\n\n**Microphone for Linux.** Linux's sound card now records from the iPad's or iPhone's microphone, so voice calls, recording apps and speech recognition in Linux can use it. It records only while a program in Linux is recording, and iOS shows the microphone indicator only then. Through PipeWire or PulseAudio it's the default microphone. This is iOS's own permission: you can turn it off any time in Settings > iSH+.\n\n**A Permissions step in setup.** Setup now lists what iSH+ can use, each with an Allow button:\n- **Local Network:** to pair with this device and enable JIT by itself.\n- **Microphone:** shared with Linux, so programs there can record.\n- **Notifications:** to show the pairing code while you pair in Settings.\n\nIf you set up iSH+ before this version, you'll see this step once after updating, so you can decide about the microphone.\n\n**Also:** setup screens use more of the iPad's width.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.2.1/iSH-plus-1.2.1.ipa",
+          "size": 158762131,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "1.2.0",
           "buildVersion": "18",
           "date": "2026-11-14T15:21:08Z",
@@ -191,6 +200,7 @@
         ],
         "privacy": {
           "NSLocalNetworkUsageDescription": "iSH+ uses your local network to pair with this device, so it can enable JIT by itself.",
+          "NSMicrophoneUsageDescription": "iSH+ shares the microphone with Linux, so programs there can record: voice calls, recording apps, speech recognition. It records only while a program in Linux does.",
           "NFCReaderUsageDescription": "iSH+ uses your security key (YubiKey or another FIDO key) over NFC when programs in Linux, such as ssh, ask for it."
         }
       }
