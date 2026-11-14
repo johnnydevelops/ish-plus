@@ -89,7 +89,7 @@ cp "$ROOT/tools/guest/boot/main.sh" "$ROOT/tools/guest/boot/shell.sh" "$ROOT/too
    "$ROOT/tools/guest/boot/port.sh" "$ROOT/tools/guest/boot/exec-agent.sh" \
    "$ROOT/tools/guest/boot/suspend.sh" "$ROOT/tools/guest/boot/resume.sh" \
    "$ROOT/tools/guest/boot/hangup.sh" "$ROOT/tools/guest/boot/desktop.sh" \
-   "$ROOT/tools/guest/boot/native.sh" "$stage/boot/"
+   "$ROOT/tools/guest/boot/native.sh" "$ROOT/tools/guest/boot/swap.sh" "$stage/boot/"
 # The iOS clipboard (like macOS's commands), through iSH+
 cat > "$stage/commands/pbcopy" <<'EOF'
 #!/bin/sh

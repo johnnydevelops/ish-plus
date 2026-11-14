@@ -29,8 +29,9 @@ for alias in /sys/bus/*/devices/*/modalias; do
 done
 $B hostname ishplus
 # A machine ID, which systemd would make on first boot (D-Bus and desktops
-# need one; distribution images ship it empty, or "uninitialized")
-if [ -z "$ISHPLUS_NATIVE" ] && ! $B grep -qE '^[0-9a-f]{32}$' /etc/machine-id 2>/dev/null; then
+# need one; distribution images ship it empty, or "uninitialized"). Other
+# init systems make none.
+if [ "$($B cat /proc/1/comm)" != systemd ] && ! $B grep -qE '^[0-9a-f]{32}$' /etc/machine-id 2>/dev/null; then
     $B tr -dc 0-9a-f < /dev/urandom | $B head -c 32 > /etc/machine-id
     echo >> /etc/machine-id
 fi
@@ -48,6 +49,8 @@ if [ -n "$ISHPLUS_NATIVE" ]; then
 fi
 has_addr || $B udhcpc -b -q -n -t 5 -i eth0 -s $S/boot/udhcpc.script >/dev/null 2>&1
 [ -x $S/init.sh ] && $S/init.sh
+# Compressed swap in RAM (boot/swap.sh), unless the distribution has swap
+$B sh $S/boot/swap.sh
 # The Files app share: iSH+'s Documents/Shared folder, at /mnt/ios, and as
 # iOS in the user's home
 $B modprobe -q 9pnet_virtio; $B modprobe -q 9p
@@ -107,7 +110,9 @@ console() {
     # return early, and closing it discards it. That session connects as
     # QEMU starts, before Linux, so its shell needs no wait. The init's
     # boot messages are on that console: the shell starts once the boot is
-    # done, on a cleared screen.
+    # done, on a cleared screen. systemd starts this early, so the shell
+    # waits for it; OpenRC and sysvinit start this at the end of the boot,
+    # and runit's services all start at once (boot/native.sh).
     nowait=
     [ -n "$ISHPLUS_NATIVE" ] && [ "$1" = 0 ] && nowait=1
     while :; do
