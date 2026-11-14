@@ -207,7 +207,9 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
             }
         case .vpn:
             if JITShortcut.enabled {
-                status = ("The \(JITShortcut.name) shortcut switches to LocalDevVPN while JIT turns on, then back to your VPN.", .systemGreen)
+                status = (JITShortcut.restoresVPN
+                          ? "The \(JITShortcut.name) shortcut switches to LocalDevVPN while JIT turns on, then back to your VPN."
+                          : "The \(JITShortcut.name) shortcut turns LocalDevVPN on while JIT turns on, then off again.", .systemGreen)
             }
         case .pairing:
             if let pairingStatus {

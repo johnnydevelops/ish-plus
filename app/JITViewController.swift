@@ -204,7 +204,9 @@ public final class JITViewController: UIViewController {
                     let connected = JITShortcut.localDevVPNConnected()
                     DispatchQueue.main.async { [weak self] in
                         if connected { return launch() }
-                        self?.detailLabel.text = "Switching to LocalDevVPN with the \(JITShortcut.name) shortcut. Your VPN comes back once JIT is on."
+                        self?.detailLabel.text = JITShortcut.restoresVPN
+                            ? "Switching to LocalDevVPN with the \(JITShortcut.name) shortcut. Your VPN comes back once JIT is on."
+                            : "Turning LocalDevVPN on with the \(JITShortcut.name) shortcut, until JIT is on."
                         JITShortcut.start { error in
                             if let error { return fail(error) }
                             self?.showEnabling()

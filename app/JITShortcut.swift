@@ -10,6 +10,8 @@
 //  LocalDevVPN if none was on ("done"). JIT stays on without LocalDevVPN.
 //
 //  iOS 27 and later: the shortcut keeps the previous VPN with Store Content.
+//  iOS 26 has no Store Content: its version (JIT-iOS26) connects LocalDevVPN
+//  and disconnects it after JIT, without giving another VPN back.
 //
 
 import Foundation
@@ -24,6 +26,11 @@ public final class JITShortcut: NSObject {
     private static let pendingKey = "JIT Shortcut Pending Done"
 
     @objc public static var isSupported: Bool {
+        ProcessInfo.processInfo.isOperatingSystemAtLeast(OperatingSystemVersion(majorVersion: 26, minorVersion: 0, patchVersion: 0))
+    }
+
+    /// The shortcut gives the VPN that was on back (iOS 27's Store Content).
+    @objc public static var restoresVPN: Bool {
         ProcessInfo.processInfo.isOperatingSystemAtLeast(OperatingSystemVersion(majorVersion: 27, minorVersion: 0, patchVersion: 0))
     }
 
@@ -34,7 +41,8 @@ public final class JITShortcut: NSObject {
     }
 
     @objc public static var bundledFile: URL? {
-        Bundle.main.url(forResource: name, withExtension: "shortcut")
+        restoresVPN ? Bundle.main.url(forResource: name, withExtension: "shortcut")
+            : Bundle.main.url(forResource: name, withExtension: "shortcut", subdirectory: "JIT-iOS26")
     }
 
     // MARK: Network

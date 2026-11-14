@@ -12,6 +12,11 @@ iSH+ runs it with shortcuts://x-callback-url/run-shortcut and a text input:
                       after JIT: cellular data back on if asked, then either
                       disconnects LocalDevVPN or reconnects the remembered VPN
 
+iOS 26 has no Store Content: its version (app/JIT-iOS26/iSH+ JIT.shortcut,
+same name, which iSH+ runs it by) connects LocalDevVPN for JIT and
+disconnects it after, without giving another VPN back ("start" outputs
+nothing, so iSH+ asks for "done vpn-off").
+
 Signed with macOS's `shortcuts sign` (mode anyone), so iSH+ can bundle it
 and offer it to Shortcuts from the share sheet.
 """
@@ -24,6 +29,7 @@ import uuid
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 OUT = os.path.join(ROOT, "app", "JIT", "iSH+ JIT.shortcut")
+OUT_IOS26 = os.path.join(ROOT, "app", "JIT-iOS26", "iSH+ JIT.shortcut")
 
 LOCALDEVVPN = {
     "TeamIdentifier": "42Q7QX86GV",
@@ -52,7 +58,8 @@ def text_with(action_uuid, name):
         "WFSerializationType": "WFTextTokenString"}
 
 
-def build():
+def build(remember=True):
+    """remember: keeps the VPN that was on and reconnects it (iOS 27)"""
     actions = []
     text = new_id()
     # The input, as text
@@ -72,14 +79,16 @@ def build():
     start_group, start_if, start_end = if_contains("start")
     actions.append(start_if)
     current = new_id()
-    actions.append(action("is.workflow.actions.vpn.get", UUID=current))
-    actions.append(action("is.workflow.actions.setstoredcontent", WFInput=text_with(current, "Current VPN"),
-                          WFStoredContentKey="previous VPN"))
+    if remember:
+        actions.append(action("is.workflow.actions.vpn.get", UUID=current))
+        actions.append(action("is.workflow.actions.setstoredcontent", WFInput=text_with(current, "Current VPN"),
+                              WFStoredContentKey="previous VPN"))
     _, cell_if, cell_end = if_contains("cellular")
     actions += [cell_if, action("is.workflow.actions.cellulardata.set", OnValue=0), cell_end]
     actions.append(action("com.jkcoxson.LocalDevVPN.ControlLocalDevVPNIntent",
                           AppIntentDescriptor=LOCALDEVVPN, UUID=new_id()))
-    actions.append(action("is.workflow.actions.output", WFOutput=text_with(current, "Current VPN"), UUID=new_id()))
+    if remember:
+        actions.append(action("is.workflow.actions.output", WFOutput=text_with(current, "Current VPN"), UUID=new_id()))
     # Otherwise ("done")
     actions.append(action("is.workflow.actions.conditional", GroupingIdentifier=start_group, WFControlFlowMode=1))
     _, cell_if, cell_end = if_contains("cellular")
@@ -87,13 +96,14 @@ def build():
     _, off_if, off_end = if_contains("vpn-off")
     actions += [off_if, action("com.jkcoxson.LocalDevVPN.ControlLocalDevVPNIntent",
                                AppIntentDescriptor=LOCALDEVVPN, operation="disable", UUID=new_id()), off_end]
-    _, restore_if, restore_end = if_contains("vpn-restore")
-    stored = new_id()
-    actions += [restore_if,
-                action("is.workflow.actions.getstoredcontent", WFStoredContentKey="previous VPN", UUID=stored),
-                # The stored VPN goes to Set VPN directly: as text, it could not be converted
-                action("is.workflow.actions.vpn.set", WFVPN=output_of(stored, "previous VPN"), UUID=new_id()),
-                restore_end]
+    if remember:
+        _, restore_if, restore_end = if_contains("vpn-restore")
+        stored = new_id()
+        actions += [restore_if,
+                    action("is.workflow.actions.getstoredcontent", WFStoredContentKey="previous VPN", UUID=stored),
+                    # The stored VPN goes to Set VPN directly: as text, it could not be converted
+                    action("is.workflow.actions.vpn.set", WFVPN=output_of(stored, "previous VPN"), UUID=new_id()),
+                    restore_end]
     actions.append(start_end)
 
     return {
@@ -113,13 +123,14 @@ def build():
 
 
 def main():
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    with tempfile.TemporaryDirectory() as tmp:
-        unsigned = os.path.join(tmp, "iSH+ JIT.shortcut")
-        with open(unsigned, "wb") as f:
-            plistlib.dump(build(), f, fmt=plistlib.FMT_BINARY)
-        subprocess.run(["shortcuts", "sign", "--mode", "anyone", "--input", unsigned, "--output", OUT], check=True)
-    print(OUT)
+    for out, remember in ((OUT, True), (OUT_IOS26, False)):
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        with tempfile.TemporaryDirectory() as tmp:
+            unsigned = os.path.join(tmp, "iSH+ JIT.shortcut")
+            with open(unsigned, "wb") as f:
+                plistlib.dump(build(remember), f, fmt=plistlib.FMT_BINARY)
+            subprocess.run(["shortcuts", "sign", "--mode", "anyone", "--input", unsigned, "--output", out], check=True)
+        print(out)
 
 
 if __name__ == "__main__":
