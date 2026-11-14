@@ -457,13 +457,24 @@ export DISPLAY=:0 XDG_RUNTIME_DIR=/run/user/$uid XDG_SESSION_TYPE=x11 ISHPLUS_DE
 cd
 # A background for bare window managers (desktops draw their own)
 command -v xsetroot >/dev/null 2>&1 && xsetroot -solid '#2b3a4a'
+# With systemd's user services (logind), their D-Bus session: snap runs its
+# applications through them (systemd-run --user), and a session of its own
+# would hide them ("cannot run snap applications on this system")
+if [ -S "\$XDG_RUNTIME_DIR/bus" ]; then
+    export DBUS_SESSION_BUS_ADDRESS=unix:path=\$XDG_RUNTIME_DIR/bus
+    exec $session
+fi
 exec $wrap $session
 EOF
     $B chmod 755 $R/session
+    # With logind: a user session on seat0 and Xorg's vt7 (pam_systemd,
+    # through su), as a display manager makes, not a background one
+    seat=""
+    logind && seat="XDG_SEAT=seat0 XDG_VTNR=7 XDG_SESSION_CLASS=user XDG_SESSION_TYPE=x11 XDG_SESSION_DESKTOP=$id"
     if [ "$who" = root ]; then
-        setsid sh -lc $R/session </dev/null >$R/session.log 2>&1 &
+        setsid env $seat sh -lc $R/session </dev/null >$R/session.log 2>&1 &
     else
-        setsid su -l "$who" -c $R/session </dev/null >$R/session.log 2>&1 &
+        setsid env $seat su -l "$who" -c $R/session </dev/null >$R/session.log 2>&1 &
     fi
     echo $! > $R/session.pid
 }
