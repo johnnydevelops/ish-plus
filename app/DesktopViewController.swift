@@ -985,17 +985,21 @@ final class DesktopExtraKeys: UIInputView {
         stack.spacing = 6
         stack.translatesAutoresizingMaskIntoConstraints = false
         for (title, usage, modifier) in keys {
-            var configuration = UIButton.Configuration.gray()
+            // As the keyboard's own keys, light or dark with the appearance
+            var configuration = UIButton.Configuration.filled()
             configuration.title = title
             configuration.cornerStyle = .medium
+            configuration.baseBackgroundColor = LaptopColors.key
+            configuration.baseForegroundColor = .label
             let button = UIButton(configuration: configuration, primaryAction: UIAction { [weak self] action in
                 guard let self, let button = action.sender as? UIButton else { return }
                 if modifier {
                     if self.held.removeValue(forKey: usage) != nil {
-                        button.configuration?.baseBackgroundColor = nil
+                        button.configuration?.baseBackgroundColor = LaptopColors.key
                     } else {
+                        // Held for the next key: lighter on dark, darker on light
                         self.held[usage] = button
-                        button.configuration?.baseBackgroundColor = .tintColor.withAlphaComponent(0.4)
+                        button.configuration?.baseBackgroundColor = LaptopColors.on
                     }
                 } else {
                     self.type(usage)
@@ -1018,7 +1022,7 @@ final class DesktopExtraKeys: UIInputView {
     /// The held modifiers, released after this key.
     func takeModifiers() -> [Int] {
         let modifiers = Array(held.keys)
-        for button in held.values { button.configuration?.baseBackgroundColor = nil }
+        for button in held.values { button.configuration?.baseBackgroundColor = LaptopColors.key }
         held.removeAll()
         return modifiers
     }

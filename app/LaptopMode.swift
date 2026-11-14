@@ -519,7 +519,7 @@ final class LaptopControlsViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(white: 0.08, alpha: 1)
+        view.backgroundColor = LaptopColors.background
         setUpToolbar()
         keyboard.translatesAutoresizingMaskIntoConstraints = false
         trackpad.translatesAutoresizingMaskIntoConstraints = false
@@ -595,12 +595,12 @@ final class LaptopControlsViewController: UIViewController {
                 configuration = .glass() // Liquid Glass
             } else {
                 configuration = .plain()
-                configuration.background.backgroundColor = UIColor(white: 0.22, alpha: 1)
+                configuration.background.backgroundColor = LaptopColors.key
                 configuration.background.cornerRadius = 6
             }
             configuration.image = UIImage(systemName: symbol)
             configuration.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(pointSize: 17, weight: .regular)
-            configuration.baseForegroundColor = .white
+            configuration.baseForegroundColor = .label
             configuration.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 14, bottom: 8, trailing: 14)
             let button = UIButton(configuration: configuration)
             button.accessibilityLabel = label
@@ -656,7 +656,9 @@ final class LaptopControlsViewController: UIViewController {
 
     // MARK: Output
 
-    private func key(_ usage: Int, down: Bool) {
+    private func key(_ usage: Int, down: Bool, hardware: Bool = false) {
+        // A hardware keyboard's caps lock shows on this one too
+        if hardware && usage == 57 && down { keyboard.toggleCapsLock() }
         switch mode.content {
         case .desktop:
             display.key(usage, down: down)
@@ -688,7 +690,7 @@ final class LaptopControlsViewController: UIViewController {
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         var handled = false
         for press in presses {
-            if let key = press.key { self.key(key.keyCode.rawValue, down: true); handled = true }
+            if let key = press.key { self.key(key.keyCode.rawValue, down: true, hardware: true); handled = true }
         }
         if !handled { super.pressesBegan(presses, with: event) }
     }
@@ -840,6 +842,25 @@ struct TerminalKeyTranslator {
     }
 }
 
+// MARK: - Colors
+
+/// The keyboard's and trackpad's colors, light or dark with the appearance,
+/// as iOS's own keyboard.
+enum LaptopColors {
+    private static func dynamic(dark: CGFloat, light: CGFloat) -> UIColor {
+        UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: dark, alpha: 1) : UIColor(white: light, alpha: 1) }
+    }
+    static let background = dynamic(dark: 0.08, light: 0.80)
+    static let key = dynamic(dark: 0.22, light: 1.0)
+    /// A key held down
+    static let pressed = dynamic(dark: 0.45, light: 0.62)
+    /// A key that is on (caps lock, a latched modifier): lighter on dark,
+    /// darker on light
+    static let on = dynamic(dark: 0.36, light: 0.72)
+    static let trackpad = dynamic(dark: 0.16, light: 0.90)
+    static let trackpadBorder = dynamic(dark: 0.30, light: 0.70)
+}
+
 // MARK: - Keyboard view
 
 /// A full keyboard, as on a laptop: Esc and the function keys, every
@@ -903,10 +924,10 @@ final class LaptopKeyboardView: UIView {
                 let label = UILabel()
                 label.text = key.label
                 label.textAlignment = .center
-                label.textColor = .white
+                label.textColor = .label
                 label.adjustsFontSizeToFitWidth = true
                 label.minimumScaleFactor = 0.5
-                label.backgroundColor = UIColor(white: 0.22, alpha: 1)
+                label.backgroundColor = LaptopColors.key
                 label.layer.cornerRadius = 6
                 label.clipsToBounds = true
                 label.isAccessibilityElement = true
@@ -919,6 +940,15 @@ final class LaptopKeyboardView: UIView {
     }
 
     required init?(coder: NSCoder) { fatalError() }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+#if targetEnvironment(simulator)
+        // Trying the look of caps lock on (simctl spawn ... defaults write
+        // <app> ISHSimulatorCapsLock -bool YES)
+        if window != nil, !capsLock, UserDefaults.standard.bool(forKey: "ISHSimulatorCapsLock") { toggleCapsLock() }
+#endif
+    }
 
     override func layoutSubviews() {
         super.layoutSubviews()
@@ -955,12 +985,23 @@ final class LaptopKeyboardView: UIView {
         heldModifiers[225] != nil || heldModifiers[229] != nil || latched.contains(225) || latched.contains(229)
     }
 
+    /// Caps lock is on: its key shows it, and letters are capitals.
+    private(set) var capsLock = false
+
+    /// Caps lock pressed (here, or on a hardware keyboard).
+    func toggleCapsLock() {
+        capsLock.toggle()
+        updateLabels()
+    }
+
     private func updateLabels() {
         let shift = shiftActive
         for (key, view) in keyViews {
-            view.text = shift ? (key.shifted ?? key.label) : key.label
-            let pressed = touched.values.contains(key.usage) || latched.contains(key.usage)
-            view.backgroundColor = pressed ? UIColor(white: 0.45, alpha: 1) : UIColor(white: 0.22, alpha: 1)
+            let letter = (4...29).contains(key.usage)
+            view.text = (shift != (letter && capsLock)) ? (key.shifted ?? key.label) : key.label
+            let pressed = touched.values.contains(key.usage)
+            let on = latched.contains(key.usage) || (key.usage == 57 && capsLock)
+            view.backgroundColor = pressed ? LaptopColors.pressed : on ? LaptopColors.on : LaptopColors.key
         }
     }
 
@@ -1001,6 +1042,7 @@ final class LaptopKeyboardView: UIView {
             return
         }
         for modifier in heldModifiers.keys { heldModifiers[modifier] = true }
+        if usage == 57 { capsLock.toggle() }
         onKey?(usage, true)
         startRepeat(usage)
     }
@@ -1070,9 +1112,14 @@ final class LaptopTrackpadView: UIView, UIGestureRecognizerDelegate {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        backgroundColor = UIColor(white: 0.16, alpha: 1)
+        backgroundColor = LaptopColors.trackpad
         layer.cornerRadius = 14
-        layer.borderColor = UIColor(white: 0.3, alpha: 1).cgColor
+        layer.borderColor = LaptopColors.trackpadBorder.resolvedColor(with: traitCollection).cgColor
+        if #available(iOS 17.0, *) {
+            registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: LaptopTrackpadView, _) in
+                view.layer.borderColor = LaptopColors.trackpadBorder.resolvedColor(with: view.traitCollection).cgColor
+            }
+        }
         layer.borderWidth = 1
         let direct = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
         func add(_ recognizer: UIGestureRecognizer) {
