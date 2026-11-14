@@ -52,6 +52,21 @@ inittab() {
     sed -i -E '/^[^#].*getty.*(hvc[0-9]|ttyAMA0|console)([[:space:]]|$)/s/^/#ishplus# /' "$R/etc/inittab"
 }
 
+# Display managers (a login screen; Debian's and Ubuntu's xfce4 bring
+# LightDM): iSH+ starts the desktop itself (desktop.sh), straight into the
+# session, and one started at boot would take the display with its login
+# screen. Kept from starting, in each init system's way.
+for dm in display-manager lightdm gdm gdm3 sddm lxdm slim xdm greetd ly nodm; do
+    # systemd: masked (display-manager.service is the one graphical.target wants)
+    [ -d "$R/etc/systemd/system" ] && ln -sf /dev/null "$R/etc/systemd/system/$dm.service"
+    # runit (Void): not in the run level
+    rm -f "$R/etc/runit/runsvdir/default/$dm"
+    # OpenRC (Alpine): not in any run level
+    rm -f "$R"/etc/runlevels/*/"$dm"
+    # sysvinit (Devuan): no start links
+    rm -f "$R"/etc/rc[2345].d/S[0-9][0-9]"$dm"
+done
+
 # systemd
 for sd in /usr/lib/systemd/systemd /lib/systemd/systemd; do
     [ -x "$R$sd" ] || continue

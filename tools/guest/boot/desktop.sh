@@ -360,6 +360,21 @@ EOF
     fi
 }
 
+# A display manager running (its login screen; boot/native.sh keeps them
+# from starting at boot, but one may have started before that, or by hand):
+# stopped, so the session gets the display and starts without a login
+stop_display_managers() {
+    for dm in lightdm gdm gdm3 sddm lxdm slim xdm greetd ly nodm; do
+        $B pgrep -x "$dm" >/dev/null 2>&1 || continue
+        if [ "$($B cat /proc/1/comm)" = systemd ]; then
+            systemctl stop display-manager.service "$dm.service" 2>/dev/null
+        else
+            rc-service "$dm" stop 2>/dev/null || sv down "$dm" 2>/dev/null || /etc/init.d/"$dm" stop 2>/dev/null
+        fi
+        $B pkill -x "$dm" 2>/dev/null
+    done
+}
+
 start() {
     if [ -n "$1" ]; then
         s=$(lookup "$1") || { echo "There is no desktop session \"$1\" here."; return 1; }
@@ -377,6 +392,7 @@ start() {
     fi
     [ -n "$1" ] && { $B mkdir -p /etc/ishplus; echo "$id" > $CHOICE; }
     $B mkdir -p $R
+    stop_display_managers
     devices
     who=${user:-root}
     uid=$($B id -u "$who"); gid=$($B id -g "$who")
