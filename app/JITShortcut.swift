@@ -109,15 +109,31 @@ public final class JITShortcut: NSObject {
     }
 
     /// After the JIT helper is done: gives the user's VPN back, if the
-    /// shortcut switched it. Main thread.
-    @objc public static func finish() {
-        guard let done = UserDefaults.standard.string(forKey: pendingKey) else { return }
+    /// shortcut switched it, then calls completion once iSH+ is in front
+    /// again (JIT stays on). Linux starts from the completion: running the
+    /// shortcut takes iSH+ to the background, and Linux starting meanwhile
+    /// (its GPU paused for the background) could hang before its first
+    /// output. Main thread.
+    @objc public static func finish(completion: @escaping () -> Void) {
+        guard let done = UserDefaults.standard.string(forKey: pendingKey) else { return completion() }
         run(done) { _, error in
             if error == nil {
                 UserDefaults.standard.removeObject(forKey: pendingKey)
             } else {
                 vmLog("JIT shortcut (\(done)): \(error!)")
             }
+            whenActive(completion)
+        }
+    }
+
+    /// Calls block now if iSH+ is active, else when it becomes active.
+    private static func whenActive(_ block: @escaping () -> Void) {
+        if UIApplication.shared.applicationState == .active { return block() }
+        var token: NSObjectProtocol?
+        token = NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification,
+                                                       object: nil, queue: .main) { _ in
+            if let token { NotificationCenter.default.removeObserver(token) }
+            block()
         }
     }
 
