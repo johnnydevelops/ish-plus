@@ -81,9 +81,13 @@ static int scan(const char *path, bool v6, struct listener *list, int count) {
         size_t len = strlen(local);
         bool any = hex_is_zero(local, len);
         bool loopback = false;
+        // Loopback is 127.0.0.1 (or ::1) only: programs listening on other
+        // 127.x addresses keep them to Linux (systemd-resolved's DNS stub
+        // on 127.0.0.53 and .54), like any other specific address
+        const unsigned localhost = 0x0100007f; // 127.0.0.1, as read below
         if (!v6 && len == 8) {
             unsigned address = strtoul(local, NULL, 16); // network order, read as host order
-            loopback = (address & 0xff) == 127;
+            loopback = address == localhost;
             if (address == guest_address.s_addr)
                 any = true;
         } else if (v6 && len == 32) {
@@ -91,10 +95,12 @@ static int scan(const char *path, bool v6, struct listener *list, int count) {
             // IPv4-mapped 127.x and the guest's address
             if (strncmp(local, "0000000000000000FFFF0000", 24) == 0) {
                 unsigned address = strtoul(local + 24, NULL, 16);
-                loopback = (address & 0xff) == 127;
+                loopback = address == localhost;
                 any = address == guest_address.s_addr;
             }
         }
+        if (!any && !loopback)
+            continue; // not reachable from iSH+
         struct listener *l = find(list, count, port);
         if (l == NULL) {
             if (count == MAX_PORTS)
