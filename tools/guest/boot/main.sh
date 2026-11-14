@@ -1,9 +1,9 @@
-# iSH+'s init inside the distribution (run by tini as process 1, with the
-# support disk's static busybox, so it works on any distribution): mounts,
-# network, FEX, then a root shell on every iSH+ session's console. By
-# default the distribution's own init system is not started (lighter under
-# emulation); with ishplus.init=native it is, and this runs as its service
-# (ISHPLUS_NATIVE=1, boot/native.sh), leaving it what an init system does.
+# iSH+'s part inside the distribution: mounts, network, FEX, then a root
+# shell on every iSH+ session's console. By default it runs as a service of
+# the distribution's own init system (ISHPLUS_NATIVE=1, boot/native.sh),
+# leaving it what an init system does; with the kernel argument
+# ishplus.init=own (or an init system iSH+ does not know) it is process 1
+# itself, under tini, with the support disk's static busybox (lighter).
 B=/opt/ishplus/bin/busybox
 S=/opt/ishplus
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

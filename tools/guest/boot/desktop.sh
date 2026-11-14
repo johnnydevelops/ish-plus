@@ -20,7 +20,7 @@
 #
 # Wayland compositors need a seat (access to the display and input): with
 # iSH+'s own init, seatd (package seatd), which this starts; with the
-# distribution's systemd (ishplus.init=native), logind. GNOME and KDE Plasma
+# distribution's systemd (the default boot), logind. GNOME and KDE Plasma
 # on Wayland need logind and systemd's user services, so they are offered
 # only with systemd.
 B=/opt/ishplus/bin/busybox

@@ -1,7 +1,8 @@
 #!/bin/sh
 # iSH+ initramfs init (replaces Alpine's): installs a distribution on first
-# boot and starts it with iSH+'s own init (from the support disk), so any
-# distribution boots the same way. Disks are found by their virtio serial:
+# boot and starts it with its own init system, iSH+'s part running as its
+# service (or iSH+'s own init, from the support disk). Disks are found by
+# their virtio serial:
 #   ishplus-root     the distribution's disk (ext4)
 #   ishplus-modloop  kernel modules (squashfs)
 #   ishplus-support  iSH+'s support disk (squashfs), see make-guest-support.sh
@@ -167,9 +168,10 @@ umount /lib/modules
 mount --move /.modloop /newroot/.modloop
 mount --move /opt/ishplus /newroot/opt/ishplus
 for d in dev proc sys; do mount --move /$d /newroot/$d; done
-# The distribution's own init system (kernel argument ishplus.init=native),
-# with iSH+'s part as a service of it (boot/native.sh)
-if grep -qw "ishplus.init=native" /newroot/proc/cmdline; then
+# The distribution's own init system (systemd, OpenRC, runit, sysvinit),
+# with iSH+'s part as a service of it (boot/native.sh); kernel argument
+# ishplus.init=own: iSH+'s own, lighter init instead
+if ! grep -qw "ishplus.init=own" /newroot/proc/cmdline; then
     if INIT=$(sh /newroot/opt/ishplus/boot/native.sh /newroot); then
         exec switch_root /newroot "$INIT"
     fi

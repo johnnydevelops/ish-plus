@@ -1,6 +1,6 @@
-# Booting a distribution with its own init system (kernel argument
-# ishplus.init=native), run by the initramfs before switch_root with the
-# distribution at $1 (its mounts already moved there): prepares what iSH+'s
+# Booting a distribution with its own init system (the default; the kernel
+# argument ishplus.init=own boots iSH+'s own instead), run by the initramfs
+# before switch_root with the distribution at $1 (its mounts already moved there): prepares what iSH+'s
 # own init (main.sh) would otherwise do as process 1, and installs iSH+'s
 # part (main.sh as a service: consoles, Files share, ports, security key)
 # into the init system. Prints the init to start; fails (and iSH+'s own init
@@ -58,7 +58,7 @@ for sd in /usr/lib/systemd/systemd /lib/systemd/systemd; do
     U=$R/etc/systemd/system
     mkdir -p "$U/sysinit.target.d"
     cat > "$U/ishplus.service" <<EOF
-# Installed by iSH+ at every boot with ishplus.init=native (tools/guest/boot/native.sh)
+# Installed by iSH+ at every boot (tools/guest/boot/native.sh)
 [Unit]
 Description=iSH+ (consoles, Files share, ports, security key)
 DefaultDependencies=no
@@ -103,7 +103,7 @@ if init=$(has /usr/bin/runit-init /sbin/runit-init) && [ -d "$R/etc/runit/runsvd
     mkdir -p "$R/etc/sv/ishplus"
     cat > "$R/etc/sv/ishplus/run" <<EOF
 #!/bin/sh
-# Installed by iSH+ at every boot with ishplus.init=native (tools/guest/boot/native.sh)
+# Installed by iSH+ at every boot (tools/guest/boot/native.sh)
 exec $MAIN
 EOF
     chmod 755 "$R/etc/sv/ishplus/run"
@@ -122,7 +122,7 @@ fi
 if openrc_run=$(has /sbin/openrc-run /usr/sbin/openrc-run /usr/bin/openrc-run); then
     cat > "$R/etc/init.d/ishplus" <<EOF
 #!$openrc_run
-# Installed by iSH+ at every boot with ishplus.init=native (tools/guest/boot/native.sh)
+# Installed by iSH+ at every boot (tools/guest/boot/native.sh)
 description="iSH+ (consoles, Files share, ports, security key)"
 supervisor=supervise-daemon
 command=$S/bin/busybox
