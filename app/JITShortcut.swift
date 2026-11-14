@@ -124,6 +124,13 @@ public final class JITShortcut: NSObject {
     /// output. Main thread.
     @objc public static func finish(completion: @escaping () -> Void) {
         guard let done = UserDefaults.standard.string(forKey: pendingKey) else { return completion() }
+        // Only once iSH+ is in front (it may still be coming back from the
+        // "start" run): iOS does not open Shortcuts for an app that is not,
+        // and the VPN was then never given back
+        whenActive { runDone(done, completion: completion) }
+    }
+
+    private static func runDone(_ done: String, completion: @escaping () -> Void) {
         run(done) { _, error in
             if error == nil {
                 UserDefaults.standard.removeObject(forKey: pendingKey)

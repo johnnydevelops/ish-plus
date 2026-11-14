@@ -100,9 +100,16 @@ def build(remember=True):
         _, restore_if, restore_end = if_contains("vpn-restore")
         stored = new_id()
         actions += [restore_if,
+                    # LocalDevVPN off first, then a moment: connecting the
+                    # previous VPN while it was still up failed ("configuration
+                    # disabled", NEVPNErrorDomain 2)
+                    action("com.jkcoxson.LocalDevVPN.ControlLocalDevVPNIntent",
+                           AppIntentDescriptor=LOCALDEVVPN, operation="disable", UUID=new_id()),
+                    action("is.workflow.actions.delay", WFDelayTime=1),
                     action("is.workflow.actions.getstoredcontent", WFStoredContentKey="previous VPN", UUID=stored),
                     # The stored VPN goes to Set VPN directly: as text, it could not be converted
-                    action("is.workflow.actions.vpn.set", WFVPN=output_of(stored, "previous VPN"), UUID=new_id()),
+                    action("is.workflow.actions.vpn.set", WFVPN=output_of(stored, "previous VPN"),
+                           WFVPNOperation="Connect", UUID=new_id()),
                     restore_end]
     actions.append(start_end)
 
