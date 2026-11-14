@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.1.1",
+          "buildVersion": "14",
+          "date": "2026-11-14T13:47:44Z",
+          "localizedDescription": "## Desktop fix\n\n**The desktop goes straight into your session again, at your screen's size.** Some desktop packages bring a display manager with them: Debian's and Ubuntu's `xfce4` installs LightDM, for example. Since 1.1.0 starts your distribution's own init system, that display manager started at boot. The Desktop then showed its login screen instead of your session, at a fixed 1280×800 instead of your screen's size.\n\niSH+ starts desktops itself, so display managers are now kept from starting at boot, under every init system: systemd, OpenRC, runit and sysvinit. One that is already running is stopped when a desktop session starts. They stay installed.\n\nTo get the fix on a system that already shows the login screen, update and restart Linux once.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.1.1/iSH-plus-1.1.1.ipa",
+          "size": 158497754,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "1.1.0",
           "buildVersion": "13",
           "date": "2026-11-14T13:29:25Z",
