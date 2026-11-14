@@ -24,6 +24,8 @@ final class DesktopDisplay {
     private typealias Button = @convention(c) (Int32, Int32) -> Void
     private typealias Scroll = @convention(c) (Int32, Int32) -> Void
     private typealias Key = @convention(c) (Int32, Int32) -> Void
+    private typealias Motion = @convention(c) (Int32, Int32) -> Void
+    private typealias SetRelative = @convention(c) (Int32) -> Void
     private typealias GPUFrameCallback = @convention(c) (UnsafeMutableRawPointer?, UnsafeMutableRawPointer?, Int32, Int32) -> Void
     private typealias SetGPUFrames = @convention(c) (UnsafeMutableRawPointer?, GPUFrameCallback?) -> Void
 
@@ -39,6 +41,8 @@ final class DesktopDisplay {
     private var buttonFunction: Button?
     private var scrollFunction: Scroll?
     private var keyFunction: Key?
+    private var motionFunction: Motion?
+    private var setRelativeFunction: SetRelative?
     private var setGPUFramesFunction: SetGPUFrames?
 
     /// QEMU's library is loaded (the VM ran) and has the bridge.
@@ -56,6 +60,8 @@ final class DesktopDisplay {
         buttonFunction = symbol("ishplus_input_button", Button.self)
         scrollFunction = symbol("ishplus_input_scroll", Scroll.self)
         keyFunction = symbol("ishplus_input_key", Key.self)
+        motionFunction = symbol("ishplus_input_motion", Motion.self)
+        setRelativeFunction = symbol("ishplus_input_set_relative", SetRelative.self)
         setGPUFramesFunction = symbol("ishplus_display_set_gpu_frames", SetGPUFrames.self)
     }
 
@@ -283,6 +289,10 @@ final class DesktopDisplay {
         return true
     }
 
+    /// Who shows the frames now (the desktop view, or laptop mode's screen):
+    /// the one that attached last; the other leaves them alone.
+    weak var viewer: AnyObject?
+
     /// Stops receiving frames (Linux keeps its desktop).
     func detach() {
         detachFunction?()
@@ -308,6 +318,34 @@ final class DesktopDisplay {
     func movePointer(to point: CGPoint) {
         let x = Int32(point.x.rounded()), y = Int32(point.y.rounded())
         inputQueue.async { [pointerFunction] in pointerFunction?(x, y) }
+    }
+
+    /// The relative mouse moves the pointer (trackpad mode, a captured
+    /// mouse): Linux owns its position, as with a real mouse. Off, the
+    /// absolute tablet does (touch mode: the pointer goes where you touch).
+    var relative = false {
+        didSet {
+            // Always sent: a restarted QEMU starts with the tablet first
+            let on: Int32 = relative ? 1 : 0
+            inputQueue.async { [setRelativeFunction] in setRelativeFunction?(on) }
+        }
+    }
+
+    /// Whether QEMU has the relative mouse (an older library has not).
+    var hasRelativeMouse: Bool { motionFunction != nil }
+
+    private var motionRemainder = CGPoint.zero
+
+    /// Relative motion in guest pixels (fractions carry over). Main thread.
+    func move(dx: CGFloat, dy: CGFloat) {
+        motionRemainder.x += dx
+        motionRemainder.y += dy
+        let x = motionRemainder.x.rounded(.towardZero), y = motionRemainder.y.rounded(.towardZero)
+        motionRemainder.x -= x
+        motionRemainder.y -= y
+        guard x != 0 || y != 0 else { return }
+        let ix = Int32(x), iy = Int32(y)
+        inputQueue.async { [motionFunction] in motionFunction?(ix, iy) }
     }
 
     enum MouseButton: Int32 { case left = 0, middle = 1, right = 2 }

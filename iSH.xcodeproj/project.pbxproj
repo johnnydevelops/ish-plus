@@ -105,6 +105,7 @@
 		C772B746D2BD3CA66F1A1338 /* JITShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5735F669BFA4A1AEF2717759 /* JITShortcut.swift */; };
 		E07A9ABB6DEE4ACF930DB5B9 /* DesktopViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 453C5ED452084969A8CA5650 /* DesktopViewController.swift */; };
 		7FFB39431AE24D5E993E9EE5 /* DesktopDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B79C7F546AE47BE8868A9A3 /* DesktopDisplay.swift */; };
+		6875B07CB6F64186B7C41474 /* LaptopMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAC6EF68E727423BA3B82514 /* LaptopMode.swift */; };
 		D864D6185FB3C47575C41253 /* ish.png in Resources */ = {isa = PBXBuildFile; fileRef = DD81969CD8758D3D51CF4C70 /* ish.png */; };
 		E4ABA6762629329C8F07E452 /* libqemu-aarch64-softmmu-tci.dylib in Embed QEMU */ = {isa = PBXBuildFile; fileRef = 477E1313748964CA68B92D2A /* libqemu-aarch64-softmmu-tci.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		F1ACF3EEC304BB68445CE94E /* ResumeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB7B4901B1A2E1D8686C0BF /* ResumeViewController.swift */; };
@@ -207,6 +208,7 @@
 		4B7D8B35C99F9EE30F670C46 /* QEMUMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QEMUMonitor.swift; sourceTree = "<group>"; };
 		501900BEC8B43D848CF2FB04 /* VMSettings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VMSettings.swift; sourceTree = "<group>"; };
 		9B79C7F546AE47BE8868A9A3 /* DesktopDisplay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DesktopDisplay.swift; sourceTree = "<group>"; };
+		EAC6EF68E727423BA3B82514 /* LaptopMode.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LaptopMode.swift; sourceTree = "<group>"; };
 		453C5ED452084969A8CA5650 /* DesktopViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DesktopViewController.swift; sourceTree = "<group>"; };
 		5735F669BFA4A1AEF2717759 /* JITShortcut.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = JITShortcut.swift; sourceTree = "<group>"; };
 		599290A47C2DDDD7A435DFA3 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
@@ -558,6 +560,7 @@
 				5735F669BFA4A1AEF2717759 /* JITShortcut.swift */,
 				453C5ED452084969A8CA5650 /* DesktopViewController.swift */,
 				9B79C7F546AE47BE8868A9A3 /* DesktopDisplay.swift */,
+				EAC6EF68E727423BA3B82514 /* LaptopMode.swift */,
 				D578D9E050747F6390F6E6D8 /* iSH+ JIT.shortcut */,
 			);
 			path = app;
@@ -1027,6 +1030,7 @@
 				C772B746D2BD3CA66F1A1338 /* JITShortcut.swift in Sources */,
 				E07A9ABB6DEE4ACF930DB5B9 /* DesktopViewController.swift in Sources */,
 				7FFB39431AE24D5E993E9EE5 /* DesktopDisplay.swift in Sources */,
+				6875B07CB6F64186B7C41474 /* LaptopMode.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

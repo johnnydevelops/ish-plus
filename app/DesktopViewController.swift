@@ -18,6 +18,7 @@
 //
 
 import UIKit
+import GameController
 
 // MARK: - Availability and control (in the guest, as root)
 
@@ -43,15 +44,36 @@ public final class ScreenShape: NSObject {
 public final class DesktopSession: NSObject {
     private static let script = "sh /opt/ishplus/boot/desktop.sh"
 
-    /// The desktop Linux would start ("Xfce Session", "openbox"...), as last
-    /// checked; nil when there is none (or Linux is not running).
-    @objc public private(set) static var availableName: String?
+    /// A desktop Linux can start: an X11 or Wayland session, or a window manager.
+    @objc(ISHDesktopSessionChoice)
+    public final class Choice: NSObject {
+        /// What desktop.sh starts it by (nil from an older support disk: the default)
+        @objc public let id: String?
+        @objc public let name: String
+        @objc public let wayland: Bool
+
+        init(id: String?, name: String, wayland: Bool) {
+            self.id = id
+            self.name = name
+            self.wayland = wayland
+        }
+    }
+
+    /// The desktops installed, as last checked; empty when there is none
+    /// (or Linux is not running).
+    @objc public private(set) static var available: [Choice] = []
+
+    /// The first one's name ("Xfce Session", "openbox"...), or nil.
+    @objc public static var availableName: String? { available.first?.name }
+
+    /// The one the user picked (nil: desktop.sh's default, or the last one).
+    @objc public static var chosen: String?
 
     /// Checks again; completion(name) on the main thread, within the timeout
     /// (with the last known answer if Linux is busy).
     @objc public static func checkAvailability(timeout: TimeInterval, completion: @escaping (String?) -> Void) {
         guard VirtualMachine.shared.isRunning, DesktopDisplay.shared.isAvailable else {
-            availableName = nil
+            available = []
             return completion(nil)
         }
         var answered = false
@@ -63,20 +85,44 @@ public final class DesktopSession: NSObject {
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + timeout) { answer(availableName) }
-        GuestServices.shared.run("\(script) check", asRoot: true) { status, output in
-            let name = output.trimmingCharacters(in: .whitespacesAndNewlines)
-            DispatchQueue.main.async {
-                availableName = status == 0 && !name.isEmpty ? name : nil
-                answer(availableName)
+        // Every session ("id<TAB>x11|wayland<TAB>name" lines); an older
+        // support disk only knows check (the default's name)
+        GuestServices.shared.run("\(script) list", asRoot: true) { status, output in
+            let choices: [Choice] = output.split(separator: "\n").compactMap { line in
+                let fields = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+                guard fields.count >= 3, !fields[0].isEmpty, !fields[2].isEmpty else { return nil }
+                return Choice(id: fields[0], name: fields[2], wayland: fields[1] == "wayland")
+            }
+            if status == 0 && !choices.isEmpty {
+                DispatchQueue.main.async {
+                    available = choices
+                    answer(availableName)
+                }
+                return
+            }
+            GuestServices.shared.run("\(script) check", asRoot: true) { status, output in
+                let name = output.trimmingCharacters(in: .whitespacesAndNewlines)
+                DispatchQueue.main.async {
+                    available = status == 0 && !name.isEmpty ? [Choice(id: nil, name: name, wayland: false)] : []
+                    answer(availableName)
+                }
             }
         }
     }
 
+    /// Starts the chosen desktop (switching from another one), unless it runs.
     static func start(completion: @escaping (String?) -> Void) {
-        GuestServices.shared.run("\(script) start", asRoot: true) { status, output in
+        let id = chosen.map { " '" + $0.replacingOccurrences(of: "'", with: "") + "'" } ?? ""
+        GuestServices.shared.run("\(script) start\(id)", asRoot: true) { status, output in
             let message = output.trimmingCharacters(in: .whitespacesAndNewlines)
             DispatchQueue.main.async { completion(status == 0 ? nil : (message.isEmpty ? "The desktop did not start." : message)) }
         }
+    }
+
+    /// Another desktop picked while one shows: switches to it.
+    @objc public static func choose(_ id: String?, switchNow: Bool) {
+        chosen = id
+        if switchNow { start { _ in } }
     }
 
     static func resize() {
@@ -173,16 +219,34 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        takeFrames()
+    }
+
+    private var laptopObserver: NSObjectProtocol?
+
+    /// The guest's frames, cursor and input to this view.
+    private func takeFrames() {
+        if laptopObserver == nil {
+            // Laptop mode was over this view: the frames come back here
+            laptopObserver = NotificationCenter.default.addObserver(forName: LaptopMode.didEnd, object: nil, queue: .main) { [weak self] _ in
+                guard let self, self.viewIfLoaded?.window != nil, self.presentedViewController == nil else { return }
+                self.takeFrames()
+                self.requestSize(force: true)
+            }
+        }
         display.onFrame = { [weak self] contents, size in self?.show(contents, size: size) }
         display.onCursor = { [weak self] image, hotSpot in self?.setCursor(image, hotSpot: hotSpot) }
         display.onCursorPosition = { [weak self] point, visible in
-            guard let self, self.mode == .touch || !self.pointerMovedLocally else { return }
+            guard let self, self.mode == .touch || self.display.relative || !self.pointerMovedLocally else { return }
             self.pointer = point
             self.cursorLayer.isHidden = !visible
             self.layoutScreen()
+            if self.display.relative && self.zoom > 1 { self.followPointer() }
         }
         // Reports the current screen again
+        display.viewer = self
         display.attach()
+        updateRelative()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -204,6 +268,10 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        setCaptured(false)
+        // Unless laptop mode's screen took the frames over meanwhile
+        guard display.viewer === self else { return }
+        display.viewer = nil
         display.detach()
         display.onFrame = nil
         display.onCursor = nil
@@ -342,13 +410,15 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
         let keyboard = toolbarButton("keyboard", "Keyboard", action: #selector(toggleKeyboard))
         modeButton = toolbarButton("cursorarrow.rays", "Input Mode", action: #selector(toggleMode))
         let fit = toolbarButton("arrow.down.right.and.arrow.up.left", "Zoom to Fit", action: #selector(zoomToFit))
+        captureButton = toolbarButton("computermouse", "Capture Mouse", action: #selector(toggleCapture))
+        captureButton.isHidden = traitCollection.userInterfaceIdiom != .pad
         let more = toolbarButton("ellipsis.circle", "More", menu: UIMenu(children: [
             UIAction(title: "Hide Toolbar", image: UIImage(systemName: "chevron.up")) { [weak self] _ in self?.setToolbarHidden(true) },
             UIAction(title: "Log Out of the Desktop", image: UIImage(systemName: "power"), attributes: .destructive) { [weak self] _ in
                 self?.stopDesktop()
             },
         ]))
-        let stack = UIStackView(arrangedSubviews: [sessions, keyboard, modeButton, fit, more])
+        let stack = UIStackView(arrangedSubviews: [sessions, keyboard, modeButton, captureButton, fit, more])
         stack.axis = .horizontal
         stack.spacing = 2
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -401,6 +471,7 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
 
     @objc private func toggleMode() {
         mode = mode == .trackpad ? .touch : .trackpad
+        updateRelative()
         showHint(mode == .touch ? "Touch mode: the pointer goes where you touch" : "Trackpad mode: drag to move the pointer")
     }
 
@@ -567,11 +638,14 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
             if recognizer.state == .began { lastPan = location }
             let delta = CGPoint(x: location.x - lastPan.x, y: location.y - lastPan.y)
             lastPan = location
-            // Faster for quick moves, like a trackpad
-            let speed = hypot(delta.x, delta.y) > 12 ? 1.8 : 1.1
-            let factor = speed / max(scale, 0.01) * (zoom > 1 ? 1 / zoom : 1)
-            setPointer(CGPoint(x: max(0, min(guestSize.width - 1, pointer.x + delta.x * factor)),
-                               y: max(0, min(guestSize.height - 1, pointer.y + delta.y * factor))))
+            // A constant speed: Linux does not accelerate either (desktop.sh)
+            let factor = 1.3 / max(scale, 0.01) * (zoom > 1 ? 1 / zoom : 1)
+            if display.relative {
+                display.move(dx: delta.x * factor, dy: delta.y * factor)
+            } else {
+                setPointer(CGPoint(x: max(0, min(guestSize.width - 1, pointer.x + delta.x * factor)),
+                                   y: max(0, min(guestSize.height - 1, pointer.y + delta.y * factor))))
+            }
         case .touch:
             setPointer(guestPoint(location))
             if recognizer.state == .began, !dragging {
@@ -649,7 +723,26 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
 
     @objc private func hovered(_ recognizer: UIHoverGestureRecognizer) {
         guard recognizer.state == .began || recognizer.state == .changed else { return }
-        setPointer(guestPoint(recognizer.location(in: view)))
+        pointerMoved(to: recognizer.location(in: view), began: recognizer.state == .began)
+    }
+
+    /// The last place the iPad's pointer was, for relative moves.
+    private var lastPointerLocation: CGPoint?
+
+    /// The iPad's pointer moved: where it is (touch mode), or by as much
+    /// (trackpad mode: Linux moves its pointer, with its own acceleration).
+    /// Nothing while captured: the captured mouse's own motion moves it.
+    private func pointerMoved(to location: CGPoint, began: Bool) {
+        guard !captured else { return }
+        if display.relative {
+            if let last = lastPointerLocation, !began {
+                let factor = 1 / max(scale, 0.01)
+                display.move(dx: (location.x - last.x) * factor, dy: (location.y - last.y) * factor)
+            }
+            lastPointerLocation = location
+        } else {
+            setPointer(guestPoint(location))
+        }
     }
 
     func pointerInteraction(_ interaction: UIPointerInteraction, styleFor region: UIPointerRegion) -> UIPointerStyle? {
@@ -659,8 +752,8 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
     private var pointerButtons: [UITouch: DesktopDisplay.MouseButton] = [:]
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for touch in touches where touch.type == .indirectPointer {
-            setPointer(guestPoint(touch.location(in: view)))
+        for touch in touches where touch.type == .indirectPointer && !captured {
+            pointerMoved(to: touch.location(in: view), began: false)
             let mask = event?.buttonMask ?? .primary
             let button: DesktopDisplay.MouseButton = mask.contains(.secondary) ? .right : (mask.rawValue & 4 != 0 ? .middle : .left)
             pointerButtons[touch] = button
@@ -670,8 +763,8 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for touch in touches where touch.type == .indirectPointer {
-            setPointer(guestPoint(touch.location(in: view)))
+        for touch in touches where touch.type == .indirectPointer && !captured {
+            pointerMoved(to: touch.location(in: view), began: false)
         }
         super.touchesMoved(touches, with: event)
     }
@@ -689,6 +782,56 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
     private func releasePointerButtons(_ touches: Set<UITouch>) {
         for touch in touches {
             if let button = pointerButtons.removeValue(forKey: touch) { display.button(button, down: false) }
+        }
+    }
+
+    // MARK: Captured mouse (iPad)
+
+    private var captureButton: UIButton!
+    private var captured = false
+    private let mouse = CapturedMouse()
+    private var resignObserver: NSObjectProtocol?
+
+    override var prefersPointerLocked: Bool { captured }
+
+    /// The relative mouse while captured or in trackpad mode.
+    private func updateRelative() {
+        display.relative = display.hasRelativeMouse && (captured || mode == .trackpad)
+        lastPointerLocation = nil
+    }
+
+    @objc private func toggleCapture() { setCaptured(!captured) }
+
+    /// Captured, iPadOS hides its pointer and keeps it in place (pointer
+    /// lock), and the mouse's own movement moves Linux's pointer, without
+    /// stopping at the screen's edges: as on a computer, and as games
+    /// expect. As UTM does it.
+    private func setCaptured(_ on: Bool) {
+        guard on != captured else { return }
+        if on && !display.hasRelativeMouse {
+            showHint("Restart Linux to capture the mouse")
+            return
+        }
+        if on && GCMouse.mice().isEmpty {
+            showHint("Connect a mouse or trackpad to capture it")
+            return
+        }
+        captured = on
+        setNeedsUpdateOfPrefersPointerLocked()
+        updateRelative()
+        captureButton?.configuration?.image = UIImage(systemName: on ? "computermouse.fill" : "computermouse")
+        captureButton?.accessibilityValue = on ? "Captured" : nil
+        if on {
+            mouse.start(display)
+            // iPadOS gives the lock up when iSH+ leaves the foreground
+            resignObserver = NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.setCaptured(false)
+            }
+            showHint("Mouse captured. Control-Option releases it")
+        } else {
+            mouse.stop()
+            if let resignObserver { NotificationCenter.default.removeObserver(resignObserver) }
+            resignObserver = nil
         }
     }
 
@@ -749,6 +892,10 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
 
     // Hardware keyboards: every key, as pressed and released
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        // Control-Option releases a captured mouse
+        if captured, let flags = event?.modifierFlags, flags.contains(.control), flags.contains(.alternate) {
+            setCaptured(false)
+        }
         var handled = false
         for press in presses {
             if let key = press.key {

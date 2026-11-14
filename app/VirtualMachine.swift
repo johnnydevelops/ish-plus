@@ -649,6 +649,9 @@ public final class VirtualMachine: NSObject {
             "-device", vulkan ? "virtio-gpu-gl-pci,hostmem=1G,blob=true,venus=true"
                 : gpuAccelerated ? "virtio-gpu-gl-pci" : "virtio-gpu-pci",
             "-device", "virtio-tablet-pci",
+            // Trackpad mode and a captured mouse move the pointer relatively
+            // (DesktopDisplay.relative); the tablet stays first by default
+            "-device", "virtio-mouse-pci",
             "-device", "virtio-keyboard-pci",
             "-display", gpuAccelerated ? "egl-headless" : "none",
             "-monitor", "unix:\(socketDirectory.appendingPathComponent("mon").path),server=on,wait=off",

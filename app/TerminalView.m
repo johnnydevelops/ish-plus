@@ -133,9 +133,12 @@ static const CGFloat kTerminalPadding = 4;
 }
 
 - (void)uninstallSurface {
-    self.surface.focusChanged = nil;
-    if (self.surface.superview == self)
+    // Only while the surface is still here: another view may show it now
+    // (laptop mode's, or back here from there), with its own focus hook
+    if (self.surface.superview == self) {
+        self.surface.focusChanged = nil;
         [self.surface removeFromSuperview];
+    }
     self.surface = nil;
 }
 

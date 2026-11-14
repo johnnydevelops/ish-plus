@@ -78,6 +78,52 @@
     self.terminal = self.terminal;
     [self.termView becomeFirstResponder];
 
+    // Laptop mode (a monitor, or an iPhone Duo half folded): the session
+    // shows there, and this screen becomes a keyboard and trackpad
+    ISHLaptopMode *laptop = ISHLaptopMode.shared;
+    if (laptop.host == nil) {
+        __weak typeof(self) weakSelf = self;
+        laptop.host = self;
+        laptop.isReady = ^BOOL {
+            return weakSelf != nil && !weakSelf.showingJITScreen && weakSelf.terminal != nil;
+        };
+        laptop.makeTerminalView = ^UIView *(CGRect frame) {
+            Terminal *terminal = weakSelf.terminal;
+            if (terminal == nil)
+                return nil;
+            TerminalView *view = [[TerminalView alloc] initWithFrame:frame];
+            [view awakeFromNib]; // its setup, as from the storyboard
+            view.terminal = terminal; // moves the session's surface there
+            return view;
+        };
+        laptop.releaseTerminalView = ^{
+            // And back (the same terminal again would be ignored)
+            weakSelf.termView.terminal = nil;
+            weakSelf.termView.terminal = weakSelf.terminal;
+        };
+        laptop.restoreMode = ^(BOOL desktop) {
+            // Where laptop mode left off, on this screen
+            if (desktop) {
+                [weakSelf showDesktop];
+            } else {
+                [weakSelf hideDesktop];
+                [weakSelf.termView becomeFirstResponder];
+            }
+        };
+        laptop.sessionsMenu = ^NSArray<UIMenuElement *> *{
+            return weakSelf.sessionsMenuElements ?: @[];
+        };
+        laptop.makeSettings = ^UIViewController *{
+            return [[UIStoryboard storyboardWithName:@"About" bundle:nil] instantiateInitialViewController];
+        };
+        laptop.sendTerminalInput = ^(NSData *data) {
+            [weakSelf.terminal sendInput:data];
+        };
+        laptop.desktopIsShowing = ^BOOL {
+            return weakSelf.desktopController != nil && weakSelf.presentedViewController == weakSelf.desktopController;
+        };
+    }
+
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
     [center addObserver:self
                selector:@selector(keyboardDidSomething:)
@@ -132,6 +178,8 @@
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
+    if (ISHLaptopMode.shared.host == self)
+        [ISHLaptopMode.shared hostDidAppear];
     if (self.pendingJITScreen) {
         self.pendingJITScreen = NO;
         [self presentJITScreenThenStartSession];
@@ -321,17 +369,34 @@
         action.state = session == self.currentSession && !self.desktopShown ? UIMenuElementStateOn : UIMenuElementStateOff;
         [sessionItems addObject:action];
     }
-    // Linux's X11 desktop, when Xorg and a desktop or window manager are installed
-    NSString *desktop = ISHDesktopSession.availableName;
-    if (desktop != nil || self.desktopShown) {
-        UIAction *action = [UIAction actionWithTitle:@"Desktop Session"
+    // Linux's desktops (X11 or Wayland sessions, window managers): one
+    // entry each, when several are installed
+    NSArray<ISHDesktopSessionChoice *> *desktops = ISHDesktopSession.available;
+    BOOL several = desktops.count > 1;
+    NSString *chosen = ISHDesktopSession.chosen ?: desktops.firstObject.id;
+    NSUInteger index = 0;
+    for (ISHDesktopSessionChoice *desktop in desktops) {
+        NSString *kind = desktop.wayland ? @"Wayland" : @"X11";
+        UIAction *action = [UIAction actionWithTitle:several ? desktop.name : @"Desktop Session"
                                                image:[UIImage systemImageNamed:@"desktopcomputer"]
                                           identifier:nil
                                              handler:^(UIAction *action) {
-            [weakSelf showDesktop];
+            BOOL switching = weakSelf.desktopShown;
+            [ISHDesktopSession choose:desktop.id switchNow:switching];
+            if (!switching)
+                [weakSelf showDesktop];
         }];
-        action.subtitle = desktop;
-        action.state = self.desktopShown ? UIMenuElementStateOn : UIMenuElementStateOff;
+        action.subtitle = several ? [NSString stringWithFormat:@"Desktop Session (%@)", kind] : desktop.name;
+        BOOL isChosen = desktop.id == nil || [desktop.id isEqualToString:chosen];
+        action.state = self.desktopShown && isChosen ? UIMenuElementStateOn : UIMenuElementStateOff;
+        [sessionItems insertObject:action atIndex:index++];
+    }
+    if (desktops.count == 0 && self.desktopShown) {
+        UIAction *action = [UIAction actionWithTitle:@"Desktop Session"
+                                               image:[UIImage systemImageNamed:@"desktopcomputer"]
+                                          identifier:nil
+                                             handler:^(UIAction *action) {}];
+        action.state = UIMenuElementStateOn;
         [sessionItems insertObject:action atIndex:0];
     }
     UIAction *new = [UIAction actionWithTitle:@"New Session"
@@ -397,10 +462,17 @@
 #pragma mark Desktop session
 
 - (BOOL)desktopShown {
+    // In laptop mode: what the monitor (or upper half) shows
+    if (ISHLaptopMode.shared.isActive)
+        return ISHLaptopMode.shared.showsDesktop;
     return self.desktopController != nil && self.presentedViewController == self.desktopController;
 }
 
 - (void)showDesktop {
+    if (ISHLaptopMode.shared.isActive) {
+        [ISHLaptopMode.shared showDesktopContent];
+        return;
+    }
     if (self.desktopShown)
         return;
     __weak typeof(self) weakSelf = self;
@@ -414,6 +486,10 @@
 }
 
 - (void)hideDesktop {
+    if (ISHLaptopMode.shared.isActive) {
+        [ISHLaptopMode.shared showTerminalContent];
+        return;
+    }
     if (self.desktopShown)
         [self.desktopController dismissViewControllerAnimated:YES completion:nil];
 }
@@ -833,6 +909,11 @@ static int nextVMTerminalNumber;
 - (void)setTerminal:(Terminal *)terminal {
     _terminal = terminal;
     self.termView.terminal = self.terminal;
+    // A session started (laptop mode waits for one) or another one is shown
+    if (ISHLaptopMode.shared.host == self && self.viewIfLoaded.window != nil) {
+        [ISHLaptopMode.shared hostDidAppear];
+        [ISHLaptopMode.shared terminalChanged];
+    }
 }
 
 
