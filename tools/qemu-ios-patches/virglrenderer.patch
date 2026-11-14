@@ -1,15 +1,31 @@
-From 13ac6d29dc1906a395bad3a76a8aae9117985f2a Mon Sep 17 00:00:00 2001
-From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
-Date: Wed, 11 Nov 2026 14:16:47 +0000
-Subject: [PATCH 1/8] util/anon_file: on iOS, fall back to a temporary file
-
-iOS apps without an app group may not create POSIX shared memory.
----
- src/mesa/util/anon_file.c | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
-
+diff --git a/server/render_context.c b/server/render_context.c
+index e0b630d..7a3656e 100644
+--- a/server/render_context.c
++++ b/server/render_context.c
+@@ -13,6 +13,8 @@
+ 
+ #include "render_socket.h"
+ #include "render_state.h"
++/* the render server's own fence table */
++#define VIRGL_FENCE_SERVER_SIDE
+ #include "virgl_fence.h"
+ 
+ void
+diff --git a/server/render_state.c b/server/render_state.c
+index f0f5487..ef32df4 100644
+--- a/server/render_state.c
++++ b/server/render_state.c
+@@ -12,6 +12,8 @@
+ #endif
+ 
+ #include "render_context.h"
++/* the render server's own fence table */
++#define VIRGL_FENCE_SERVER_SIDE
+ #include "virgl_fence.h"
+ #include "virtgpu_drm.h"
+ 
 diff --git a/src/mesa/util/anon_file.c b/src/mesa/util/anon_file.c
-index c3638917..8f7f99ee 100644
+index c363891..8f7f99e 100644
 --- a/src/mesa/util/anon_file.c
 +++ b/src/mesa/util/anon_file.c
 @@ -47,6 +47,7 @@
@@ -41,195 +57,8 @@ index c3638917..8f7f99ee 100644
  #elif defined(__OpenBSD__)
     char template[] = "/tmp/mesa-XXXXXXXXXX";
     fd = shm_mkstemp(template);
--- 
-2.54.0 (Apple Git-157)
-
-
-From c307a867c18e8c67f76bb620c30c599a3ed414b2 Mon Sep 17 00:00:00 2001
-From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
-Date: Wed, 11 Nov 2026 14:16:47 +0000
-Subject: [PATCH 2/8] vrend: write gl_PointSize on GLES hosts
-
-GLES leaves the size of points undefined unless the last vertex stage
-writes gl_PointSize. ANGLE on Metal draws them huge: glamor's core-font
-text (drawn as points) became large black blocks. Write 1 (the GL default)
-when the guest's shader doesn't set a size.
----
- src/vrend/vrend_shader.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
-
-diff --git a/src/vrend/vrend_shader.c b/src/vrend/vrend_shader.c
-index 39895cec..c4597722 100644
---- a/src/vrend/vrend_shader.c
-+++ b/src/vrend/vrend_shader.c
-@@ -2558,6 +2558,14 @@ static void handle_vertex_proc_exit(const struct dump_ctx *ctx,
-     if (!ctx->key->gs_present && !ctx->key->tes_present)
-        emit_prescale(glsl_strbufs);
- 
-+    /* GLES leaves the size of points undefined unless the last vertex stage
-+     * writes gl_PointSize (desktop GL uses glPointSize, 1 by default); ANGLE
-+     * on Metal then draws them huge. Guests that don't set a size per vertex
-+     * get 1. */
-+    if (ctx->cfg->use_gles && !ctx->has_pointsize_output &&
-+        !ctx->key->gs_present && !ctx->key->tes_present)
-+       emit_buf(glsl_strbufs, "gl_PointSize = 1.0;\n");
-+
-     if (ctx->key->vs.fog_fixup_mask)
-        emit_fog_fixup_write(ctx, glsl_strbufs);
- }
-@@ -5974,6 +5982,8 @@ iter_instruction(struct tgsi_iterate_context *iter,
-          emit_clip_dist_movs(ctx, &ctx->glsl_strbufs);
-          if (!ctx->key->gs_present) {
-             emit_prescale(&ctx->glsl_strbufs);
-+            if (ctx->cfg->use_gles && !ctx->has_pointsize_output)
-+               emit_buf(&ctx->glsl_strbufs, "gl_PointSize = 1.0;\n");
-          }
-       } else if (iter->processor.Processor == TGSI_PROCESSOR_FRAGMENT) {
-          handle_fragment_proc_exit(ctx, &ctx->glsl_strbufs);
--- 
-2.54.0 (Apple Git-157)
-
-
-From c6452b055749d1c25a87fbff1d872c49c7e22ae0 Mon Sep 17 00:00:00 2001
-From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
-Date: Wed, 11 Nov 2026 14:16:47 +0000
-Subject: [PATCH 3/8] vrend: base vertex through EXT_base_instance; no
- dual-source blend on ANGLE Metal
-
-- ANGLE on Metal has GL_EXT_base_instance but not
-  GL_EXT_draw_elements_base_vertex: indexed draws with a base vertex were
-  dropped. Use glDrawElementsInstancedBaseVertexBaseInstance instead.
-- ANGLE on Metal advertises GL_EXT_blend_func_extended but blending with
-  the second output does not work (glamor's Xft text was invisible):
-  don't use it there.
-- VREND_DISABLE_FEATURES=name,... for testing.
----
- src/vrend/vrend_renderer.c | 40 ++++++++++++++++++++++++++++++++++++++
- 1 file changed, 40 insertions(+)
-
-diff --git a/src/vrend/vrend_renderer.c b/src/vrend/vrend_renderer.c
-index e6ae0074..829b4ac8 100644
---- a/src/vrend/vrend_renderer.c
-+++ b/src/vrend/vrend_renderer.c
-@@ -1292,7 +1292,37 @@ static void vrend_dump_tgsi(const struct tgsi_token *tokens,
-    strbuf_free(&logger_buffer);
- }
- 
-+static void init_features_impl(int gl_ver, int gles_ver);
- static void init_features(int gl_ver, int gles_ver)
-+{
-+   init_features_impl(gl_ver, gles_ver);
-+
-+   /* ANGLE on Metal advertises GL_EXT_blend_func_extended, but blending
-+    * with the second color output does not work (glamor's text, composited
-+    * with dual-source blending, comes out invisible) */
-+   const char *renderer = (const char *)glGetString(GL_RENDERER);
-+   if (gles_ver && renderer && strstr(renderer, "ANGLE Metal Renderer"))
-+      clear_feature(feat_dual_src_blend);
-+
-+   /* For testing: VREND_DISABLE_FEATURES=name,name (as in feature_list) */
-+   const char *off = getenv("VREND_DISABLE_FEATURES");
-+   if (off) {
-+      for (enum features_id id = 0; id < feat_last; id++) {
-+         const char *n = feature_list[id].log_name, *p = off;
-+         size_t l = strlen(n);
-+         while ((p = strstr(p, n))) {
-+            if ((p == off || p[-1] == ',') && (p[l] == ',' || !p[l])) {
-+               clear_feature(id);
-+               virgl_info("feature %s disabled\n", n);
-+               break;
-+            }
-+            p += l;
-+         }
-+      }
-+   }
-+}
-+
-+static void init_features_impl(int gl_ver, int gles_ver)
- {
-    for (enum features_id id = 0; id < feat_last; id++) {
-       if (gl_ver >= feature_list[id].gl_ver ||
-@@ -6269,6 +6299,12 @@ int vrend_draw_vbo(struct vrend_context *ctx,
-                                                              info->instance_count, info->index_bias, info->start_instance);
-             } else if (has_feature(feat_draw_elements_base_vertex)) {
-                glDrawElementsInstancedBaseVertex(mode, info->count, elsz, (void *)(uintptr_t)sub_ctx->ib.offset, info->instance_count, info->index_bias);
-+            } else if (has_feature(feat_base_instance)) {
-+               /* e.g. ANGLE on Metal: GL_EXT_base_instance but not
-+                * GL_EXT_draw_elements_base_vertex; its entry point takes a
-+                * base vertex too */
-+               glDrawElementsInstancedBaseVertexBaseInstance(mode, info->count, elsz, (void *)(uintptr_t)sub_ctx->ib.offset,
-+                                                             info->instance_count, info->index_bias, 0);
-             } else {
-                return EINVAL;
-             }
-@@ -6278,7 +6314,11 @@ int vrend_draw_vbo(struct vrend_context *ctx,
-             } else {
-                glDrawElementsBaseVertex(mode, info->count, elsz, (void *)(uintptr_t)sub_ctx->ib.offset, info->index_bias);
-             }
-+         } else if (has_feature(feat_base_instance)) {
-+            glDrawElementsInstancedBaseVertexBaseInstance(mode, info->count, elsz, (void *)(uintptr_t)sub_ctx->ib.offset,
-+                                                          1, info->index_bias, 0);
-          } else {
-+            virgl_warn("draw with a base vertex, but the host has none\n");
-             return EINVAL;
-          }
-       } else if (info->instance_count > 0) {
--- 
-2.54.0 (Apple Git-157)
-
-
-From 4187faf8f6040680323c7f567eae4f2385cf9c74 Mon Sep 17 00:00:00 2001
-From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
-Date: Wed, 11 Nov 2026 15:06:27 +0000
-Subject: [PATCH 4/8] Render server in a thread without eventfd (macOS, iOS):
- retire fences, own fence table
-
-- Without an eventfd, VIRGL_RENDERER_THREAD_SYNC is dropped, so the
-  proxy's contexts get no sync thread; with VIRGL_RENDERER_ASYNC_FENCE_CB
-  still set, virgl_renderer_poll() skips them and their fences never
-  retired (the guest waited forever on any Venus sync file). Drop
-  ASYNC_FENCE_CB too there, so polling retires them.
-- In render-server-mode=thread the server and the VMM side shared the
-  global fence table: the server re-created it and destroyed it with its
-  last context, and the VMM side then crashed on it. The server has its
-  own table now.
----
- server/render_context.c   |   2 +
- server/render_state.c     |   2 +
- src/neptune/npt_context.c |   2 +
- src/virgl_fence.c         | 154 ++++++++++++++++++++++++++++++++------
- src/virgl_fence.h         |  19 +++++
- src/virglrenderer.c       |   7 ++
- 6 files changed, 162 insertions(+), 24 deletions(-)
-
-diff --git a/server/render_context.c b/server/render_context.c
-index e0b630d6..7a3656ee 100644
---- a/server/render_context.c
-+++ b/server/render_context.c
-@@ -13,6 +13,8 @@
- 
- #include "render_socket.h"
- #include "render_state.h"
-+/* the render server's own fence table */
-+#define VIRGL_FENCE_SERVER_SIDE
- #include "virgl_fence.h"
- 
- void
-diff --git a/server/render_state.c b/server/render_state.c
-index f0f54873..ef32df44 100644
---- a/server/render_state.c
-+++ b/server/render_state.c
-@@ -12,6 +12,8 @@
- #endif
- 
- #include "render_context.h"
-+/* the render server's own fence table */
-+#define VIRGL_FENCE_SERVER_SIDE
- #include "virgl_fence.h"
- #include "virtgpu_drm.h"
- 
 diff --git a/src/neptune/npt_context.c b/src/neptune/npt_context.c
-index fa6c7501..cc0c0694 100644
+index fa6c750..cc0c069 100644
 --- a/src/neptune/npt_context.c
 +++ b/src/neptune/npt_context.c
 @@ -27,6 +27,8 @@
@@ -241,8 +70,191 @@ index fa6c7501..cc0c0694 100644
  #include "virgl_fence.h"
  
  static uint32_t
+diff --git a/src/venus/vkr_command_buffer.c b/src/venus/vkr_command_buffer.c
+index dc42c5a..f06ea82 100644
+--- a/src/venus/vkr_command_buffer.c
++++ b/src/venus/vkr_command_buffer.c
+@@ -21,6 +21,30 @@
+       _vk->cmd_name(args->commandBuffer, ##__VA_ARGS__);                                 \
+    } while (0)
+ 
++/* A required handle the guest left null, e.g. a pipeline whose creation
++ * failed (so it has none on the host): the host driver would crash on it.
++ * Skip the command and lose the guest's context instead.
++ */
++#define VKR_CMD_REQUIRE(dispatch, cond, cmd_name)                                        \
++   do {                                                                                  \
++      if (unlikely(!(cond))) {                                                           \
++         vkr_log(#cmd_name ": a required handle is null");                              \
++         vkr_context_set_fatal((dispatch)->data);                                        \
++         return;                                                                         \
++      }                                                                                  \
++   } while (0)
++
++static bool
++vkr_handles_present(const void *handles, uint32_t count)
++{
++   const VkDescriptorSet *sets = handles;
++   for (uint32_t i = 0; i < count; i++) {
++      if (!sets[i])
++         return false;
++   }
++   return true;
++}
++
+ static void
+ vkr_dispatch_vkCreateCommandPool(struct vn_dispatch_context *dispatch,
+                                  struct vn_command_vkCreateCommandPool *args)
+@@ -142,9 +166,10 @@ vkr_dispatch_vkEndCommandBuffer(UNUSED struct vn_dispatch_context *dispatch,
+ }
+ 
+ static void
+-vkr_dispatch_vkCmdBindPipeline(UNUSED struct vn_dispatch_context *dispatch,
++vkr_dispatch_vkCmdBindPipeline(struct vn_dispatch_context *dispatch,
+                                struct vn_command_vkCmdBindPipeline *args)
+ {
++   VKR_CMD_REQUIRE(dispatch, args->pipeline, vkCmdBindPipeline);
+    VKR_CMD_CALL(CmdBindPipeline, args, args->pipelineBindPoint, args->pipeline);
+ }
+ 
+@@ -215,9 +240,13 @@ vkr_dispatch_vkCmdSetStencilReference(UNUSED struct vn_dispatch_context *dispatc
+ }
+ 
+ static void
+-vkr_dispatch_vkCmdBindDescriptorSets(UNUSED struct vn_dispatch_context *dispatch,
++vkr_dispatch_vkCmdBindDescriptorSets(struct vn_dispatch_context *dispatch,
+                                      struct vn_command_vkCmdBindDescriptorSets *args)
+ {
++   VKR_CMD_REQUIRE(dispatch,
++                   args->layout && (!args->descriptorSetCount || args->pDescriptorSets) &&
++                      vkr_handles_present(args->pDescriptorSets, args->descriptorSetCount),
++                   vkCmdBindDescriptorSets);
+    VKR_CMD_CALL(CmdBindDescriptorSets, args, args->pipelineBindPoint, args->layout,
+                 args->firstSet, args->descriptorSetCount, args->pDescriptorSets,
+                 args->dynamicOffsetCount, args->pDynamicOffsets);
+@@ -490,9 +519,10 @@ vkr_dispatch_vkCmdCopyQueryPoolResults(UNUSED struct vn_dispatch_context *dispat
+ }
+ 
+ static void
+-vkr_dispatch_vkCmdPushConstants(UNUSED struct vn_dispatch_context *dispatch,
++vkr_dispatch_vkCmdPushConstants(struct vn_dispatch_context *dispatch,
+                                 struct vn_command_vkCmdPushConstants *args)
+ {
++   VKR_CMD_REQUIRE(dispatch, args->layout, vkCmdPushConstants);
+    VKR_CMD_CALL(CmdPushConstants, args, args->layout, args->stageFlags, args->offset,
+                 args->size, args->pValues);
+ }
+diff --git a/src/venus/vkr_library.c b/src/venus/vkr_library.c
+index dc1f42c..133ef80 100644
+--- a/src/venus/vkr_library.c
++++ b/src/venus/vkr_library.c
+@@ -6,6 +6,7 @@
+ #include "vkr_common.h"
+ 
+ #include <dlfcn.h>
++#include <stdlib.h>
+ 
+ #include "vkr_library.h"
+ 
+@@ -43,7 +44,18 @@ vkr_library_load(struct vulkan_library *lib)
+       return true;
+ 
+ #ifdef __APPLE__
+-   lib->handle = dlopen("libvulkan.dylib", RTLD_NOW | RTLD_LOCAL);
++   /* A given library (VKR_VULKAN_LIBRARY), then MoltenVK next to the library
++    * this is linked into (iOS apps embed it in their Frameworks folder; no
++    * Vulkan loader is needed), then the usual names */
++   const char *path = getenv("VKR_VULKAN_LIBRARY");
++   if (path)
++      lib->handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
++   if (lib->handle == NULL)
++      lib->handle = dlopen("@loader_path/MoltenVK.framework/MoltenVK", RTLD_NOW | RTLD_LOCAL);
++   if (lib->handle == NULL)
++      lib->handle = dlopen("@loader_path/libMoltenVK.dylib", RTLD_NOW | RTLD_LOCAL);
++   if (lib->handle == NULL)
++      lib->handle = dlopen("libvulkan.dylib", RTLD_NOW | RTLD_LOCAL);
+    if (lib->handle == NULL)
+       lib->handle = dlopen("libvulkan.1.dylib", RTLD_NOW | RTLD_LOCAL);
+    if (lib->handle == NULL)
+diff --git a/src/venus/vkr_physical_device.c b/src/venus/vkr_physical_device.c
+index e855815..d7998fe 100644
+--- a/src/venus/vkr_physical_device.c
++++ b/src/venus/vkr_physical_device.c
+@@ -5,6 +5,9 @@
+ 
+ #include "vkr_physical_device.h"
+ 
++#include <stdio.h>
++#include <stdlib.h>
++
+ #include "venus-protocol/vn_protocol_renderer_device.h"
+ 
+ #include "vkr_context.h"
+@@ -272,6 +275,11 @@ vkr_physical_device_init_extensions(struct vkr_physical_device *physical_dev)
+       return;
+    }
+ 
++   /* MoltenVK (a portability driver: the host is Metal) */
++   bool is_moltenvk = false;
++   for (uint32_t i = 0; i < count; i++)
++      is_moltenvk |= !strcmp(exts[i].extensionName, "VK_KHR_portability_subset");
++
+    uint32_t advertised_count = 0;
+    for (uint32_t i = 0; i < count; i++) {
+       VkExtensionProperties *props = &exts[i];
+@@ -293,6 +301,32 @@ vkr_physical_device_init_extensions(struct vkr_physical_device *physical_dev)
+       else if (!strcmp(props->extensionName, "VK_KHR_portability_subset"))
+          physical_dev->KHR_portability_subset = true;
+ 
++      /* MoltenVK's VK_EXT_extended_dynamic_state: with it, nothing zink
++       * draws reaches the attachments (clears do); zink works without it.
++       * Its VK_EXT_host_image_copy: zink then asks for host-transfer depth
++       * images, which MoltenVK cannot make, and gets none (no depth
++       * buffers: glxgears draws its back faces over the front ones). */
++      if (is_moltenvk &&
++          (!strcmp(props->extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME) ||
++           !strcmp(props->extensionName, VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME)))
++         continue;
++      /* For testing: VKR_HIDE_EXTENSIONS=name,name (whole names) */
++      const char *hide = getenv("VKR_HIDE_EXTENSIONS");
++      if (hide) {
++         size_t l = strlen(props->extensionName);
++         const char *h = hide;
++         bool hidden = false;
++         while ((h = strstr(h, props->extensionName))) {
++            if ((h == hide || h[-1] == ',') && (h[l] == ',' || !h[l])) {
++               hidden = true;
++               break;
++            }
++            h += l;
++         }
++         if (hidden)
++            continue;
++      }
++
+       const uint32_t spec_ver = vkr_extension_get_spec_version(props->extensionName);
+       if (spec_ver) {
+          if (props->specVersion > spec_ver)
+@@ -706,6 +740,17 @@ vkr_dispatch_vkGetPhysicalDeviceFeatures2(
+ 
+    vn_replace_vkGetPhysicalDeviceFeatures2_args_handle(args);
+    vk->GetPhysicalDeviceFeatures2(args->physicalDevice, args->pFeatures);
++
++   /* Host image copy is core in Vulkan 1.4: hide the feature as well as the
++    * extension on MoltenVK (see vkr_physical_device_init_extensions) */
++   if (physical_dev->KHR_portability_subset) {
++      for (VkBaseOutStructure *s = (VkBaseOutStructure *)args->pFeatures; s; s = s->pNext) {
++         if (s->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES)
++            ((VkPhysicalDeviceVulkan14Features *)s)->hostImageCopy = VK_FALSE;
++         else if (s->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES)
++            ((VkPhysicalDeviceHostImageCopyFeatures *)s)->hostImageCopy = VK_FALSE;
++      }
++   }
+ }
+ 
+ static void
 diff --git a/src/virgl_fence.c b/src/virgl_fence.c
-index 801c8053..e26e6824 100644
+index 801c805..e26e682 100644
 --- a/src/virgl_fence.c
 +++ b/src/virgl_fence.c
 @@ -24,9 +24,26 @@ struct virgl_fence {
@@ -495,7 +507,7 @@ index 801c8053..e26e6824 100644
 +   return virgl_fence_get_last_signalled_fence_fd_in(&virgl_fence_server);
 +}
 diff --git a/src/virgl_fence.h b/src/virgl_fence.h
-index 77ef1749..003fc748 100644
+index 77ef174..003fc74 100644
 --- a/src/virgl_fence.h
 +++ b/src/virgl_fence.h
 @@ -9,6 +9,17 @@
@@ -532,7 +544,7 @@ index 77ef1749..003fc748 100644
   * virtio-gpu fences live on per-ring timelines, so a fence's identity is the
   * (ring_index, seqno) pair: the seqno alone repeats across rings (every ring's
 diff --git a/src/virglrenderer.c b/src/virglrenderer.c
-index 71076727..75602089 100644
+index 7107672..7560208 100644
 --- a/src/virglrenderer.c
 +++ b/src/virglrenderer.c
 @@ -839,6 +839,13 @@ int virgl_renderer_init(void *cookie, int flags, struct virgl_renderer_callbacks
@@ -549,274 +561,113 @@ index 71076727..75602089 100644
     if (state.client_initialized && (state.cookie != cookie ||
                                      state.flags != flags ||
                                      state.cbs != cbs)) {
--- 
-2.54.0 (Apple Git-157)
-
-
-From 86de1bee7f49b7f9600fb08e66b734ce99609d01 Mon Sep 17 00:00:00 2001
-From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
-Date: Wed, 11 Nov 2026 15:06:27 +0000
-Subject: [PATCH 5/8] vkr: on Apple systems, load MoltenVK next to the library
- (or VKR_VULKAN_LIBRARY)
-
-iOS apps embed MoltenVK.framework in their Frameworks folder; with
-vulkan-dload no Vulkan loader is needed.
----
- src/venus/vkr_library.c | 14 +++++++++++++-
- 1 file changed, 13 insertions(+), 1 deletion(-)
-
-diff --git a/src/venus/vkr_library.c b/src/venus/vkr_library.c
-index dc1f42c4..133ef806 100644
---- a/src/venus/vkr_library.c
-+++ b/src/venus/vkr_library.c
-@@ -6,6 +6,7 @@
- #include "vkr_common.h"
+diff --git a/src/vrend/vrend_renderer.c b/src/vrend/vrend_renderer.c
+index e6ae007..829b4ac 100644
+--- a/src/vrend/vrend_renderer.c
++++ b/src/vrend/vrend_renderer.c
+@@ -1292,7 +1292,37 @@ static void vrend_dump_tgsi(const struct tgsi_token *tokens,
+    strbuf_free(&logger_buffer);
+ }
  
- #include <dlfcn.h>
-+#include <stdlib.h>
- 
- #include "vkr_library.h"
- 
-@@ -43,7 +44,18 @@ vkr_library_load(struct vulkan_library *lib)
-       return true;
- 
- #ifdef __APPLE__
--   lib->handle = dlopen("libvulkan.dylib", RTLD_NOW | RTLD_LOCAL);
-+   /* A given library (VKR_VULKAN_LIBRARY), then MoltenVK next to the library
-+    * this is linked into (iOS apps embed it in their Frameworks folder; no
-+    * Vulkan loader is needed), then the usual names */
-+   const char *path = getenv("VKR_VULKAN_LIBRARY");
-+   if (path)
-+      lib->handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
-+   if (lib->handle == NULL)
-+      lib->handle = dlopen("@loader_path/MoltenVK.framework/MoltenVK", RTLD_NOW | RTLD_LOCAL);
-+   if (lib->handle == NULL)
-+      lib->handle = dlopen("@loader_path/libMoltenVK.dylib", RTLD_NOW | RTLD_LOCAL);
-+   if (lib->handle == NULL)
-+      lib->handle = dlopen("libvulkan.dylib", RTLD_NOW | RTLD_LOCAL);
-    if (lib->handle == NULL)
-       lib->handle = dlopen("libvulkan.1.dylib", RTLD_NOW | RTLD_LOCAL);
-    if (lib->handle == NULL)
--- 
-2.54.0 (Apple Git-157)
-
-
-From 0c62e3afa2eba7296390426a6de0fecc22cf5973 Mon Sep 17 00:00:00 2001
-From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
-Date: Wed, 11 Nov 2026 17:32:36 +0000
-Subject: [PATCH 6/8] vkr: don't advertise VK_EXT_extended_dynamic_state on
- MoltenVK
-
-With it, nothing zink draws reaches the attachments (clears do); zink
-works without it, including its geometry-shader emulations.
-VKR_HIDE_EXTENSIONS=name,... hides others, for testing.
----
- src/venus/vkr_physical_device.c | 30 ++++++++++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
-
-diff --git a/src/venus/vkr_physical_device.c b/src/venus/vkr_physical_device.c
-index e8558156..616fcc7b 100644
---- a/src/venus/vkr_physical_device.c
-+++ b/src/venus/vkr_physical_device.c
-@@ -5,6 +5,9 @@
- 
- #include "vkr_physical_device.h"
- 
-+#include <stdio.h>
-+#include <stdlib.h>
++static void init_features_impl(int gl_ver, int gles_ver);
+ static void init_features(int gl_ver, int gles_ver)
++{
++   init_features_impl(gl_ver, gles_ver);
 +
- #include "venus-protocol/vn_protocol_renderer_device.h"
- 
- #include "vkr_context.h"
-@@ -272,6 +275,11 @@ vkr_physical_device_init_extensions(struct vkr_physical_device *physical_dev)
-       return;
-    }
- 
-+   /* MoltenVK (a portability driver: the host is Metal) */
-+   bool is_moltenvk = false;
-+   for (uint32_t i = 0; i < count; i++)
-+      is_moltenvk |= !strcmp(exts[i].extensionName, "VK_KHR_portability_subset");
++   /* ANGLE on Metal advertises GL_EXT_blend_func_extended, but blending
++    * with the second color output does not work (glamor's text, composited
++    * with dual-source blending, comes out invisible) */
++   const char *renderer = (const char *)glGetString(GL_RENDERER);
++   if (gles_ver && renderer && strstr(renderer, "ANGLE Metal Renderer"))
++      clear_feature(feat_dual_src_blend);
 +
-    uint32_t advertised_count = 0;
-    for (uint32_t i = 0; i < count; i++) {
-       VkExtensionProperties *props = &exts[i];
-@@ -293,6 +301,28 @@ vkr_physical_device_init_extensions(struct vkr_physical_device *physical_dev)
-       else if (!strcmp(props->extensionName, "VK_KHR_portability_subset"))
-          physical_dev->KHR_portability_subset = true;
- 
-+      /* MoltenVK's VK_EXT_extended_dynamic_state: with it, nothing zink
-+       * draws reaches the attachments (clears do); zink works without it. */
-+      if (is_moltenvk &&
-+          !strcmp(props->extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME))
-+         continue;
-+      /* For testing: VKR_HIDE_EXTENSIONS=name,name (whole names) */
-+      const char *hide = getenv("VKR_HIDE_EXTENSIONS");
-+      if (hide) {
-+         size_t l = strlen(props->extensionName);
-+         const char *h = hide;
-+         bool hidden = false;
-+         while ((h = strstr(h, props->extensionName))) {
-+            if ((h == hide || h[-1] == ',') && (h[l] == ',' || !h[l])) {
-+               hidden = true;
++   /* For testing: VREND_DISABLE_FEATURES=name,name (as in feature_list) */
++   const char *off = getenv("VREND_DISABLE_FEATURES");
++   if (off) {
++      for (enum features_id id = 0; id < feat_last; id++) {
++         const char *n = feature_list[id].log_name, *p = off;
++         size_t l = strlen(n);
++         while ((p = strstr(p, n))) {
++            if ((p == off || p[-1] == ',') && (p[l] == ',' || !p[l])) {
++               clear_feature(id);
++               virgl_info("feature %s disabled\n", n);
 +               break;
 +            }
-+            h += l;
++            p += l;
 +         }
-+         if (hidden)
-+            continue;
 +      }
-+
-       const uint32_t spec_ver = vkr_extension_get_spec_version(props->extensionName);
-       if (spec_ver) {
-          if (props->specVersion > spec_ver)
--- 
-2.54.0 (Apple Git-157)
-
-
-From 90ad1e5949b9f93579e81022ff65d17e1d5faac2 Mon Sep 17 00:00:00 2001
-From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
-Date: Wed, 11 Nov 2026 18:54:01 +0000
-Subject: [PATCH 7/8] vkr: lose the context, not the process, on null pipeline,
- layout or descriptor-set handles
-
-A guest can bind a pipeline whose creation failed (VK_NULL_HANDLE), as
-zink did when MoltenVK could not build a mesh pipeline on an A13; the
-host driver then dereferences null. Check the handles the bind and push
-commands require, and mark the context fatal instead.
----
- src/venus/vkr_command_buffer.c | 36 +++++++++++++++++++++++++++++++---
- 1 file changed, 33 insertions(+), 3 deletions(-)
-
-diff --git a/src/venus/vkr_command_buffer.c b/src/venus/vkr_command_buffer.c
-index dc42c5a1..f06ea822 100644
---- a/src/venus/vkr_command_buffer.c
-+++ b/src/venus/vkr_command_buffer.c
-@@ -21,6 +21,30 @@
-       _vk->cmd_name(args->commandBuffer, ##__VA_ARGS__);                                 \
-    } while (0)
- 
-+/* A required handle the guest left null, e.g. a pipeline whose creation
-+ * failed (so it has none on the host): the host driver would crash on it.
-+ * Skip the command and lose the guest's context instead.
-+ */
-+#define VKR_CMD_REQUIRE(dispatch, cond, cmd_name)                                        \
-+   do {                                                                                  \
-+      if (unlikely(!(cond))) {                                                           \
-+         vkr_log(#cmd_name ": a required handle is null");                              \
-+         vkr_context_set_fatal((dispatch)->data);                                        \
-+         return;                                                                         \
-+      }                                                                                  \
-+   } while (0)
-+
-+static bool
-+vkr_handles_present(const void *handles, uint32_t count)
-+{
-+   const VkDescriptorSet *sets = handles;
-+   for (uint32_t i = 0; i < count; i++) {
-+      if (!sets[i])
-+         return false;
 +   }
-+   return true;
 +}
 +
- static void
- vkr_dispatch_vkCreateCommandPool(struct vn_dispatch_context *dispatch,
-                                  struct vn_command_vkCreateCommandPool *args)
-@@ -142,9 +166,10 @@ vkr_dispatch_vkEndCommandBuffer(UNUSED struct vn_dispatch_context *dispatch,
- }
- 
- static void
--vkr_dispatch_vkCmdBindPipeline(UNUSED struct vn_dispatch_context *dispatch,
-+vkr_dispatch_vkCmdBindPipeline(struct vn_dispatch_context *dispatch,
-                                struct vn_command_vkCmdBindPipeline *args)
++static void init_features_impl(int gl_ver, int gles_ver)
  {
-+   VKR_CMD_REQUIRE(dispatch, args->pipeline, vkCmdBindPipeline);
-    VKR_CMD_CALL(CmdBindPipeline, args, args->pipelineBindPoint, args->pipeline);
- }
+    for (enum features_id id = 0; id < feat_last; id++) {
+       if (gl_ver >= feature_list[id].gl_ver ||
+@@ -6269,6 +6299,12 @@ int vrend_draw_vbo(struct vrend_context *ctx,
+                                                              info->instance_count, info->index_bias, info->start_instance);
+             } else if (has_feature(feat_draw_elements_base_vertex)) {
+                glDrawElementsInstancedBaseVertex(mode, info->count, elsz, (void *)(uintptr_t)sub_ctx->ib.offset, info->instance_count, info->index_bias);
++            } else if (has_feature(feat_base_instance)) {
++               /* e.g. ANGLE on Metal: GL_EXT_base_instance but not
++                * GL_EXT_draw_elements_base_vertex; its entry point takes a
++                * base vertex too */
++               glDrawElementsInstancedBaseVertexBaseInstance(mode, info->count, elsz, (void *)(uintptr_t)sub_ctx->ib.offset,
++                                                             info->instance_count, info->index_bias, 0);
+             } else {
+                return EINVAL;
+             }
+@@ -6278,7 +6314,11 @@ int vrend_draw_vbo(struct vrend_context *ctx,
+             } else {
+                glDrawElementsBaseVertex(mode, info->count, elsz, (void *)(uintptr_t)sub_ctx->ib.offset, info->index_bias);
+             }
++         } else if (has_feature(feat_base_instance)) {
++            glDrawElementsInstancedBaseVertexBaseInstance(mode, info->count, elsz, (void *)(uintptr_t)sub_ctx->ib.offset,
++                                                          1, info->index_bias, 0);
+          } else {
++            virgl_warn("draw with a base vertex, but the host has none\n");
+             return EINVAL;
+          }
+       } else if (info->instance_count > 0) {
+diff --git a/src/vrend/vrend_shader.c b/src/vrend/vrend_shader.c
+index 39895ce..b16ab51 100644
+--- a/src/vrend/vrend_shader.c
++++ b/src/vrend/vrend_shader.c
+@@ -2558,6 +2558,14 @@ static void handle_vertex_proc_exit(const struct dump_ctx *ctx,
+     if (!ctx->key->gs_present && !ctx->key->tes_present)
+        emit_prescale(glsl_strbufs);
  
-@@ -215,9 +240,13 @@ vkr_dispatch_vkCmdSetStencilReference(UNUSED struct vn_dispatch_context *dispatc
- }
- 
- static void
--vkr_dispatch_vkCmdBindDescriptorSets(UNUSED struct vn_dispatch_context *dispatch,
-+vkr_dispatch_vkCmdBindDescriptorSets(struct vn_dispatch_context *dispatch,
-                                      struct vn_command_vkCmdBindDescriptorSets *args)
- {
-+   VKR_CMD_REQUIRE(dispatch,
-+                   args->layout && (!args->descriptorSetCount || args->pDescriptorSets) &&
-+                      vkr_handles_present(args->pDescriptorSets, args->descriptorSetCount),
-+                   vkCmdBindDescriptorSets);
-    VKR_CMD_CALL(CmdBindDescriptorSets, args, args->pipelineBindPoint, args->layout,
-                 args->firstSet, args->descriptorSetCount, args->pDescriptorSets,
-                 args->dynamicOffsetCount, args->pDynamicOffsets);
-@@ -490,9 +519,10 @@ vkr_dispatch_vkCmdCopyQueryPoolResults(UNUSED struct vn_dispatch_context *dispat
- }
- 
- static void
--vkr_dispatch_vkCmdPushConstants(UNUSED struct vn_dispatch_context *dispatch,
-+vkr_dispatch_vkCmdPushConstants(struct vn_dispatch_context *dispatch,
-                                 struct vn_command_vkCmdPushConstants *args)
- {
-+   VKR_CMD_REQUIRE(dispatch, args->layout, vkCmdPushConstants);
-    VKR_CMD_CALL(CmdPushConstants, args, args->layout, args->stageFlags, args->offset,
-                 args->size, args->pValues);
- }
--- 
-2.54.0 (Apple Git-157)
-
-
-From c1f77ff6fc98e68ab71e0f03dfd0018c825d30ec Mon Sep 17 00:00:00 2001
-From: johnnydevelops <83919475+johnnydevelops@users.noreply.github.com>
-Date: Wed, 11 Nov 2026 20:51:49 +0000
-Subject: [PATCH 8/8] vkr: don't advertise host image copy on MoltenVK
-
-With VK_EXT_host_image_copy (or Vulkan 1.4's hostImageCopy feature),
-zink asks for depth images with host-transfer usage, which MoltenVK
-cannot make, and ends up with no depth buffers at all: glxgears drew its
-back faces over the front ones. Hide the extension and the feature when
-the host is a portability driver.
----
- src/venus/vkr_physical_device.c | 19 +++++++++++++++++--
- 1 file changed, 17 insertions(+), 2 deletions(-)
-
-diff --git a/src/venus/vkr_physical_device.c b/src/venus/vkr_physical_device.c
-index 616fcc7b..d7998fec 100644
---- a/src/venus/vkr_physical_device.c
-+++ b/src/venus/vkr_physical_device.c
-@@ -302,9 +302,13 @@ vkr_physical_device_init_extensions(struct vkr_physical_device *physical_dev)
-          physical_dev->KHR_portability_subset = true;
- 
-       /* MoltenVK's VK_EXT_extended_dynamic_state: with it, nothing zink
--       * draws reaches the attachments (clears do); zink works without it. */
-+       * draws reaches the attachments (clears do); zink works without it.
-+       * Its VK_EXT_host_image_copy: zink then asks for host-transfer depth
-+       * images, which MoltenVK cannot make, and gets none (no depth
-+       * buffers: glxgears draws its back faces over the front ones). */
-       if (is_moltenvk &&
--          !strcmp(props->extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME))
-+          (!strcmp(props->extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME) ||
-+           !strcmp(props->extensionName, VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME)))
-          continue;
-       /* For testing: VKR_HIDE_EXTENSIONS=name,name (whole names) */
-       const char *hide = getenv("VKR_HIDE_EXTENSIONS");
-@@ -736,6 +740,17 @@ vkr_dispatch_vkGetPhysicalDeviceFeatures2(
- 
-    vn_replace_vkGetPhysicalDeviceFeatures2_args_handle(args);
-    vk->GetPhysicalDeviceFeatures2(args->physicalDevice, args->pFeatures);
++    /* GLES leaves the size of points undefined unless the last vertex stage
++     * writes gl_PointSize (desktop GL uses glPointSize, 1 by default); ANGLE
++     * on Metal then draws them huge. Guests that don't set a size per vertex
++     * get 1. */
++    if (ctx->cfg->use_gles && !ctx->has_pointsize_output &&
++        !ctx->key->gs_present && !ctx->key->tes_present)
++       emit_buf(glsl_strbufs, "gl_PointSize = 1.0;\n");
 +
-+   /* Host image copy is core in Vulkan 1.4: hide the feature as well as the
-+    * extension on MoltenVK (see vkr_physical_device_init_extensions) */
-+   if (physical_dev->KHR_portability_subset) {
-+      for (VkBaseOutStructure *s = (VkBaseOutStructure *)args->pFeatures; s; s = s->pNext) {
-+         if (s->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES)
-+            ((VkPhysicalDeviceVulkan14Features *)s)->hostImageCopy = VK_FALSE;
-+         else if (s->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES)
-+            ((VkPhysicalDeviceHostImageCopyFeatures *)s)->hostImageCopy = VK_FALSE;
-+      }
-+   }
+     if (ctx->key->vs.fog_fixup_mask)
+        emit_fog_fixup_write(ctx, glsl_strbufs);
  }
- 
- static void
--- 
-2.54.0 (Apple Git-157)
-
+@@ -5961,7 +5969,13 @@ iter_instruction(struct tgsi_iterate_context *iter,
+       emit_buff(&ctx->glsl_strbufs, "%s = mix(%s, %s, greaterThanEqual(%s, vec4(0.0)))%s;\n", dsts[0], srcs[1], srcs[2], srcs[0], writemask);
+       break;
+    case TGSI_OPCODE_UCMP:
+-      emit_buff(&ctx->glsl_strbufs, "%s = mix(%s, %s, notEqual(floatBitsToUint(%s), uvec4(0.0)))%s;\n", dsts[0], srcs[2], srcs[1], srcs[0], writemask);
++      /* iSH+: a select of the sources' bits, not mix() on them as floats:
++       * integer sources (small values are float denormals) came out as 0 on
++       * GPUs that flush denormals (Apple's, through ANGLE and Metal) */
++      emit_buff(&ctx->glsl_strbufs,
++                "%s = uintBitsToFloat((floatBitsToUint(%s) & (uvec4(notEqual(floatBitsToUint(%s), uvec4(0u))) * 0xFFFFFFFFu)) | "
++                "(floatBitsToUint(%s) & ~(uvec4(notEqual(floatBitsToUint(%s), uvec4(0u))) * 0xFFFFFFFFu)))%s;\n",
++                dsts[0], srcs[1], srcs[0], srcs[2], srcs[0], writemask);
+       break;
+    case TGSI_OPCODE_END:
+       if (iter->processor.Processor == TGSI_PROCESSOR_VERTEX) {
+@@ -5974,6 +5988,8 @@ iter_instruction(struct tgsi_iterate_context *iter,
+          emit_clip_dist_movs(ctx, &ctx->glsl_strbufs);
+          if (!ctx->key->gs_present) {
+             emit_prescale(&ctx->glsl_strbufs);
++            if (ctx->cfg->use_gles && !ctx->has_pointsize_output)
++               emit_buf(&ctx->glsl_strbufs, "gl_PointSize = 1.0;\n");
+          }
+       } else if (iter->processor.Processor == TGSI_PROCESSOR_FRAGMENT) {
+          handle_fragment_proc_exit(ctx, &ctx->glsl_strbufs);
