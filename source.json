@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.1.4",
+          "buildVersion": "17",
+          "date": "2026-11-14T14:41:21Z",
+          "localizedDescription": "## Log out of the desktop with a monitor, keyboard colors\n\n**Log Out of the Desktop with a monitor.** With a monitor connected, or on an iPhone Duo folded, there was no way to end the desktop session. The keyboard's toolbar now has a More button (…) while the desktop shows, with **Log Out of the Desktop**. Linux keeps running, and the monitor shows the terminal again.\n\n**Keyboards follow light and dark mode.** Laptop mode's keyboard and trackpad, and the desktop's extra keys above the iOS keyboard (esc, tab, ctrl…), now use the iOS keyboard's colors: white keys in light mode, dark keys in dark mode. The extra keys looked out of place in light mode before.\n\n**Caps lock shows when it's on.** On laptop mode's keyboard, the caps lock key turns lighter in dark mode or darker in light mode while caps lock is on, and the letters show as capitals. This also works with a hardware keyboard's caps lock. Ctrl, alt and super held for the next key on the desktop's extra keys use the same color.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.1.4/iSH-plus-1.1.4.ipa",
+          "size": 158525503,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "1.1.3",
           "buildVersion": "16",
           "date": "2026-11-14T14:29:36Z",
