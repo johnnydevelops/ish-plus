@@ -150,7 +150,12 @@ public final class DistroManager: NSObject, URLSessionDownloadDelegate {
 
     @objc public var active: Distro? {
         let id = UserDefaults.standard.string(forKey: Self.activeKey)
-        return distros.first { $0.id == id && downloads[$0.id] == nil }
+        if let id, let chosen = distros.first(where: { $0.id == id }) {
+            return downloads[chosen.id] == nil ? chosen : nil
+        }
+        // None chosen, or it is gone (a distribution copied in from another
+        // device): the first one there is
+        return distros.first { downloads[$0.id] == nil }
     }
 
     /// Whether the VM has a distribution to boot.
