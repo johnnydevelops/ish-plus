@@ -87,6 +87,10 @@ ExecStart=$S/bin/busybox sh $S/boot/main.sh
 Restart=always
 # The shells on iSH+'s consoles are its children: not stopped with it
 KillMode=process
+# Everything run from those shells is in this service too: a program the
+# kernel ends for lack of memory must not stop (and so restart) the service,
+# which would start main.sh again beside its earlier loops
+OOMPolicy=continue
 EOF
     # Started by a drop-in, not an enablement link: on first boot systemd
     # applies the distribution's presets, which remove the links of units
