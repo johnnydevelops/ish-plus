@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.2.0",
+          "buildVersion": "18",
+          "date": "2026-11-14T15:21:08Z",
+          "localizedDescription": "## Sound\n\n**Linux has sound.** It gets a sound card, and the iPad or iPhone plays it, mixed with other apps' sound.\n- **PipeWire and PulseAudio** work as on a computer. They use the card as their ALSA device. For example, `sudo apt install pipewire-audio`, then log out of the desktop and start it again (or restart Linux).\n- **When they start:** when your distribution boots with its own init, its systemd user services start them. With iSH+'s own init, the desktop session starts whichever one your distribution has.\n- **Who can use it:** your user is in the `audio` group, so programs in any session can use it.\n- **Playback only** for now: no microphone.\n\n## JIT shortcut gives your VPN back\n\nThe iSH+ JIT shortcut is meant to switch back to the VPN you had on, such as Tailscale, after turning on JIT. That often failed, leaving no VPN connected. It failed in two ways:\n- **Shortcuts didn't open:** iSH+ ran the shortcut's last step while it wasn't in front yet, so Shortcuts didn't open.\n- **iOS refused the VPN:** iOS rejected connecting your VPN while LocalDevVPN was still on.\n\niSH+ now waits until it's in front. The shortcut now turns LocalDevVPN off first, waits a second, then connects your VPN.\n\n**Add the shortcut again** (Settings > JIT Setup) to get the new version. On iOS 26 the shortcut still just turns LocalDevVPN off afterwards: iOS 26's Shortcuts can't remember which VPN was on.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.2.0/iSH-plus-1.2.0.ipa",
+          "size": 158742881,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "1.1.4",
           "buildVersion": "17",
           "date": "2026-11-14T14:41:21Z",
