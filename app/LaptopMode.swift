@@ -495,6 +495,8 @@ final class LaptopControlsViewController: UIViewController {
     private let keyboard = LaptopKeyboardView()
     private let trackpad = LaptopTrackpadView()
     private let toolbar = UIStackView()
+    /// The desktop's menu (Log Out of the Desktop), while it shows
+    private var moreButton: UIButton!
     private let display = DesktopDisplay.shared
     private var translator = TerminalKeyTranslator()
     private let mouse = CapturedMouse()
@@ -569,6 +571,7 @@ final class LaptopControlsViewController: UIViewController {
 
     func contentChanged() {
         loadViewIfNeeded()
+        moreButton.isHidden = mode.content != .desktop
         keyboard.repeats = mode.content == .terminal
         // The trackpad is for the desktop's pointer
         let desktop = mode.content == .desktop
@@ -623,10 +626,29 @@ final class LaptopControlsViewController: UIViewController {
         settings.addTarget(self, action: #selector(showSettings), for: .touchUpInside)
         let paste = button("doc.on.clipboard", "Paste")
         paste.addTarget(self, action: #selector(pasteText), for: .touchUpInside)
-        for item in [sessions, settings, paste] { toolbar.addArrangedSubview(item) }
+        moreButton = button("ellipsis.circle", "More")
+        moreButton.menu = UIMenu(children: [
+            UIAction(title: "Log Out of the Desktop", image: UIImage(systemName: "power"), attributes: .destructive) { [weak self] _ in
+                self?.logOutOfDesktop()
+            },
+        ])
+        moreButton.showsMenuAsPrimaryAction = true
+        moreButton.isHidden = true
+        for item in [sessions, settings, paste, moreButton!] { toolbar.addArrangedSubview(item) }
         toolbar.axis = .horizontal
         toolbar.spacing = 10
         toolbar.translatesAutoresizingMaskIntoConstraints = false
+    }
+
+    /// Ends the desktop session (Linux keeps running); the monitor shows the
+    /// terminal again, as on the iPad, where logging out leaves the desktop.
+    private func logOutOfDesktop() {
+        moreButton.isEnabled = false
+        DesktopSession.stop { [weak self] in
+            guard let self else { return }
+            self.moreButton.isEnabled = true
+            self.mode.show(.terminal)
+        }
     }
 
     @objc private func showSettings() {
