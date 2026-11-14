@@ -68,6 +68,9 @@ updates, or add `https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/
   does not count toward the memory iOS lets iSH+ use (MeloNX's RAM donor
   technique): Linux can have up to 60% of the device's RAM. On top of it,
   compressed swap in RAM (zram) keeps programs running under memory pressure.
+- **Security keys** for `ssh` (`sk-` keys) and other FIDO programs: over NFC
+  on iPhone, or on the USB-C port (keys that offer FIDO on their smart card
+  interface, such as YubiKey 5).
 - **Settings** for memory and CPU cores (automatic for your device), open
   ports, appearance and external keyboards.
 

@@ -10,8 +10,10 @@
 //  NFCCTAP_MSG for CTAP2, or the U2F APDU as is), and the answer goes back
 //  as "<status> <length>\n" and the payload.
 //
-//  iOS gives apps no access to security keys over USB, only over NFC, which
-//  iPads do not have. The NFC session stays open a few seconds after an
+//  A key on the USB-C port (iPads, USB-C iPhones) is reached through iOS's
+//  smart card support (CryptoTokenKit, CCID) with the same APDUs, when the
+//  key offers its FIDO applet there (YubiKey 5); otherwise, and on iPhones
+//  without a key plugged in, over NFC. The NFC session stays open a few seconds after an
 //  answer, so the requests of one login (GetInfo, GetAssertion...) take one
 //  tap, and closes as soon as the login's last request (the GetAssertion
 //  that needs the user, or MakeCredential) is answered. Every delegate
@@ -20,6 +22,7 @@
 //
 
 import CoreNFC
+import CryptoTokenKit
 import Foundation
 import UIKit
 
@@ -55,6 +58,7 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
 
     func serve(_ port: GuestPort) {
         self.port = port
+        vmLog("security keys: NFC \(NFCTagReaderSession.readingAvailable ? "yes" : "no"), USB smart cards \(TKSmartCardSlotManager.default != nil ? "yes" : "no")")
         Thread.detachNewThread { [self] in
             guard port.connect() else { return }
             while let line = port.readLine() {
@@ -73,6 +77,17 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
     // MARK: Requests
 
     private func handle(command: Int, payload: Data) {
+        // A key on the USB-C port first; else NFC
+        usbKey { [self] card in
+            if let card {
+                sendUSB(card, command: command, payload: payload)
+            } else {
+                handleNFC(command: command, payload: payload)
+            }
+        }
+    }
+
+    private func handleNFC(command: Int, payload: Data) {
         // GetInfo: from the key's last answer when no key is at hand (one
         // tap less per login), or a generic one without NFC, so libfido2
         // keeps treating the device as a FIDO2 key (it falls back to U2F,
@@ -124,7 +139,7 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
             let (title, message): (String, String)
             if UIDevice.current.userInterfaceIdiom == .pad {
                 title = "No NFC on This iPad"
-                message = "A program in Linux asked for a security key. iSH+ talks to security keys over NFC, which iPads do not have: they work on an iPhone."
+                message = "A program in Linux asked for a security key. Connect it to the iPad's USB-C port (a key with FIDO over its smart card interface, such as a YubiKey 5), or use it over NFC on an iPhone."
             } else {
                 title = "iSH+ Cannot Use NFC"
                 message = "A program in Linux asked for a security key, but this copy of iSH+ was signed without the NFC Tag Reading capability, so iOS does not let it use NFC. Install iSH+ with a signing profile that includes it. Free Apple IDs, and some sideloaders such as iloader, cannot add it."
@@ -345,6 +360,106 @@ final class FidoBridge: NSObject, NFCTagReaderSessionDelegate {
                 }
             }
         }
+    }
+
+    // MARK: USB (smart card)
+
+    /// A security key plugged in with its FIDO applet selected, in a smart
+    /// card session (ended after each request). On the queue.
+    private func usbKey(completion: @escaping (TKSmartCard?) -> Void) {
+        guard let manager = TKSmartCardSlotManager.default else { return completion(nil) }
+        let names = manager.slotNames
+        func attempt(_ index: Int) {
+            guard index < names.count else { return completion(nil) }
+            manager.getSlot(withName: names[index]) { [self] slot in
+                guard let slot, slot.state == .validCard, let card = slot.makeSmartCard() else {
+                    return queue.async { attempt(index + 1) }
+                }
+                card.beginSession { [self] ok, _ in
+                    guard ok else { return queue.async { attempt(index + 1) } }
+                    let select = Self.apdu(0x00, 0xA4, 0x04, 0x00, data: Self.fidoAID, extended: false)
+                    card.transmit(select) { [self] response, _ in
+                        queue.async { [self] in
+                            if let response, response.count >= 2, response.suffix(2) == Data([0x90, 0x00]) {
+                                completion(card)
+                            } else {
+                                card.endSession()
+                                attempt(index + 1)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        attempt(0)
+    }
+
+    /// The pending-style request to a USB key, answered as over NFC.
+    private func sendUSB(_ card: TKSmartCard, command: Int, payload: Data) {
+        let apdu = command == Self.commandCBOR
+            ? Self.apdu(0x80, 0x10, 0x00, 0x00, data: payload, extended: true) // NFCCTAP_MSG
+            : payload // U2F (CTAP1): the APDU as is
+        exchangeUSB(card, apdu, collected: Data()) { [self] result in
+            card.endSession()
+            switch result {
+            case .success(let (data, sw)):
+                if command == Self.commandCBOR && payload == Self.getInfo && sw == 0x9000 && data.first == 0 {
+                    UserDefaults.standard.set(data, forKey: Self.infoKey)
+                }
+                if command == Self.commandCBOR {
+                    sw == 0x9000 ? answer(status: 0, payload: data) : answer(status: Self.errorOther, payload: Data())
+                } else {
+                    answer(status: 0, payload: data + Data([UInt8(sw >> 8), UInt8(sw & 0xff)]))
+                }
+            case .failure(let error):
+                vmLog("security key (USB): \(error.localizedDescription)")
+                answer(status: Self.errorOther, payload: Data())
+            }
+        }
+    }
+
+    /// As exchange(), over the smart card: 61xx and 9100 to the whole answer.
+    private func exchangeUSB(_ card: TKSmartCard, _ apdu: Data, collected: Data,
+                             completion: @escaping (Result<(Data, Int), Error>) -> Void) {
+        card.transmit(apdu) { [self] response, error in
+            queue.async { [self] in
+                guard let response, response.count >= 2 else {
+                    return completion(.failure(error ?? NSError(domain: "iSH+", code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: "No answer from the key"])))
+                }
+                let all = collected + response.dropLast(2)
+                let sw1 = response[response.count - 2], sw2 = response[response.count - 1]
+                switch (sw1, sw2) {
+                case (0x61, let more):
+                    let next = Data([0x00, 0xC0, 0x00, 0x00, more])
+                    exchangeUSB(card, next, collected: all, completion: completion)
+                case (0x91, 0x00):
+                    // Still working (waiting for its button): NFCCTAP_GETRESPONSE
+                    let next = Self.apdu(0x80, 0x11, 0x00, 0x00, data: Data(), extended: true)
+                    queue.asyncAfter(deadline: .now() + 0.1) { [self] in
+                        exchangeUSB(card, next, collected: Data(), completion: completion)
+                    }
+                default:
+                    completion(.success((Data(all), Int(sw1) << 8 | Int(sw2))))
+                }
+            }
+        }
+    }
+
+    /// An APDU's bytes: short (Le 256), or extended (Le 65536).
+    private static func apdu(_ cla: UInt8, _ ins: UInt8, _ p1: UInt8, _ p2: UInt8, data: Data, extended: Bool) -> Data {
+        var bytes = Data([cla, ins, p1, p2])
+        if extended {
+            if data.isEmpty {
+                bytes += [0x00, 0x00, 0x00]
+            } else {
+                bytes += [0x00, UInt8(data.count >> 8), UInt8(data.count & 0xff)] + data + [0x00, 0x00]
+            }
+        } else {
+            if !data.isEmpty { bytes += [UInt8(data.count)] + data }
+            bytes += [0x00]
+        }
+        return bytes
     }
 
     private func endSession(error: String?, message: String? = nil) {
