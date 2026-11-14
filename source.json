@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.1.2",
+          "buildVersion": "15",
+          "date": "2026-11-14T14:22:22Z",
+          "localizedDescription": "## Screens with rounded corners, iOS 26 setup, USB-C security keys\n\n**Terminal on screens with rounded corners** (iPad mini, iPad Air, iPad Pro, iPhones):\n- The first line no longer runs into the rounded top corners when the status bar is hidden.\n- With the keyboard hidden, there's no longer a gap under the terminal. iPadOS kept reporting an empty keyboard strip at the bottom of the screen, and the terminal used to leave room for it.\n\n**JIT shortcut on iOS 26.** Setup now offers the iSH+ JIT shortcut on iOS 26 too, on the LocalDevVPN page. On iOS 26 it turns LocalDevVPN on while JIT turns on, then off again. On iOS 27 it still switches back to the VPN you had on, such as Tailscale. iOS 26's Shortcuts can't remember which VPN that was.\n\n**Security keys on the USB-C port.** `ssh` with `sk-` keys and other FIDO programs can now use a security key plugged into a USB-C iPad or iPhone. This works with keys that offer FIDO on their smart card interface, such as a YubiKey 5. NFC on iPhone works as before. This is new and hasn't been tested with a key yet: please report how it works for you.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.1.2/iSH-plus-1.1.2.ipa",
+          "size": 158519786,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "1.1.1",
           "buildVersion": "14",
           "date": "2026-11-14T13:47:44Z",
