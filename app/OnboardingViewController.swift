@@ -150,7 +150,7 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
              text: "iSH+ runs a real Linux distribution in a virtual machine. Setting it up takes a few minutes: pairing iSH+ with this device so it can enable JIT and run at full speed, and choosing your distribution."),
         Step(kind: .permissions, symbol: "hand.raised",
              title: "Permissions",
-             text: "iSH+ can use these. Allow the ones you want: you can change them later in the Settings app.\n\nLocal Network: to pair with this device and enable JIT by itself.\nMicrophone: shared with Linux, so programs there can record.\nNotifications: to show the pairing code while you pair in Settings."),
+             text: "iSH+ can use these. Allow the ones you want: you can change them later in the Settings app."),
         Step(kind: .vpn, symbol: "network.badge.shield.half.filled",
              title: "Connect LocalDevVPN",
              text: "iSH+ talks to this device's developer services through LocalDevVPN. Install it from the App Store and connect it. It only routes traffic to this device, and is only needed while iSH+ enables JIT. Using another VPN, like Tailscale? Add the iSH+ JIT shortcut: it switches to LocalDevVPN for JIT, then back."),
@@ -188,6 +188,8 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
     private let statusLabel = UILabel()
     private let buttons = UIStackView()
     private let pageControl = UIPageControl()
+    /// The permissions step's rows: icon, name, what for, and Allow
+    private let permissionsList = UIStackView()
 
     @objc public init(completion: @escaping () -> Void) {
         self.completion = completion
@@ -222,11 +224,17 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
         pageControl.isHidden = steps.count < 2
         NotificationCenter.default.addObserver(self, selector: #selector(distrosChanged),
                                                name: DistroManager.didChangeNotification, object: nil)
+        // Back from the Settings app (a permission changed there)
+        NotificationCenter.default.addObserver(self, selector: #selector(becameActive),
+                                               name: UIApplication.didBecomeActiveNotification, object: nil)
         pageControl.isUserInteractionEnabled = false
         pageControl.currentPageIndicatorTintColor = .label
         pageControl.pageIndicatorTintColor = .tertiaryLabel
 
-        let content = UIStackView(arrangedSubviews: [symbolView, titleLabel, textLabel, statusLabel])
+        permissionsList.axis = .vertical
+        permissionsList.spacing = 18
+        permissionsList.isHidden = true
+        let content = UIStackView(arrangedSubviews: [symbolView, titleLabel, textLabel, permissionsList, statusLabel])
         content.axis = .vertical
         // Fill, so multi-line labels wrap at the full width instead of being
         // truncated; the symbol stays centered via its content mode.
@@ -246,7 +254,7 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(greaterThanOrEqualTo: view.layoutMarginsGuide.leadingAnchor),
             stack.trailingAnchor.constraint(lessThanOrEqualTo: view.layoutMarginsGuide.trailingAnchor),
-            stack.widthAnchor.constraint(equalToConstant: 460).withPriority(.defaultHigh),
+            stack.widthAnchor.constraint(equalToConstant: 460).withPriority(UILayoutPriority(999)),
             content.widthAnchor.constraint(equalTo: stack.widthAnchor),
             textLabel.widthAnchor.constraint(equalTo: content.widthAnchor),
             statusLabel.widthAnchor.constraint(equalTo: content.widthAnchor),
@@ -278,13 +286,10 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
             titleLabel.text = step.title
             textLabel.text = step.text
             pageControl.currentPage = index
+            permissionsList.isHidden = step.kind != .permissions
             if step.kind == .permissions {
-                Permissions.notifications { [weak self] state in
-                    guard let self, self.steps[self.index].kind == .permissions else { return }
-                    self.notificationsState = state
-                    self.updateStatus()
-                    self.setButtons(self.buttonsForStep())
-                }
+                updatePermissionRows()
+                refreshPermissions()
             }
             updateStatus()
             setButtons(buttonsForStep())
@@ -326,17 +331,6 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
                     status = ("\(distro.title) is ready.", .systemGreen)
                 }
             }
-        case .permissions:
-            func line(_ name: String, _ state: Permissions.State) -> String {
-                switch state {
-                case .allowed: return "\(name): allowed"
-                case .denied: return "\(name): not allowed (Settings > iSH+ to change)"
-                case .unknown: return "\(name): not asked yet"
-                }
-            }
-            status = ([line("Local Network", Permissions.localNetwork),
-                       line("Microphone", Permissions.microphone),
-                       line("Notifications", notificationsState)].joined(separator: "\n"), .secondaryLabel)
         case .vpn:
             if JITShortcut.enabled {
                 status = (JITShortcut.restoresVPN
@@ -366,25 +360,14 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
             return [makeButton("Get Started", prominent: true) { [weak self] in self?.advance() },
                     makeButton("Skip for Now", prominent: false) { [weak self] in self?.finish() }]
         case .permissions:
-            let refresh: () -> Void = { [weak self] in
+            // One button: Done (accent) once everything is allowed, else Skip
+            let all = Permissions.localNetwork == .allowed && Permissions.microphone == .allowed
+                && notificationsState == .allowed
+            let go: () -> Void = { [weak self] in
                 guard let self else { return }
-                Permissions.notifications { state in
-                    self.notificationsState = state
-                    self.updateStatus()
-                    self.setButtons(self.buttonsForStep())
-                }
+                self.onlyPermissions ? self.finish() : self.advance()
             }
-            var list = [onlyPermissions ? makeButton("Done", prominent: true) { [weak self] in self?.finish() } : next]
-            if Permissions.localNetwork != .allowed {
-                list.append(makeButton("Allow Local Network", prominent: false) { Permissions.requestLocalNetwork(refresh) })
-            }
-            if Permissions.microphone == .unknown {
-                list.append(makeButton("Allow Microphone", prominent: false) { Permissions.requestMicrophone(refresh) })
-            }
-            if notificationsState == .unknown {
-                list.append(makeButton("Allow Notifications", prominent: false) { Permissions.requestNotifications(refresh) })
-            }
-            return list
+            return [makeButton(all ? "Done" : "Skip", prominent: all, action: go)]
         case .vpn:
             var list = [next,
                         makeButton("Get LocalDevVPN", prominent: false) {
@@ -416,6 +399,95 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
         case .done:
             return [makeButton(fromSettings ? "Done" : "Start iSH+", prominent: true) { [weak self] in self?.finish() }]
         }
+    }
+
+    // MARK: Permissions step
+
+    /// Notifications' state is asked asynchronously: then rows and button again.
+    @objc private func becameActive() {
+        if steps[index].kind == .permissions { refreshPermissions() }
+    }
+
+    private func refreshPermissions() {
+        Permissions.notifications { [weak self] state in
+            guard let self, self.steps[self.index].kind == .permissions else { return }
+            self.notificationsState = state
+            self.updatePermissionRows()
+            self.setButtons(self.buttonsForStep())
+        }
+    }
+
+    private func updatePermissionRows() {
+        permissionsList.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        let refresh: () -> Void = { [weak self] in self?.refreshPermissions() }
+        let rows: [(String, String, String, Permissions.State, () -> Void)] = [
+            ("network", "Local Network", "To pair with this device and enable JIT by itself.",
+             Permissions.localNetwork, { Permissions.requestLocalNetwork(refresh) }),
+            ("mic", "Microphone", "Shared with Linux, so programs there can record.",
+             Permissions.microphone, { Permissions.requestMicrophone(refresh) }),
+            ("bell.badge", "Notifications", "To show the pairing code while you pair in Settings.",
+             notificationsState, { Permissions.requestNotifications(refresh) }),
+        ]
+        for (symbol, name, detail, state, request) in rows {
+            permissionsList.addArrangedSubview(permissionRow(symbol: symbol, name: name, detail: detail,
+                                                             state: state, request: request))
+        }
+    }
+
+    private func permissionRow(symbol: String, name: String, detail: String,
+                               state: Permissions.State, request: @escaping () -> Void) -> UIView {
+        let icon = UIImageView(image: UIImage(systemName: symbol))
+        icon.tintColor = .tintColor
+        icon.contentMode = .scaleAspectFit
+        icon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        icon.widthAnchor.constraint(equalToConstant: 32).isActive = true
+
+        let title = UILabel()
+        title.text = name
+        title.font = .preferredFont(forTextStyle: .headline)
+        title.adjustsFontForContentSizeCategory = true
+        let subtitle = UILabel()
+        subtitle.text = detail
+        subtitle.font = .preferredFont(forTextStyle: .footnote)
+        subtitle.textColor = .secondaryLabel
+        subtitle.numberOfLines = 0
+        subtitle.adjustsFontForContentSizeCategory = true
+        let labels = UIStackView(arrangedSubviews: [title, subtitle])
+        labels.axis = .vertical
+        labels.spacing = 2
+
+        // Allow; a checkmark once allowed; Settings once declined (iOS asks once)
+        let trailing: UIView
+        switch state {
+        case .allowed:
+            let check = UIImageView(image: UIImage(systemName: "checkmark.circle.fill"))
+            check.tintColor = .systemGreen
+            check.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 24, weight: .regular)
+            check.accessibilityLabel = "Allowed"
+            trailing = check
+        case .unknown, .denied:
+            var config: UIButton.Configuration
+            if #available(iOS 26.0, *) { config = .glass() } else { config = .tinted() }
+            config.title = state == .denied ? "Settings" : "Allow"
+            config.cornerStyle = .capsule
+            config.buttonSize = .medium
+            trailing = UIButton(configuration: config, primaryAction: UIAction { _ in
+                if state == .denied {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                } else {
+                    request()
+                }
+            })
+        }
+        trailing.setContentHuggingPriority(.required, for: .horizontal)
+        trailing.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        let row = UIStackView(arrangedSubviews: [icon, labels, trailing])
+        row.axis = .horizontal
+        row.alignment = .center
+        row.spacing = 14
+        return row
     }
 
     private func setButtons(_ list: [UIButton]) {
