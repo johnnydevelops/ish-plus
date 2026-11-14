@@ -7,6 +7,7 @@
 #import "BackgroundKeepAlive.h"
 #import "UserPreferences.h"
 #import "NSObject+SaneKVO.h"
+#import "iSHSwift.h"
 
 @interface BackgroundKeepAlive ()
 @property (nonatomic) AVAudioPlayer *player;
@@ -107,6 +108,9 @@
 - (void)stopPlaying {
     [self.player stop];
     self.player = nil;
+    // Linux's sound card plays through the same audio session
+    if (ISHVirtualMachine.shared.isRunning)
+        return;
     [AVAudioSession.sharedInstance setActive:NO
                                  withOptions:AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation
                                        error:nil];

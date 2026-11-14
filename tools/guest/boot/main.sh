@@ -59,6 +59,12 @@ $B mount -t 9p -o trans=virtio,version=9p2000.L,msize=1048576,cache=mmap ishplus
 user=$($B cat /etc/ishplus/user 2>/dev/null)
 home=/root
 [ -n "$user" ] && home=$($B awk -F: -v u="$user" '$1 == u { print $6 }' /etc/passwd)
+# Sound: the user may use the sound card (the audio group), from any
+# session, not only the desktop's (whose seat grants it with systemd)
+if [ -n "$user" ] && $B grep -q '^audio:' /etc/group && \
+   ! $B grep -qE "^audio:[^:]*:[^:]*:(.*,)?$user(,|\$)" /etc/group; then
+    $B addgroup "$user" audio 2>/dev/null
+fi
 # Files added to the share from iOS belong to the user
 . $S/boot/port.sh
 if P=$(port org.ishplus.clipboard); then

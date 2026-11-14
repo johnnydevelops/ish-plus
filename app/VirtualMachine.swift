@@ -8,6 +8,7 @@
 //  connects to.
 //
 
+import AVFoundation
 import Darwin
 import UIKit
 import Foundation
@@ -148,6 +149,20 @@ public final class VirtualMachine: NSObject {
     @objc public private(set) var vulkan = false
     typealias GPUPause = @convention(c) (Int32) -> Void
     private var gpuPause: GPUPause?
+    /// QEMU's library plays sound (Core Audio on iOS): Linux gets a sound card
+    private var soundAvailable = false
+
+    /// Playback, mixed with other apps' sound (also what keeps iSH+ running
+    /// in the background, BackgroundKeepAlive.m).
+    static func activateAudioSession() {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playback, options: [.mixWithOthers])
+            try session.setActive(true)
+        } catch {
+            vmLog("sound: could not activate the audio session: \(error.localizedDescription)")
+        }
+    }
     @objc public private(set) var hasStopped = false
     /// Linux's RAM, in MB: the setting, unless memory donors fell short
     private var memoryMB = VMSettings.memoryMB
@@ -301,6 +316,9 @@ public final class VirtualMachine: NSObject {
         if gpuAccelerated {
             observeBackgroundForGPU()
         }
+        // A sound card for Linux, if this QEMU plays sound on iOS
+        soundAvailable = dlsym(handle, "ishplus_audio_available") != nil
+        if soundAvailable { VirtualMachine.activateAudioSession() }
         if let symbol = dlsym(handle, "ishplus_9p_set_owner") {
             shareOwner = unsafeBitCast(symbol, to: ShareOwner.self)
         }
@@ -632,6 +650,13 @@ public final class VirtualMachine: NSObject {
             "-netdev", "user,id=net,ipv6=off",
             "-device", "virtio-net-pci,netdev=net,romfile=",
             "-device", "virtio-rng-pci",
+        ] + (soundAvailable ? [
+            // Sound (virtio-sound: both guest kernels have its driver),
+            // played through Core Audio; PulseAudio and PipeWire in Linux
+            // use it as an ALSA device
+            "-audiodev", "coreaudio,id=sound",
+            "-device", "virtio-sound-pci,audiodev=sound",
+        ] : []) + [
             // Linux reports the memory it frees, which QEMU gives back to
             // iOS (patched for Apple systems): iSH+'s footprint shrinks again
             // after Linux used memory, so iOS is less likely to end it

@@ -228,7 +228,7 @@ configure_qemu() { # build-dir prefix target-list extra-args...
         --target-list="$targets" "$@" \
         --enable-shared-lib --enable-ucontext --with-coroutine=libucontext \
         --enable-tcg --enable-slirp --disable-slirp-smbd \
-        --disable-hvf --disable-cocoa --disable-sdl --disable-gtk --disable-coreaudio \
+        --disable-hvf --disable-cocoa --disable-sdl --disable-gtk --enable-coreaudio \
         --disable-vmnet --disable-vnc --disable-spice --disable-curses \
         --disable-tools --disable-guest-agent --disable-docs --disable-debug-info \
         --disable-gnutls --disable-nettle --disable-gcrypt --disable-curl --disable-libssh \

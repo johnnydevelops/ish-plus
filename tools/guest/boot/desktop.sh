@@ -457,6 +457,18 @@ export DISPLAY=:0 XDG_RUNTIME_DIR=/run/user/$uid XDG_SESSION_TYPE=x11 ISHPLUS_DE
 cd
 # A background for bare window managers (desktops draw their own)
 command -v xsetroot >/dev/null 2>&1 && xsetroot -solid '#2b3a4a'
+# Sound without systemd's user services (which start it otherwise): the
+# sound server the distribution has, PipeWire or PulseAudio
+if [ ! -S "\$XDG_RUNTIME_DIR/bus" ]; then
+    if command -v pipewire >/dev/null 2>&1; then
+        pipewire >/dev/null 2>&1 &
+        sleep 1
+        command -v wireplumber >/dev/null 2>&1 && wireplumber >/dev/null 2>&1 &
+        command -v pipewire-pulse >/dev/null 2>&1 && pipewire-pulse >/dev/null 2>&1 &
+    elif command -v pulseaudio >/dev/null 2>&1; then
+        pulseaudio --start --exit-idle-time=-1 >/dev/null 2>&1
+    fi
+fi
 # With systemd's user services (logind), their D-Bus session: snap runs its
 # applications through them (systemd-run --user), and a session of its own
 # would hide them ("cannot run snap applications on this system")
@@ -512,6 +524,18 @@ export LIBSEAT_BACKEND=$([ -n "$seat" ] && echo logind || echo seatd)
 $renderer
 unset DISPLAY WAYLAND_DISPLAY
 cd
+# Sound without systemd's user services (which start it otherwise): the
+# sound server the distribution has, PipeWire or PulseAudio
+if [ ! -S "\$XDG_RUNTIME_DIR/bus" ]; then
+    if command -v pipewire >/dev/null 2>&1; then
+        pipewire >/dev/null 2>&1 &
+        sleep 1
+        command -v wireplumber >/dev/null 2>&1 && wireplumber >/dev/null 2>&1 &
+        command -v pipewire-pulse >/dev/null 2>&1 && pipewire-pulse >/dev/null 2>&1 &
+    elif command -v pulseaudio >/dev/null 2>&1; then
+        pulseaudio --start --exit-idle-time=-1 >/dev/null 2>&1
+    fi
+fi
 # With systemd's user services (logind), their D-Bus session; otherwise one
 # of its own, if there is D-Bus
 if [ -S "\$XDG_RUNTIME_DIR/bus" ] || ! command -v dbus-run-session >/dev/null 2>&1; then
