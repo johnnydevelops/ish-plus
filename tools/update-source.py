@@ -83,7 +83,7 @@ def main():
     source = {
         "name": "iSH+",
         "identifier": "com.johnnydevelops.ish.source",
-        "subtitle": "A real Linux in a terminal",
+        "subtitle": "Turn your iPhone/iPad into a real Linux PC",
         "description": description,
         "iconURL": f"{RAW}/design/app-icon.png",
         "website": f"https://github.com/{REPO}",
@@ -92,7 +92,7 @@ def main():
             "name": "iSH+",
             "bundleIdentifier": "com.johnnydevelops.ish",
             "developerName": "johnnydevelops",
-            "subtitle": "A real Linux in a terminal",
+            "subtitle": "Turn your iPhone/iPad into a real Linux PC",
             "localizedDescription": description,
             "iconURL": f"{RAW}/design/app-icon.png",
             "tintColor": "#00C040",

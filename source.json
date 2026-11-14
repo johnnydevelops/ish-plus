@@ -1,7 +1,7 @@
 {
   "name": "iSH+",
   "identifier": "com.johnnydevelops.ish.source",
-  "subtitle": "A real Linux in a terminal",
+  "subtitle": "Turn your iPhone/iPad into a real Linux PC",
   "description": "A Linux terminal that runs a real Linux kernel in a virtual machine (QEMU, with JIT), with the distribution of your choice: Alpine, Debian, Ubuntu, Arch, Fedora and more. x86_64 programs run through FEX. iSH+ enables JIT by itself through LocalDevVPN once it is paired with your device.\n\nBased on iSH. Source: https://github.com/johnnydevelops/ish-plus",
   "iconURL": "https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/design/app-icon.png",
   "website": "https://github.com/johnnydevelops/ish-plus",
@@ -11,7 +11,7 @@
       "name": "iSH+",
       "bundleIdentifier": "com.johnnydevelops.ish",
       "developerName": "johnnydevelops",
-      "subtitle": "A real Linux in a terminal",
+      "subtitle": "Turn your iPhone/iPad into a real Linux PC",
       "localizedDescription": "A Linux terminal that runs a real Linux kernel in a virtual machine (QEMU, with JIT), with the distribution of your choice: Alpine, Debian, Ubuntu, Arch, Fedora and more. x86_64 programs run through FEX. iSH+ enables JIT by itself through LocalDevVPN once it is paired with your device.\n\nBased on iSH. Source: https://github.com/johnnydevelops/ish-plus",
       "iconURL": "https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/design/app-icon.png",
       "tintColor": "#00C040",

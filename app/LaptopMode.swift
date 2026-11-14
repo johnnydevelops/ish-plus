@@ -73,14 +73,18 @@ public final class LaptopMode: NSObject {
         // Diagnostics: a file named laptop containing "fold" in the VM folder
         // acts as an iPhone Duo half folded (the fold across the middle)
         let flag = VirtualMachine.guestDirectory.appendingPathComponent("laptop")
-        if (try? String(contentsOf: flag, encoding: .utf8))?.hasPrefix("fold") == true {
+        let test = (try? String(contentsOf: flag, encoding: .utf8)) ?? ""
+        if test.hasPrefix("fold") {
             folded = true
             testFold = true
+            // "fold desktop": with the desktop above the fold
+            testDesktop = test.contains("desktop")
         }
         update()
     }
 
     private var testFold = false
+    private var testDesktop = false
 
     // MARK: External display
 
@@ -172,7 +176,7 @@ public final class LaptopMode: NSObject {
         vmLog("laptop mode: starting (\(kind == .external ? "monitor" : "folded"), presented from \(type(of: top)))")
         if kind == .external && externalScene == nil { return }
         self.kind = kind
-        content = desktopIsShowing?() == true ? .desktop : .terminal
+        content = desktopIsShowing?() == true || testDesktop ? .desktop : .terminal
         let controls = LaptopControlsViewController(mode: self)
         let screen = LaptopScreenViewController(fullResolution: kind == .external)
         self.controls = controls
