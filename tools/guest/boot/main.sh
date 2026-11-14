@@ -65,6 +65,26 @@ if [ -n "$user" ] && $B grep -q '^audio:' /etc/group && \
    ! $B grep -qE "^audio:[^:]*:[^:]*:(.*,)?$user(,|\$)" /etc/group; then
     $B addgroup "$user" audio 2>/dev/null
 fi
+# Sound servers' buffers: the emulated sound card takes its periods with
+# more jitter than a real one, and PipeWire's default 512-frame quantum
+# (10.7 ms) ran it dry about 17 times a second (gaps in the sound); 2048
+# (43 ms) had none. PulseAudio gets bigger fragments for the same. Only
+# files iSH+ wrote are rewritten: the user's own take precedence.
+sound_conf() { # file contents
+    if [ ! -e "$1" ] || $B grep -q "Written by iSH+" "$1"; then
+        $B mkdir -p "$($B dirname "$1")"
+        printf '%s\n' "$2" > "$1"
+    fi
+}
+sound_conf /etc/pipewire/pipewire.conf.d/50-ishplus.conf "# Written by iSH+ at every boot (tools/guest/boot/main.sh)
+context.properties = {
+    default.clock.quantum = 2048
+    default.clock.min-quantum = 1024
+    default.clock.max-quantum = 4096
+}"
+sound_conf /etc/pulse/daemon.conf.d/50-ishplus.conf "; Written by iSH+ at every boot (tools/guest/boot/main.sh)
+default-fragments = 4
+default-fragment-size-msec = 40"
 # Files added to the share from iOS belong to the user
 . $S/boot/port.sh
 if P=$(port org.ishplus.clipboard); then
