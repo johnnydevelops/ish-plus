@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.1.3",
+          "buildVersion": "16",
+          "date": "2026-11-14T14:29:36Z",
+          "localizedDescription": "## Snap applications from the desktop\n\n**Snap applications now run from the desktop.** Starting a snap from the desktop session failed with \"User cannot run snap applications on this system\". The X11 desktop ran in a background session with its own D-Bus, so snap couldn't reach your user's systemd, which it runs applications through. The desktop is now a regular user session on the display, the way a display manager starts one, and uses your user's D-Bus. Wayland sessions already worked this way.\n\nTo get the fix, update, then log out of the desktop and start it again.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.1.3/iSH-plus-1.1.3.ipa",
+          "size": 158520056,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "1.1.2",
           "buildVersion": "15",
           "date": "2026-11-14T14:22:22Z",
