@@ -167,4 +167,12 @@ umount /lib/modules
 mount --move /.modloop /newroot/.modloop
 mount --move /opt/ishplus /newroot/opt/ishplus
 for d in dev proc sys; do mount --move /$d /newroot/$d; done
+# The distribution's own init system (kernel argument ishplus.init=native),
+# with iSH+'s part as a service of it (boot/native.sh)
+if grep -qw "ishplus.init=native" /newroot/proc/cmdline; then
+    if INIT=$(sh /newroot/opt/ishplus/boot/native.sh /newroot); then
+        exec switch_root /newroot "$INIT"
+    fi
+    say "no init system iSH+ knows in this distribution: starting iSH+'s own"
+fi
 exec switch_root /newroot /opt/ishplus/bin/tini -s -- /opt/ishplus/bin/busybox sh /opt/ishplus/boot/main.sh

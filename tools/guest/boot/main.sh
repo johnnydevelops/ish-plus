@@ -1,7 +1,9 @@
 # iSH+'s init inside the distribution (run by tini as process 1, with the
 # support disk's static busybox, so it works on any distribution): mounts,
-# network, FEX, then a root shell on every iSH+ session's console. The
-# distribution's own init system is not started (too heavy under emulation).
+# network, FEX, then a root shell on every iSH+ session's console. By
+# default the distribution's own init system is not started (lighter under
+# emulation); with ishplus.init=native it is, and this runs as its service
+# (ISHPLUS_NATIVE=1, boot/native.sh), leaving it what an init system does.
 B=/opt/ishplus/bin/busybox
 S=/opt/ishplus
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -9,7 +11,7 @@ mnt() { $B mountpoint -q "$3" || { $B mkdir -p "$3"; $B mount -t "$1" "$2" "$3";
 mnt devpts devpts /dev/pts
 mnt tmpfs tmpfs /dev/shm
 mnt tmpfs tmpfs /run
-mnt tmpfs tmpfs /tmp
+[ -n "$ISHPLUS_NATIVE" ] || mnt tmpfs tmpfs /tmp
 $B mount -o remount,rw /
 # Kernel modules from the modules disk, whatever the distribution ships
 $B mkdir -p /lib/modules
@@ -28,7 +30,7 @@ done
 $B hostname ishplus
 # A machine ID, which systemd would make on first boot (D-Bus and desktops
 # need one; distribution images ship it empty, or "uninitialized")
-if ! $B grep -qE '^[0-9a-f]{32}$' /etc/machine-id 2>/dev/null; then
+if [ -z "$ISHPLUS_NATIVE" ] && ! $B grep -qE '^[0-9a-f]{32}$' /etc/machine-id 2>/dev/null; then
     $B tr -dc 0-9a-f < /dev/urandom | $B head -c 32 > /etc/machine-id
     echo >> /etc/machine-id
 fi
@@ -38,7 +40,13 @@ fi
 echo "0 2147483647" > /proc/sys/net/ipv4/ping_group_range
 $B ifconfig lo up
 $B ifconfig eth0 up 2>/dev/null
-$B udhcpc -b -q -n -t 5 -i eth0 -s $S/boot/udhcpc.script >/dev/null 2>&1
+# With the distribution's init, its own network setup (systemd-networkd,
+# NetworkManager...) may configure eth0: DHCP here only if it did not
+has_addr() { $B ip -4 addr show eth0 2>/dev/null | $B grep -q "inet "; }
+if [ -n "$ISHPLUS_NATIVE" ]; then
+    i=0; while ! has_addr && [ $i -lt 10 ]; do $B sleep 0.5; i=$((i + 1)); done
+fi
+has_addr || $B udhcpc -b -q -n -t 5 -i eth0 -s $S/boot/udhcpc.script >/dev/null 2>&1
 [ -x $S/init.sh ] && $S/init.sh
 # The Files app share: iSH+'s Documents/Shared folder, at /mnt/ios, and as
 # iOS in the user's home
@@ -94,7 +102,25 @@ done
 # A root shell on each iSH+ session's console, started again when it exits.
 console() {
     while [ ! -e /dev/hvc$1 ]; do $B sleep 1; done
+    # With the distribution's init, the first session's return is lost:
+    # that init opens the console (hvc0) before this, which delivers the
+    # return early, and closing it discards it. That session connects as
+    # QEMU starts, before Linux, so its shell needs no wait. The init's
+    # boot messages are on that console: the shell starts once the boot is
+    # done, on a cleared screen.
+    nowait=
+    [ -n "$ISHPLUS_NATIVE" ] && [ "$1" = 0 ] && nowait=1
     while :; do
+        if [ -n "$nowait" ]; then
+            nowait=
+            if [ "$($B cat /proc/1/comm)" = systemd ]; then
+                $B timeout 300 systemctl is-system-running --wait >/dev/null 2>&1
+            fi
+            printf '\033[H\033[2J' > /dev/hvc$1 2>/dev/null
+            $B setsid -c $B sh $S/boot/shell.sh < /dev/hvc$1 > /dev/hvc$1 2>&1
+            printf '\r\n[Shell exited. Press Return for a new one.]\r\n' > /dev/hvc$1 2>/dev/null
+            continue
+        fi
         # Output before iSH+ connects to the console is lost, and iSH+ sends
         # a return when a session connects: wait for it (without echoing
         # it), so each session sees the welcome and the first prompt. Fails
