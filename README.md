@@ -46,6 +46,9 @@ updates, or add `https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/
   GNOME, KDE Plasma). Touch controls like UTM's: trackpad mode (the pointer
   moves like a mouse) or touch mode (it goes where you touch), tap to click,
   two-finger tap to right-click, two-finger scroll, pinch to zoom.
+- **Sound.** Linux has a sound card, played on the iPad or iPhone with
+  other apps' sound: PipeWire and PulseAudio work as on a computer (for
+  example `apt install pipewire-audio`).
 - **Mouse capture.** On iPad, capture a mouse or trackpad (the desktop's
   mouse button): it moves Linux's pointer with no screen edges in the way, as
   on a computer and as games expect. Control-Option releases it.
