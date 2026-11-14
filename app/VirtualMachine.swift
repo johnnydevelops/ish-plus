@@ -363,6 +363,19 @@ public final class VirtualMachine: NSObject {
                     vmLog("debugger attached: \((info.kp_proc.p_flag & P_TRACED) != 0 ? "yes" : "no")")
                 }
             }
+            // Diagnostics for a guest that never starts (nothing on the
+            // serial port): what QEMU says about its CPUs
+            let serial = VirtualMachine.guestDirectory.appendingPathComponent("serial.log").path
+            DispatchQueue.global().asyncAfter(deadline: .now() + 12) {
+                let size = (try? FileManager.default.attributesOfItem(atPath: serial)[.size] as? Int) ?? 0
+                guard size == 0 else { return }
+                vmLog("no boot output after 12 s; QEMU's state:")
+                for command in ["info status", "info cpus", "info registers"] {
+                    let answer = QEMUMonitor.run(command) ?? "(no answer)"
+                    vmLog("\(command): \(answer.split(separator: "\n").prefix(3).joined(separator: " | "))")
+                }
+                VirtualMachine.logThreads()
+            }
             VirtualMachine.logMemoryFootprint()
             qemuMainLoop()
             qemuCleanup()
@@ -456,6 +469,77 @@ public final class VirtualMachine: NSObject {
         }
     }
 
+    /// Each thread's name, run state (1 running, 2 stopped, 3 waiting,
+    /// 4 uninterruptible, 5 halted), suspend count and PC, for diagnostics.
+    static func logThreads() {
+        var list: thread_act_array_t?
+        var count: mach_msg_type_number_t = 0
+        guard task_threads(mach_task_self_, &list, &count) == KERN_SUCCESS, let list else { return }
+        var lines: [String] = []
+        for i in 0..<Int(count) {
+            let thread = list[i]
+            var info = thread_basic_info()
+            var infoCount = mach_msg_type_number_t(MemoryLayout<thread_basic_info>.size / MemoryLayout<integer_t>.size)
+            _ = withUnsafeMutablePointer(to: &info) {
+                $0.withMemoryRebound(to: integer_t.self, capacity: Int(infoCount)) {
+                    thread_info(thread, thread_flavor_t(THREAD_BASIC_INFO), $0, &infoCount)
+                }
+            }
+            var state = arm_thread_state64_t()
+            var stateCount = mach_msg_type_number_t(MemoryLayout<arm_thread_state64_t>.size / MemoryLayout<natural_t>.size)
+            _ = withUnsafeMutablePointer(to: &state) {
+                $0.withMemoryRebound(to: natural_t.self, capacity: Int(stateCount)) {
+                    thread_get_state(thread, ARM_THREAD_STATE64, $0, &stateCount)
+                }
+            }
+            var name = [CChar](repeating: 0, count: 64)
+            if let pthread = pthread_from_mach_thread_np(thread) {
+                pthread_getname_np(pthread, &name, name.count)
+            }
+            var symbol = ""
+            var where_ = Dl_info()
+            if let pc = UnsafeRawPointer(bitPattern: UInt(state.__pc)), dladdr(pc, &where_) != 0, let s = where_.dli_sname {
+                symbol = " " + String(cString: s)
+            }
+            lines.append("\(String(cString: name).isEmpty ? "?" : String(cString: name)) run=\(info.run_state) suspended=\(info.suspend_count) pc=\(String(state.__pc, radix: 16))\(symbol)")
+            if String(cString: name) == "CPU 0/TCG" {
+                // Where it spends its time: PC samples, CPU time, and the
+                // instructions at the PC
+                var pcs: [String] = []
+                for _ in 0..<20 {
+                    var sample = arm_thread_state64_t()
+                    var n = mach_msg_type_number_t(MemoryLayout<arm_thread_state64_t>.size / MemoryLayout<natural_t>.size)
+                    _ = withUnsafeMutablePointer(to: &sample) {
+                        $0.withMemoryRebound(to: natural_t.self, capacity: Int(n)) {
+                            thread_get_state(thread, ARM_THREAD_STATE64, $0, &n)
+                        }
+                    }
+                    pcs.append(String(sample.__pc, radix: 16))
+                    usleep(2000)
+                }
+                var words = ""
+                if let pc = UnsafePointer<UInt32>(bitPattern: UInt(state.__pc)) {
+                    words = (0..<4).map { String(format: "%08x", pc[$0]) }.joined(separator: " ")
+                }
+                vmLog("CPU 0: user \(info.user_time.seconds).\(info.user_time.microseconds)s system \(info.system_time.seconds).\(info.system_time.microseconds)s, pcs \(Set(pcs).sorted().joined(separator: ",")), code \(words), x0=\(String(state.__x.0, radix: 16)) lr=\(String(state.__lr, radix: 16)) cpsr=\(String(state.__cpsr, radix: 16))")
+            }
+            mach_port_deallocate(mach_task_self_, thread)
+        }
+        vm_deallocate(mach_task_self_, vm_address_t(bitPattern: list), vm_size_t(Int(count) * MemoryLayout<thread_act_t>.size))
+        vmLog("threads: " + lines.joined(separator: "; "))
+        for (signal, label) in [(SIGSEGV, "SIGSEGV"), (SIGBUS, "SIGBUS"), (SIGILL, "SIGILL"), (SIGTRAP, "SIGTRAP")] {
+            var action = sigaction()
+            sigaction(signal, nil, &action)
+            let handler = unsafeBitCast(action.__sigaction_u.__sa_handler, to: UInt.self)
+            var where_ = Dl_info()
+            var symbol = ""
+            if let p = UnsafeRawPointer(bitPattern: handler), dladdr(p, &where_) != 0, let s = where_.dli_sname {
+                symbol = " " + String(cString: s)
+            }
+            vmLog("\(label) handler: \(String(handler, radix: 16))\(symbol)")
+        }
+    }
+
     // MARK: GPU in the background
 
     /// iOS refuses GPU work from apps in the background (Metal command
@@ -510,7 +594,7 @@ public final class VirtualMachine: NSObject {
             + (interpreted ? "" : ",ishjit=on")
         var args = [
             "qemu-system-aarch64",
-            "-nodefaults", "-no-user-config",
+            "-nodefaults", "-no-user-config", "-name", "ishplus,debug-threads=on",
             // ishplus-pagebits: QEMU's own pages as large as the kernel's
             // (16 KB), see VMSettings.pages4K
             "-M", VMSettings.pages4K ? "virt" : "virt,ishplus-pagebits=14",

@@ -10,6 +10,7 @@
 #import <dlfcn.h>
 #import <unistd.h>
 #import <signal.h>
+#import <mach/mach.h>
 
 @interface NSObject (ISHPrivateNSExtension)
 + (instancetype)extensionWithIdentifier:(NSString *)identifier error:(NSError **)error;
@@ -19,6 +20,42 @@
 - (void)setRequestInterruptionBlock:(void (^)(NSUUID *requestIdentifier))block;
 - (void)_kill:(int)signal;
 @end
+
+/*
+ * A low gap for QEMU's executable memory (its 256 MB code buffer), held
+ * from launch, before anything else has used the low address space. The
+ * JIT enabler allocates that memory first-fit with no address hint: with no
+ * low gap that big left (ANGLE, Metal, the memory donors and others allocate
+ * there before Linux starts), it got 0x7000000000, in the extended address
+ * range, where QEMU's generated code hangs on its first instruction and
+ * Linux never starts (about one start in five). QEMU frees the gap right
+ * before asking (tcg/region.c), so the allocation lands in it. PROT_NONE:
+ * it costs no memory.
+ */
+static vm_address_t jitPlaceholder;
+static const vm_size_t kJITPlaceholderSize = 288ul << 20;
+
+__attribute__((constructor)) static void ishplus_jit_reserve_placeholder(void) {
+    vm_address_t address = 0;
+    if (vm_allocate(mach_task_self(), &address, kJITPlaceholderSize, VM_FLAGS_ANYWHERE) != KERN_SUCCESS)
+        return;
+    if (address >= 0xfc0000000ul) { // already no low gap: no use
+        vm_deallocate(mach_task_self(), address, kJITPlaceholderSize);
+        return;
+    }
+    vm_protect(mach_task_self(), address, kJITPlaceholderSize, false, VM_PROT_NONE);
+    jitPlaceholder = address;
+}
+
+/* Called by QEMU (dlsym) right before the JIT enabler allocates. */
+__attribute__((used, visibility("default"))) void ishplus_jit_release_placeholder(void) {
+    if (jitPlaceholder == 0)
+        return;
+    vm_deallocate(mach_task_self(), jitPlaceholder, kJITPlaceholderSize);
+    fprintf(stderr, "[%s] iSH+: freed the low gap at 0x%lx for executable memory\n",
+            NSDate.date.description.UTF8String, (unsigned long)jitPlaceholder);
+    jitPlaceholder = 0;
+}
 
 static NSString *const kHelperFile = @"iSHJITHelper.appex";
 static NSString *const kRequestKey = @"ishplus-jit-request";
