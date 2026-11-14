@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.2.2",
+          "buildVersion": "20",
+          "date": "2026-11-14T20:21:01Z",
+          "localizedDescription": "## Fixes\n\n- **Files written to the iOS folder (`~/iOS`) could be damaged.** With Linux short on memory, some 16 KB blocks of a file written there could end up zeroed or holding other data. Linux now writes to the iOS folder directly instead of holding writes in its cache; reading is still cached. One trade-off: programs can no longer open files in `~/iOS` as shared writable memory maps. This is rare; SQLite in WAL mode is an example.\n- **A program killed for lack of memory restarted iSH+'s part of Linux.** Under systemd, this left duplicate copies of iSH+'s background services running. Now only the killed program ends.\n- **Sound without gaps:** PipeWire and PulseAudio use bigger buffers, so games and video no longer crackle or drop out.\n- With no distribution chosen yet, iSH+ uses the first one installed.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.2.2/iSH-plus-1.2.2.ipa",
+          "size": 158762770,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "1.2.1",
           "buildVersion": "19",
           "date": "2026-11-14T15:50:19Z",
