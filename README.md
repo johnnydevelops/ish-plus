@@ -96,8 +96,9 @@ add the **iSH+ JIT** shortcut during setup (or in Settings > JIT Setup), on
 iOS 27: when Linux starts, it switches to LocalDevVPN, and back to your VPN
 once JIT is on (like Madeira's JIT shortcut).
 
-Requires iOS 26 or later (iOS 27 to pair on the device and for laptop mode
-on a monitor; iOS 27.1 on the iPhone Duo).
+Requires iOS 26 or later (iOS 27 to pair on the device; iOS 27.1 for the
+iPhone Duo's laptop mode). Laptop mode on a monitor works on iOS 26 and
+later, over a cable or AirPlay.
 
 ### iSH+'s own init
 
@@ -192,9 +193,10 @@ to your own, open `iSH.xcodeproj` and run the iSH scheme on a device, or run
   compositor on virtio-gpu, with seat access from logind or seatd; iSH+ shows
   virtio-gpu's screen and cursor and sends input to an absolute tablet (touch
   mode) or a relative mouse (trackpad mode, a captured mouse).
-- **Laptop mode** (`app/LaptopMode.swift`): the monitor is a scene accessory
-  of the terminal's view controller (iOS 27's `registerSceneAccessory`, as
-  MeloNX does), and the iPhone Duo's fold comes from `UIHingeInteraction` and
+- **Laptop mode** (`app/LaptopMode.swift`): the monitor is an external
+  display scene (declared in `Info.plist`, which is enough on iOS 26; on iOS
+  27 also registered as a scene accessory of the terminal's view controller,
+  `registerSceneAccessory`, as MeloNX does), and the iPhone Duo's fold comes from `UIHingeInteraction` and
   the screen's division region.
 - **Talking to iOS.** virtio-serial ports carry the clipboard, Shortcuts
   commands and the open ports (`tools/guest/agent`); DNS goes through iOS's
