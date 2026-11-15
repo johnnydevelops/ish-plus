@@ -19,6 +19,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.2.3",
+          "buildVersion": "21",
+          "date": "2026-11-15T15:31:49Z",
+          "localizedDescription": "## Faster\n\n- **iSH+'s translator now runs all of Linux by itself.** Before, some code (system instructions, some SIMD loads and stores, some atomics) still went through QEMU's slower general-purpose translator, at a cost every time execution switched between the two. Now everything runs in iSH+'s own translator.\n- **Linux boots faster:** on an iPad 9th generation, systemd's boot went from 15.3 s to 13.5 s. One of QEMU's address caches never grew when two addresses competed for the same slot, and the kernel's boot hit that constantly.\n- On the same iPad: compressing (xz) 15% faster, unpacking archives 12% faster, file operations and starting programs 3–4% faster.\n\n## Fixes\n\n- **Mouse capture works on iPad.** iPadOS never received iSH+'s request to lock the pointer. As in UTM, the mouse is now captured automatically when the desktop is shown with a mouse or trackpad connected. Control-Option releases it, and a click in the desktop captures it again. iPadOS only locks the pointer when iSH+ is full screen; iSH+ now says so when it isn't.\n- **The cursor sits where the pointer is.** Cursors other than the arrow (text I-beam, resize arrows, the hand) were drawn offset.\n- **Your hostname stays.** iSH+ reset it to `ishplus` at every boot, and Ubuntu sometimes showed `LXCNAME`, a placeholder from its image. Now `/etc/hostname` decides: change it with `sudo hostnamectl set-hostname name`. If it is empty or a placeholder, iSH+ writes `ishplus` into it.\n",
+          "downloadURL": "https://github.com/johnnydevelops/ish-plus/releases/download/v1.2.3/iSH-plus-1.2.3.ipa",
+          "size": 158785690,
+          "minOSVersion": "26.0"
+        },
+        {
           "version": "1.2.2",
           "buildVersion": "20",
           "date": "2026-11-14T20:21:01Z",
