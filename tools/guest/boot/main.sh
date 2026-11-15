@@ -27,7 +27,17 @@ for alias in /sys/bus/*/devices/*/modalias; do
     case "$a" in virtio:d00000010v*|virtio:d00000012v*) continue ;; esac
     $B modprobe -q "$a" 2>/dev/null
 done
-$B hostname ishplus
+# The hostname: the distribution's (/etc/hostname, which hostnamectl
+# set-hostname changes), or ishplus when it has none. Images ship it empty or
+# with a placeholder (Ubuntu's LXC_NAME, which systemd shows as LXCNAME):
+# ishplus is written there, so systemd and this agree from the next boot on.
+name=$($B head -1 /etc/hostname 2>/dev/null | $B tr -d ' \t\r')
+case "$name" in
+    ""|LXC_NAME|LXCNAME|localhost|localhost.localdomain|"(none)")
+        name=ishplus
+        echo ishplus > /etc/hostname 2>/dev/null ;;
+esac
+$B hostname "$name"
 # A machine ID, which systemd would make on first boot (D-Bus and desktops
 # need one; distribution images ship it empty, or "uninitialized"). Other
 # init systems make none.
