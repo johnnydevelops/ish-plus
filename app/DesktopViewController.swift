@@ -262,6 +262,7 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
         started = true
         if guestSize == .zero { setStatus("Starting the desktop…", busy: true) }
         requestSize(force: true)
+        startAutoCapture()
         // Starts Xorg and the desktop, unless they are running
         DesktopSession.start { [weak self] error in
             guard let self else { return }
@@ -275,6 +276,7 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        stopAutoCapture()
         setCaptured(false)
         // Unless laptop mode's screen took the frames over meanwhile
         guard display.viewer === self else { return }
@@ -759,6 +761,14 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
     private var pointerButtons: [UITouch: DesktopDisplay.MouseButton] = [:]
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        // A click in the desktop captures the mouse again, after Control-Option
+        // released it (the click itself only captures, as in games)
+        if !captured, wantsCapture(clicked: true),
+           touches.contains(where: { $0.type == .indirectPointer }) {
+            autoCapture = true
+            setCaptured(true)
+            if captured { return }
+        }
         for touch in touches where touch.type == .indirectPointer && !captured {
             pointerMoved(to: touch.location(in: view), began: false)
             let mask = event?.buttonMask ?? .primary
@@ -807,7 +817,52 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
         lastPointerLocation = nil
     }
 
-    @objc private func toggleCapture() { setCaptured(!captured) }
+    @objc private func toggleCapture() {
+        autoCapture = !captured
+        setCaptured(!captured)
+    }
+
+    /// As in UTM: captured whenever the desktop shows and a mouse or trackpad
+    /// is connected (also one connected later, and on returning to iSH+).
+    /// Control-Option releases it until a click in the desktop (or the
+    /// capture button) captures it again.
+    private var autoCapture = true
+    private var autoCaptureObservers: [NSObjectProtocol] = []
+
+    private func wantsCapture(clicked: Bool = false) -> Bool {
+        traitCollection.userInterfaceIdiom == .pad && (autoCapture || clicked) && view.window != nil
+            && display.hasRelativeMouse && !GCMouse.mice().isEmpty
+            && UIApplication.shared.applicationState == .active
+    }
+
+    private func captureIfWanted() {
+        if !captured && wantsCapture() { setCaptured(true) }
+    }
+
+    private func startAutoCapture() {
+        stopAutoCapture()
+        let center = NotificationCenter.default
+        autoCaptureObservers = [
+            center.addObserver(forName: .GCMouseDidConnect, object: nil, queue: .main) { [weak self] _ in
+                // The new mouse is in GCMouse.mice() once this returns
+                DispatchQueue.main.async { self?.captureIfWanted() }
+            },
+            center.addObserver(forName: .GCMouseDidDisconnect, object: nil, queue: .main) { [weak self] _ in
+                DispatchQueue.main.async {
+                    if GCMouse.mice().isEmpty { self?.setCaptured(false) }
+                }
+            },
+            center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.captureIfWanted()
+            },
+        ]
+        captureIfWanted()
+    }
+
+    private func stopAutoCapture() {
+        autoCaptureObservers.forEach(NotificationCenter.default.removeObserver)
+        autoCaptureObservers = []
+    }
 
     /// Captured, iPadOS hides its pointer and keeps it in place (pointer
     /// lock), and the mouse's own movement moves Linux's pointer, without
@@ -824,7 +879,11 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
             return
         }
         captured = on
+        // iPadOS asks the window's root, which hands the question to this
+        // controller (TerminalViewController, LaptopMode); as UTM does
         setNeedsUpdateOfPrefersPointerLocked()
+        view.window?.rootViewController?.setNeedsUpdateOfPrefersPointerLocked()
+        presentingViewController?.setNeedsUpdateOfPrefersPointerLocked()
         updateRelative()
         captureButton?.configuration?.image = UIImage(systemName: on ? "computermouse.fill" : "computermouse")
         captureButton?.accessibilityValue = on ? "Captured" : nil
@@ -834,7 +893,13 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
             resignObserver = NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
                 self?.setCaptured(false)
             }
-            showHint("Mouse captured. Control-Option releases it")
+            showHint("Mouse captured. Control-Option releases it, a click captures it again")
+            // iPadOS locks the pointer only for a full-screen app
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                guard let self, self.captured, let state = self.view.window?.windowScene?.pointerLockState,
+                      !state.isLocked else { return }
+                self.showHint("iPadOS didn't lock the pointer: use iSH+ full screen, not in Split View or a Stage Manager window")
+            }
         } else {
             mouse.stop()
             if let resignObserver { NotificationCenter.default.removeObserver(resignObserver) }
@@ -901,6 +966,7 @@ final class DesktopViewController: UIViewController, UIGestureRecognizerDelegate
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         // Control-Option releases a captured mouse
         if captured, let flags = event?.modifierFlags, flags.contains(.control), flags.contains(.alternate) {
+            autoCapture = false
             setCaptured(false)
         }
         var handled = false

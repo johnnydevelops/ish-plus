@@ -72,6 +72,14 @@
 
 @implementation TerminalViewController
 
+// iPadOS asks the window's root (this) whether to lock the pointer; the
+// desktop, when shown, answers (it locks it while it has the mouse captured)
+- (UIViewController *)childViewControllerForPointerLock {
+    if (self.desktopController != nil && self.presentedViewController == self.desktopController)
+        return self.desktopController;
+    return nil;
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
 
