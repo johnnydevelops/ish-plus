@@ -236,6 +236,9 @@ final class DesktopDisplay {
         }
     }
 
+    /// The current cursor's hotspot (QEMU's display thread, like both callbacks)
+    private var cursorHotSpot = CGPoint.zero
+
     private func cursor(_ pixels: UnsafePointer<UInt32>?, width: Int, height: Int, hotX: Int, hotY: Int) {
         var image: CGImage?
         if let pixels, width > 0, height > 0 {
@@ -248,6 +251,7 @@ final class DesktopDisplay {
             }
         }
         let hotSpot = CGPoint(x: hotX, y: hotY)
+        cursorHotSpot = hotSpot
         DispatchQueue.main.async { [self] in onCursor?(image, hotSpot) }
     }
 
@@ -267,8 +271,11 @@ final class DesktopDisplay {
             let cursor: CursorCallback = { _, pixels, width, height, hotX, hotY in
                 DesktopDisplay.shared.cursor(pixels, width: Int(width), height: Int(height), hotX: Int(hotX), hotY: Int(hotY))
             }
+            // virtio-gpu reports where the cursor image's top-left corner is;
+            // the pointer is at its hotspot (QEMU defines the image first)
             let position: CursorPositionCallback = { _, x, y, visible in
-                let point = CGPoint(x: Int(x), y: Int(y))
+                let hot = DesktopDisplay.shared.cursorHotSpot
+                let point = CGPoint(x: CGFloat(x) + hot.x, y: CGFloat(y) + hot.y)
                 DispatchQueue.main.async { DesktopDisplay.shared.onCursorPosition?(point, visible != 0) }
             }
             // struct IshplusDisplayCallbacks: a context, then four functions
