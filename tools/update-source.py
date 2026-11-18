@@ -67,7 +67,7 @@ def main():
             "localizedDescription": release["body"] or "",
             "downloadURL": ipa["browser_download_url"],
             "size": ipa["size"],
-            "minOSVersion": "26.0",
+            "minOSVersion": "18.0",
         })
     versions.sort(key=lambda v: v["date"], reverse=True)
     latest = versions[0]["tag"]

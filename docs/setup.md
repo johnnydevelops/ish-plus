@@ -9,9 +9,11 @@
    the **NFC Tag Reading** capability: see below.
 2. Install and connect [LocalDevVPN](https://apps.apple.com/search?term=LocalDevVPN),
    with Developer Mode on.
-3. Open iSH+ and follow the setup: pair it with your device (Pair With This
-   Device on iOS 27, or a pairing file such as StikPair's), then choose a
-   distribution and create your account.
+3. Open iSH+ and follow the setup: pair it with your device, then choose a
+   distribution and create your account. On iOS 27, Pair With This Device does
+   it on the device. Before iOS 27, make a pairing file on a computer with
+   [iloader](https://iloader.app) (connect the device by USB, then **Manage
+   Pairing File**) or StikPair, and import it.
 
 LocalDevVPN only needs to be connected while iSH+ enables JIT, when Linux
 starts; JIT stays on without it. If you use another VPN, such as Tailscale,
@@ -19,9 +21,18 @@ add the **iSH+ JIT** shortcut during setup (or in Settings > JIT Setup), on
 iOS 27: when Linux starts, it switches to LocalDevVPN, and back to your VPN
 once JIT is on (like Madeira's JIT shortcut).
 
-Requires iOS 26 or later (iOS 27 to pair on the device; iOS 27.1 for the
-iPhone Duo's laptop mode). Laptop mode on a monitor works on iOS 26 and
-later, over a cable or AirPlay.
+Requires iOS 18 or later (iOS 27 to pair on the device; iOS 27.1 for the
+iPhone Duo's laptop mode). Laptop mode on a monitor is tested on iOS 26 and
+later, over a cable or AirPlay. Before iOS 26, iSH+ looks the same but without
+Liquid Glass.
+
+## Jailbroken devices
+
+On a jailbroken device iSH+ also gets JIT from the jailbreak, with no
+LocalDevVPN or pairing file: it starts Linux right away when the jailbreak
+lets apps run JIT code (Dopamine does), or when iSH+ is installed with the
+`dynamic-codesigning` entitlement (for example through TrollStore). After a
+reboot without the jailbreak, the normal setup above applies.
 
 ## iSH+'s own init
 

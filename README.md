@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/johnnydevelops/ish-plus/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/johnnydevelops/ish-plus?style=flat-square&color=00c800&label=release"></a>
-  <img alt="iOS 26 or later" src="https://img.shields.io/badge/iOS-26%2B-111?style=flat-square">
+  <img alt="iOS 18 or later" src="https://img.shields.io/badge/iOS-18%2B-111?style=flat-square">
   <a href="LICENSE.md"><img alt="License: GPL" src="https://img.shields.io/badge/license-GPL-111?style=flat-square"></a>
 </p>
 
@@ -47,7 +47,7 @@ iSH+ is a fork of [iSH](https://github.com/ish-app/ish). Where iSH emulates an x
 2. **Install [LocalDevVPN](https://apps.apple.com/search?term=LocalDevVPN)** and turn on Developer Mode.
 3. **Open iSH+ and follow the setup.** It pairs with your device, then you choose a distribution and create your account.
 
-Requires iOS 26 or later; pairing on the device needs iOS 27. The [setup guide](docs/setup.md) covers VPNs such as Tailscale, sideloader entitlements, and iSH+'s lighter init.
+Requires iOS 18 or later. On iOS 27, iSH+ pairs on the device; before that, make a pairing file with [iloader](https://iloader.app) on a computer. The [setup guide](docs/setup.md) covers VPNs such as Tailscale, sideloader entitlements, and iSH+'s lighter init.
 
 ## Documentation
 
