@@ -156,7 +156,7 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
              text: "iSH+ talks to this device's developer services through LocalDevVPN. Install it from the App Store and connect it. It only routes traffic to this device, and is only needed while iSH+ enables JIT. Using another VPN, like Tailscale? Add the iSH+ JIT shortcut: it switches to LocalDevVPN for JIT, then back."),
         Step(kind: .pairing, symbol: "link",
              title: "Pair iSH+",
-             text: "Pair iSH+ with this device so it can attach its debugger to itself. Import a pairing file made on a computer, or pair directly on this device."),
+             text: "Pair iSH+ with this device so it can attach its debugger to itself. Import a pairing file made on a computer with iloader, or pair directly on this device (iOS 27)."),
         Step(kind: .distro, symbol: "shippingbox",
              title: "Choose a Distribution",
              text: "Pick the Linux distribution iSH+ runs, and create your account. It downloads while you finish setting up, and installs the first time it starts. You can add more in Settings > Distributions."),
@@ -577,18 +577,23 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
         guard let url = urls.first else { return }
         do {
             let data = try Data(contentsOf: url)
-            // Two formats exist: classic lockdown pairing records (HostPrivateKey,
-            // DeviceCertificate...) and RemotePairing files (iOS 17+, e.g. from
-            // StikPair's rp_pairing_file.plist). Both are dictionaries with key
-            // material; accept either.
+            // StikJIT uses RemotePairing files (iOS 17+: public_key, private_key,
+            // identifier), as iloader, StikPair and on-device pairing make them.
+            // Classic lockdown pairing records (HostPrivateKey, DeviceCertificate)
+            // do not work with it.
             guard let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
-                  !plist.isEmpty,
-                  plist.keys.contains(where: { $0.lowercased().contains("key") || $0.lowercased().contains("certificate") }) else {
-                showAlert("Not a Pairing File", "That file does not look like a pairing file. Use a pairing file made for this device, for example rp_pairing_file.plist from StikPair.")
+                  !plist.isEmpty else {
+                showAlert("Not a Pairing File", "That file does not look like a pairing file. Use one made for this device with iloader on a computer, or StikPair.")
                 return
             }
-            let kind = plist["HostPrivateKey"] != nil ? "lockdown" : "remotepairing"
-            UserDefaults.standard.set(kind, forKey: "Pairing File Kind")
+            guard plist["public_key"] != nil, plist["private_key"] != nil else {
+                let lockdown = plist["HostPrivateKey"] != nil
+                showAlert(lockdown ? "Older Kind of Pairing File" : "Not a Pairing File",
+                          (lockdown ? "That is a lockdown pairing record, which iSH+ cannot use. " : "That file does not look like a pairing file. ")
+                          + "Make a pairing file with iloader on a computer (Manage Pairing File), or with StikPair, and import that.")
+                return
+            }
+            UserDefaults.standard.set("remotepairing", forKey: "Pairing File Kind")
             let destination = Onboarding.pairingFileURL
             try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: destination, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
@@ -603,7 +608,7 @@ public final class OnboardingViewController: UIViewController, UIDocumentPickerD
 
     private func pairOnDevice() {
         guard OnDevicePairing.isSupported else {
-            showAlert("Needs iOS 27", "Pairing on this device needs iOS 27 or later. Import a pairing file made on a computer instead.")
+            showAlert("Needs iOS 27", "Pairing on this device needs iOS 27 or later. Make a pairing file with iloader on a computer (Manage Pairing File), then import it here.")
             return
         }
         pairing = true
