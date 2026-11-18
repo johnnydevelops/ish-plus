@@ -67,7 +67,8 @@ def main():
             "localizedDescription": release["body"] or "",
             "downloadURL": ipa["browser_download_url"],
             "size": ipa["size"],
-            "minOSVersion": "18.0",
+            # iOS 18 support came with 1.3.0; earlier builds need iOS 26
+            "minOSVersion": "18.0" if tuple(int(x) for x in tag.lstrip("v").split("-")[0].split(".")) >= (1, 3, 0) else "26.0",
         })
     versions.sort(key=lambda v: v["date"], reverse=True)
     latest = versions[0]["tag"]
