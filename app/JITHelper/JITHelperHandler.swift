@@ -51,9 +51,13 @@ final class JITHelperHandler: NSObject, NSExtensionRequestHandling {
                 defer { try? manager.removeItem(at: pairingURL) }
 
                 note("Enabling JIT for pid \(pid)")
-                // Blocks until iSH+ asks the script to detach. The script is
-                // needed on iOS 26+ even without TXM: iSH+ cannot make its own
-                // pages executable, the debugger has to allocate them.
+                // iOS 26+: blocks until iSH+ asks the script to detach. The
+                // script is needed there even without TXM: iSH+ cannot make
+                // its own pages executable, the debugger has to allocate them.
+                // Earlier iOS: attach and detach, as StikDebug does; being
+                // debugged once (CS_DEBUGGED) lets iSH+ map them itself.
+                let needsScript: Bool
+                if #available(iOS 26.0, *) { needsScript = true } else { needsScript = false }
 #if targetEnvironment(simulator)
                 // (The simulator has no StikJIT, nor JIT through a debugger)
                 throw NSError(domain: "iSH+", code: 1, userInfo: [NSLocalizedDescriptionKey: "No JIT in the simulator"])
@@ -62,7 +66,7 @@ final class JITHelperHandler: NSObject, NSExtensionRequestHandling {
                                       pairingFile: pairingURL,
                                       ddiPaths: .default(in: root),
                                       script: .universal,
-                                      forceScript: true,
+                                      forceScript: needsScript,
                                       preparationProgress: { stage in note("\(stage)") },
                                       progress: { note($0) })
 #endif

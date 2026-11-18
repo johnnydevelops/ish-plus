@@ -258,9 +258,25 @@ public final class VirtualMachine: NSObject {
         let CS_OPS_STATUS: UInt32 = 0
         let CS_DEBUGGED: UInt32 = 0x10000000
         guard ish_csops(getpid(), CS_OPS_STATUS, &flags, MemoryLayout<UInt32>.size) == 0 else { return false }
-        return flags & CS_DEBUGGED != 0
+        return flags & CS_DEBUGGED != 0 || jitEntitlement
         #endif
     }
+
+    /// JIT without a debugger: iSH+ signed with dynamic-codesigning, as a
+    /// jailbreak or TrollStore can (UTM checks the same). QEMU then writes and
+    /// runs its code in one MAP_JIT mapping instead of split W^X.
+    @objc public static let jitEntitlement: Bool = {
+        #if targetEnvironment(simulator)
+        return false
+        #else
+        // csops(CS_OPS_ENTITLEMENTS_BLOB): the signature's entitlements
+        var blob = [UInt8](repeating: 0, count: 64 * 1024)
+        guard ish_csops(getpid(), 7, &blob, blob.count) == 0 else { return false }
+        let text = String(decoding: blob, as: UTF8.self)
+        guard let key = text.range(of: "<key>dynamic-codesigning</key>") else { return false }
+        return text[key.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("<true/>")
+        #endif
+    }()
 
     private var socketDirectory: URL {
         // Unix socket paths are limited to 104 bytes, so keep this short.
@@ -624,7 +640,7 @@ public final class VirtualMachine: NSObject {
             "-M", VMSettings.pages4K ? "virt" : "virt,ishplus-pagebits=14",
             "-cpu", cpu,
             // split-wx: JIT code through a second, executable mapping (iOS)
-            "-accel", interpreted ? "tcg,thread=multi,tb-size=256" : "tcg,thread=multi,tb-size=256,split-wx=on",
+            "-accel", interpreted || VirtualMachine.jitEntitlement ? "tcg,thread=multi,tb-size=256" : "tcg,thread=multi,tb-size=256,split-wx=on",
             "-smp", "\(cpus)",
             "-m", "\(memoryMB)",
             "-kernel", kernel("vmlinuz"),
