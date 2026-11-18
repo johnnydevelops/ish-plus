@@ -27,21 +27,19 @@ iSH+ is a fork of [iSH](https://github.com/ish-app/ish). Where iSH emulates an x
 
 ## Features
 
-| | |
-| --- | --- |
-| 🐧 **Any distribution** | Alpine, Debian, Ubuntu, Arch, Fedora, openSUSE, Void, Kali and more, downloaded in the app, each with your own account. |
-| ⚙️ **Its own init system** | systemd, OpenRC, runit or sysvinit boot as on a computer, so services, timers and `systemctl` work. |
-| ⚡ **Fast** | A JIT enabled on the device, and an ARM-to-ARM translator that runs most instructions as themselves. |
-| 🖥️ **Desktop, X11 or Wayland** | Install Xfce, GNOME, KDE, sway and others; every one installed appears in the sessions menu. |
-| 💻 **Laptop mode** | Connect a monitor over HDMI or AirPlay: it shows Linux at full resolution, and your device becomes the keyboard and trackpad. Half-folded, an iPhone Duo becomes a mini laptop. |
-| 🖱️ **Mouse capture** | On iPad, a mouse or trackpad is captured automatically on the desktop, as in UTM. |
-| 🔊 **Sound and microphone** | PipeWire and PulseAudio work as on a computer. |
-| 🧩 **x86_64 programs** | Run through [FEX](https://fex-emu.com): `apt-x86 install` and `x86 <command>`. |
-| 🎮 **GPU acceleration** | OpenGL through ANGLE and Metal, plus experimental Vulkan. [Details](docs/gpu.md) |
-| 📱 **iOS integration** | `~/iOS` is the Files app's iSH+ folder, plus `pbcopy`/`pbpaste`, Shortcuts, and servers opening in Safari. |
-| 🧠 **More memory** | Up to 60% of the device's RAM for Linux, plus compressed swap. |
-| 🔑 **Security keys** | `ssh` `sk-` keys over NFC (iPhone) or USB-C. |
-| ⏸️ **Instant resume** | Linux is saved in the background, so you resume where you were. |
+- **Any distribution**: Alpine, Debian, Ubuntu, Arch, Fedora, openSUSE, Void, Kali and more, downloaded in the app, each with your own account.
+- **Each distribution's own init**: systemd, OpenRC, runit or sysvinit boot as on a computer, so services, timers and `systemctl` work.
+- **Fast**: A JIT enabled on the device, and an ARM-to-ARM translator that runs most instructions as themselves.
+- **Desktop, X11 or Wayland**: Install Xfce, GNOME, KDE, sway and others; every one installed appears in the sessions menu.
+- **Laptop mode**: Connect a monitor over HDMI or AirPlay to see Linux at full resolution, and your device becomes the keyboard and trackpad. Half-folded, an iPhone Duo becomes a mini laptop.
+- **Mouse capture**: On iPad, a mouse or trackpad is captured automatically on the desktop, as in UTM.
+- **Sound and microphone**: PipeWire and PulseAudio work as on a computer.
+- **x86_64 programs**: Run through [FEX](https://fex-emu.com), with `apt-x86 install` and `x86 <command>`.
+- **GPU acceleration**: OpenGL through ANGLE and Metal, plus experimental Vulkan. [Details](docs/gpu.md)
+- **iOS integration**: `~/iOS` is the Files app's iSH+ folder, plus `pbcopy`/`pbpaste`, Shortcuts, and servers opening in Safari.
+- **More memory**: Up to 60% of the device's RAM for Linux, plus compressed swap.
+- **Security keys**: `ssh` `sk-` keys over NFC (iPhone) or USB-C.
+- **Instant resume**: Linux is saved in the background, so you resume where you were.
 
 ## Getting started
 
