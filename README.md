@@ -1,241 +1,82 @@
-# iSH+
+<p align="center">
+  <img src="design/banner.png" alt="iSH+: turn your iPhone or iPad into a real Linux PC" width="100%">
+</p>
 
-**Turn your iPhone or iPad into a real Linux PC.** iSH+ runs a **real Linux
-kernel** in a virtual machine, with the distribution of your choice, its own
-init system and services, and a desktop. Connect a monitor and your device
-becomes the keyboard and trackpad of a Linux laptop.
+<p align="center">
+  <a href="https://github.com/johnnydevelops/ish-plus/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/johnnydevelops/ish-plus?style=flat-square&color=00c800&label=release"></a>
+  <img alt="iOS 26 or later" src="https://img.shields.io/badge/iOS-26%2B-111?style=flat-square">
+  <a href="LICENSE.md"><img alt="License: GPL" src="https://img.shields.io/badge/license-GPL-111?style=flat-square"></a>
+</p>
 
-iSH+ is a fork of [iSH](https://github.com/ish-app/ish). iSH emulates an x86
-processor and translates Linux system calls itself; iSH+ instead runs Linux
-(Debian's 6.12 kernel) in [QEMU](https://www.qemu.org) (arm64, with JIT), so
-programs see a genuine Linux system. It needs JIT, so it is sideloaded rather than on the App
-Store, and iSH+ can enable JIT by itself, without a computer.
+<p align="center">
+  <b>A real Linux kernel on your iPhone or iPad</b>, with the distribution of your choice,<br>
+  its own init system and services, a desktop, and a laptop mode for external monitors.
+</p>
 
-**[Add the iSH+ source to SideStore](https://intradeus.github.io/http-protocol-redirector?r=sidestore%3A%2F%2Fsource%3Furl%3Dhttps%3A%2F%2Fraw.githubusercontent.com%2Fjohnnydevelops%2Fish-plus%2Fmain%2Fsource.json)** to get new versions as
-updates, or add `https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/source.json` as a source in SideStore, AltStore or Feather.
+<p align="center">
+  <a href="https://intradeus.github.io/http-protocol-redirector?r=sidestore%3A%2F%2Fsource%3Furl%3Dhttps%3A%2F%2Fraw.githubusercontent.com%2Fjohnnydevelops%2Fish-plus%2Fmain%2Fsource.json"><b>Add to SideStore</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/johnnydevelops/ish-plus/releases/latest"><b>Download the .ipa</b></a>
+  &nbsp;·&nbsp;
+  <a href="docs/setup.md"><b>Setup guide</b></a>
+</p>
+
+---
+
+iSH+ is a fork of [iSH](https://github.com/ish-app/ish). Where iSH emulates an x86 processor and translates Linux system calls itself, iSH+ runs a genuine Linux kernel (Debian's 6.12) in [QEMU](https://www.qemu.org) with a JIT, so programs see a real Linux system. Because it needs JIT, it is sideloaded rather than on the App Store, and it can enable JIT by itself, without a computer.
 
 ## Features
 
-- **Any distribution.** Alpine, Debian, Ubuntu, Arch, Artix, Fedora,
-  openSUSE, Void, Kali, Rocky, Alma and more, downloaded in the app
-  (Settings > Distributions), each with your own user account. Switch between
-  them, grow their disks, delete them.
-- **Its own init system.** Distributions boot with theirs, as on a computer:
-  systemd (Debian, Ubuntu, Fedora, Arch, openSUSE...), OpenRC (Alpine), runit
-  (Void) or sysvinit (Devuan), so services, timers and `systemctl` work.
-  iSH+'s lighter init is still there, for the least memory: see below.
-- **Fast.** QEMU's JIT, enabled in the app: iSH+ pairs with your device (iOS
-  27, like StikPair) or uses a pairing file, and attaches a debugger to
-  itself through LocalDevVPN. Most instructions run on the CPU as themselves
-  (an ARM-to-ARM translator), with 16 KB memory pages like iOS's. StikDebug
-  works as a fallback, and Linux can also run without JIT, much more slowly.
-- **x86_64 programs** run through [FEX](https://fex-emu.com): just run them.
-  `apt-x86 install <package>` adds x86_64 Ubuntu packages and `x86 <command>`
-  runs them; glibc and musl programs both work.
-- **A native terminal** ([SwiftTerm](https://github.com/migueldeicaza/SwiftTerm))
-  with Liquid Glass, mouse input for programs that use the mouse, scrolling
-  like Termux, several sessions, themes and fonts. Linux keeps running in the
-  background.
-- **Servers open in your browser.** Start a server in Linux and it is at
-  `localhost:<port>` on the iPad (sessions menu > Open in Browser), or on your
-  network if you share it (Settings > Linux VM).
-- **A desktop, X11 or Wayland.** Install a desktop or window manager in Linux
-  (for example `apt install xorg xfce4`) and the sessions menu gets a
-  **Desktop Session**, one for each desktop installed: X11 sessions and
-  window managers, and Wayland ones (sway, labwc, Xfce on Wayland, weston,
-  GNOME, KDE Plasma). Touch controls like UTM's: trackpad mode (the pointer
-  moves like a mouse) or touch mode (it goes where you touch), tap to click,
-  two-finger tap to right-click, two-finger scroll, pinch to zoom.
-- **Sound.** Linux has a sound card, played on the iPad or iPhone with
-  other apps' sound: PipeWire and PulseAudio work as on a computer (for
-  example `apt install pipewire-audio`).
-- **Mouse capture.** On iPad, capture a mouse or trackpad (the desktop's
-  mouse button): it moves Linux's pointer with no screen edges in the way, as
-  on a computer and as games expect. Control-Option releases it.
-- **Laptop mode.** Connect a monitor (HDMI or AirPlay) and iSH+ shows the
-  terminal session or the desktop on it, at its full resolution, while your
-  iPad or iPhone becomes a laptop's lower half: a full keyboard (Esc, F1-F12,
-  Control, Alt, Super; keys combine as on a real keyboard) and a trackpad,
-  with the sessions menu to choose what the monitor shows. An **iPhone Duo**
-  half folded is a mini laptop: the screen above the fold, the keyboard and
-  trackpad below.
-- **GPU acceleration** (Settings > Linux VM > Graphics, off by default) for
-  the desktop and for OpenGL and Vulkan programs: see below.
-- **Instant resume.** Without "Keep Running in Background", Linux is saved
-  when iSH+ goes to the background; if iOS closes iSH+, you can resume where
-  you were.
-- **iOS integration.** Files > iSH+ > Shared is `~/iOS` in Linux; `pbcopy`
-  and `pbpaste` use the iOS clipboard; the Run Command action runs commands
-  from Shortcuts. Tailscale and other VPNs work, names included.
-- **More memory for Linux.** Linux's RAM is held by a helper process, so it
-  does not count toward the memory iOS lets iSH+ use (MeloNX's RAM donor
-  technique): Linux can have up to 60% of the device's RAM. On top of it,
-  compressed swap in RAM (zram) keeps programs running under memory pressure.
-- **Security keys** for `ssh` (`sk-` keys) and other FIDO programs: over NFC
-  on iPhone, or on the USB-C port (keys that offer FIDO on their smart card
-  interface, such as YubiKey 5).
-- **Settings** for memory and CPU cores (automatic for your device), open
-  ports, appearance and external keyboards.
+| | |
+| --- | --- |
+| 🐧 **Any distribution** | Alpine, Debian, Ubuntu, Arch, Fedora, openSUSE, Void, Kali and more, downloaded in the app, each with your own account. |
+| ⚙️ **Its own init system** | systemd, OpenRC, runit or sysvinit boot as on a computer, so services, timers and `systemctl` work. |
+| ⚡ **Fast** | A JIT enabled on the device, and an ARM-to-ARM translator that runs most instructions as themselves. |
+| 🖥️ **Desktop, X11 or Wayland** | Install Xfce, GNOME, KDE, sway and others; every one installed appears in the sessions menu. |
+| 💻 **Laptop mode** | Connect a monitor over HDMI or AirPlay: it shows Linux at full resolution, and your device becomes the keyboard and trackpad. Half-folded, an iPhone Duo becomes a mini laptop. |
+| 🖱️ **Mouse capture** | On iPad, a mouse or trackpad is captured automatically on the desktop, as in UTM. |
+| 🔊 **Sound and microphone** | PipeWire and PulseAudio work as on a computer. |
+| 🧩 **x86_64 programs** | Run through [FEX](https://fex-emu.com): `apt-x86 install` and `x86 <command>`. |
+| 🎮 **GPU acceleration** | OpenGL through ANGLE and Metal, plus experimental Vulkan. [Details](docs/gpu.md) |
+| 📱 **iOS integration** | `~/iOS` is the Files app's iSH+ folder, plus `pbcopy`/`pbpaste`, Shortcuts, and servers opening in Safari. |
+| 🧠 **More memory** | Up to 60% of the device's RAM for Linux, plus compressed swap. |
+| 🔑 **Security keys** | `ssh` `sk-` keys over NFC (iPhone) or USB-C. |
+| ⏸️ **Instant resume** | Linux is saved in the background, so you resume where you were. |
 
-## Installing
+## Getting started
 
-1. Download the `.ipa` from the [releases](../../releases) and sideload it
-   (AltStore, SideStore, iloader, Feather...). JIT works with any of them:
-   nothing to set up.
-   Security keys over NFC (on iPhone) also need the signing profile to have
-   the **NFC Tag Reading** capability: see below.
-2. Install and connect [LocalDevVPN](https://apps.apple.com/search?term=LocalDevVPN),
-   with Developer Mode on.
-3. Open iSH+ and follow the setup: pair it with your device (Pair With This
-   Device on iOS 27, or a pairing file such as StikPair's), then choose a
-   distribution and create your account.
+1. **Install iSH+.** [Add the source to SideStore](https://intradeus.github.io/http-protocol-redirector?r=sidestore%3A%2F%2Fsource%3Furl%3Dhttps%3A%2F%2Fraw.githubusercontent.com%2Fjohnnydevelops%2Fish-plus%2Fmain%2Fsource.json) for updates. You can also add `https://raw.githubusercontent.com/johnnydevelops/ish-plus/main/source.json` in SideStore, AltStore or Feather, or sideload the [.ipa](https://github.com/johnnydevelops/ish-plus/releases/latest).
+2. **Install [LocalDevVPN](https://apps.apple.com/search?term=LocalDevVPN)** and turn on Developer Mode.
+3. **Open iSH+ and follow the setup.** It pairs with your device, then you choose a distribution and create your account.
 
-LocalDevVPN only needs to be connected while iSH+ enables JIT, when Linux
-starts; JIT stays on without it. If you use another VPN, such as Tailscale,
-add the **iSH+ JIT** shortcut during setup (or in Settings > JIT Setup), on
-iOS 27: when Linux starts, it switches to LocalDevVPN, and back to your VPN
-once JIT is on (like Madeira's JIT shortcut).
+Requires iOS 26 or later; pairing on the device needs iOS 27. The [setup guide](docs/setup.md) covers VPNs such as Tailscale, sideloader entitlements, and iSH+'s lighter init.
 
-Requires iOS 26 or later (iOS 27 to pair on the device; iOS 27.1 for the
-iPhone Duo's laptop mode). Laptop mode on a monitor works on iOS 26 and
-later, over a cable or AirPlay.
+## Documentation
 
-### iSH+'s own init
+- [Setup guide](docs/setup.md): installing, JIT, VPNs, entitlements
+- [GPU acceleration](docs/gpu.md): OpenGL, Vulkan, limitations
+- [How it works](docs/how-it-works.md): QEMU in-process, JIT, memory donors, the guest
+- [Building](docs/building.md): building iSH+ yourself
 
-Distributions boot with their own init system. For the least memory (it
-saves about 10 MB on Alpine and 60 MB on Ubuntu), iSH+'s own init can start
-them instead, as earlier versions did, without services: put
-`ishplus.init=own` in the file **VM/append** in iSH+'s folder (Files > iSH+),
-and restart Linux.
+## Credits
 
-### Sideloaders and entitlements
+iSH+ builds on [iSH](https://github.com/ish-app/ish) by Theodore Dubois and contributors, [QEMU](https://www.qemu.org) and [UTM](https://github.com/utmapp/UTM)'s iOS work on it, and [libslirp](https://gitlab.freedesktop.org/slirp/libslirp).
 
-JIT needs nothing special: sideloaders sign with development certificates,
-which always allow debugging (`get-task-allow`), and that is all it needs.
-Two other features need entitlements, which your sideloader has to apply when
-it signs iSH+:
+<details>
+<summary>All credits</summary>
 
-| Feature | Entitlement | Without it |
-| --- | --- | --- |
-| More memory for Linux | `com.apple.developer.kernel.increased-memory-limit`, `extended-virtual-addressing` | iSH+ measures the limit iOS gives it and picks a smaller VM |
-| Security keys over NFC (iPhone) | `com.apple.developer.nfc.readersession.formats` | `ssh` with `sk-` keys fails |
-
-These typically need a paid Apple Developer account. Sideloaders also differ in which entitlements
-they apply. iloader, for example, applies the increased memory limit but not
-NFC, even with a paid account, so iSH+ installed with it cannot use security
-keys. For security keys, sign with a paid account using a sideloader that
-keeps the app's entitlements (for example Sideloadly, or Feather with your own
-certificate and a provisioning profile that includes NFC Tag Reading).
-
-## GPU acceleration
-
-With **GPU Acceleration** on (Settings > Linux VM > Graphics), Linux gets a
-virtual GPU (virtio-gpu with [VirGL](https://docs.mesa3d.org/drivers/virgl/)):
-its OpenGL runs on the iPad's GPU through ANGLE and Metal, the desktop's X
-server draws with it (glamor), and the screen goes to iSH+ as GPU surfaces,
-with no copies. OpenGL programs (`glxgears`, `glxinfo -B` from `mesa-utils`)
-use it as they are.
-
-**Vulkan** (experimental, a second switch) adds Venus: Linux's Vulkan runs on
-the GPU through [MoltenVK](https://github.com/KhronosGroup/MoltenVK), and
-OpenGL 3.1 is also available through it with zink
-(`MESA_LOADER_DRIVER_OVERRIDE=zink`). Install `mesa-vulkan-drivers` and
-`vulkan-tools` (`vulkaninfo`, `vkcube`) in Linux. On A13 and older chips,
-which have no Metal mesh shaders, Vulkan has no geometry shaders, so zink
-draws flat-shaded faces with the first vertex's colour rather than the last
-one's.
-
-Instant resume is not available with GPU acceleration, and iSH+ pauses the
-GPU while it is in the background. Both switches take effect when Linux
-restarts.
-
-## Building
-
-You need a Mac with Xcode 27 and [Homebrew](https://brew.sh):
-
-```sh
-brew install meson ninja pkg-config glib squashfs patchelf llvm
-rustup target add aarch64-apple-ios
-git clone --recurse-submodules https://github.com/johnnydevelops/ish-plus.git
-cd ish-plus
-tools/build-qemu-ios.sh      # QEMU and its libraries for iOS (deps/qemu),
-                             # with GPU acceleration (ANGLE, virglrenderer,
-                             # MoltenVK); without it: ... fetch deps qemu qemu-tci
-tools/fetch-stikjit.sh       # StikJIT, for the JIT helper
-tools/make-guest-kernel.sh   # the 4 KB-page kernel (Alpine's), initramfs and modules
-tools/make-guest-kernel-16k.sh  # the default kernel, Debian's with 16 KB pages
-tools/make-guest-support.sh  # the guest support disk (FEX, iSH+'s init and tools)
-```
-
-Then set `ROOT_BUNDLE_IDENTIFIER` and `DEVELOPMENT_TEAM` in `app/iSH.xcconfig`
-to your own, open `iSH.xcodeproj` and run the iSH scheme on a device, or run
-`tools/package-ipa.sh` for a `.ipa` that sideloaders sign.
-
-## How it works
-
-- **The app** (`app/`) runs QEMU (`deps/qemu`, a fork of UTM's QEMU) inside
-  its own process: `VirtualMachine.swift`. Each terminal session is a virtio
-  console of the VM.
-- **JIT.** iOS only lets a process run code it generates if a debugger
-  attached to it allocates that memory. The JIT helper extension
-  (`app/JITHelper`) uses [StikJIT](https://github.com/StikDebug/StikJIT) to
-  attach to iSH+ through LocalDevVPN and serve QEMU's requests for executable
-  memory (`brk #0xf00d`, as in Madeira and StikDebug). Pairing on the device
-  is `ffi/rppairing`, around [idevice](https://github.com/jkcoxson/idevice).
-- **The guest.** Every distribution boots Debian's 16 KB-page kernel (or,
-  with 4K Pages in Settings, Alpine's `linux-virt`) with iSH+'s initramfs
-  (`tools/guest/boot/init`), which installs distributions on first boot and
-  then starts the distribution's own init system, with iSH+'s part as one of
-  its services (`tools/guest/boot/native.sh`): network, FEX, the shared
-  folder, swap, and a shell on each console (`tools/guest/boot/main.sh`).
-  With `ishplus.init=own`, `main.sh` is process 1 itself.
-- **The desktop.** `tools/guest/boot/desktop.sh` starts Xorg or a Wayland
-  compositor on virtio-gpu, with seat access from logind or seatd; iSH+ shows
-  virtio-gpu's screen and cursor and sends input to an absolute tablet (touch
-  mode) or a relative mouse (trackpad mode, a captured mouse).
-- **Laptop mode** (`app/LaptopMode.swift`): the monitor is an external
-  display scene (declared in `Info.plist`, which is enough on iOS 26; on iOS
-  27 also registered as a scene accessory of the terminal's view controller,
-  `registerSceneAccessory`, as MeloNX does), and the iPhone Duo's fold comes from `UIHingeInteraction` and
-  the screen's division region.
-- **Talking to iOS.** virtio-serial ports carry the clipboard, Shortcuts
-  commands and the open ports (`tools/guest/agent`); DNS goes through iOS's
-  resolver (`DNSProxy.swift`, with a small libslirp patch); the shared folder
-  is virtio-9p.
-- **Memory donors.** iOS ends a process whose memory passes its limit. Before
-  QEMU starts, iSH+ starts its helper extension as a separate process, which
-  allocates Linux's RAM and shares it over XPC; iSH+ maps it and ends the
-  helper, after which the memory counts toward neither (`RamDonor.m`,
-  `app/JITHelper/HelperHandler.m`, and a hook in QEMU's RAM allocation).
-
-## Credits and licenses
-
-iSH+ is licensed like iSH, under the GPL version 3 (with the terms in
-`LICENSE.IOS`), and version 2 for code since iSH's relicensing, so it can be
-used with QEMU and Linux: see `LICENSE.md`. It builds on:
-
-- [iSH](https://github.com/ish-app/ish) by Theodore Dubois and contributors
-- [QEMU](https://www.qemu.org) (GPL-2.0) and [UTM](https://github.com/utmapp/UTM)'s
-  iOS work on it, [libslirp](https://gitlab.freedesktop.org/slirp/libslirp)
-- For GPU acceleration, [UTM](https://github.com/utmapp/UTM)'s forks of
-  [virglrenderer](https://gitlab.freedesktop.org/virgl/virglrenderer) (MIT),
-  [ANGLE](https://chromium.googlesource.com/angle/angle) (BSD-3-Clause, from
-  UTM's WebKit), [libepoxy](https://github.com/anholt/libepoxy) (MIT) and
-  [MoltenVK](https://github.com/KhronosGroup/MoltenVK) with
-  [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) (Apache-2.0),
-  with iSH+'s patches in `tools/qemu-ios-patches`
+- For GPU acceleration, [UTM](https://github.com/utmapp/UTM)'s forks of [virglrenderer](https://gitlab.freedesktop.org/virgl/virglrenderer) (MIT), [ANGLE](https://chromium.googlesource.com/angle/angle) (BSD-3-Clause, from UTM's WebKit), [libepoxy](https://github.com/anholt/libepoxy) (MIT) and [MoltenVK](https://github.com/KhronosGroup/MoltenVK) with [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) (Apache-2.0), with iSH+'s patches in `tools/qemu-ios-patches`
 - [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) (MIT)
-- [StikJIT](https://github.com/StikDebug/StikJIT) (MPL-2.0), downloaded at
-  build time, and [idevice](https://github.com/jkcoxson/idevice) (MIT)
+- [StikJIT](https://github.com/StikDebug/StikJIT) (MPL-2.0), downloaded at build time, and [idevice](https://github.com/jkcoxson/idevice) (MIT)
 - [FEX](https://fex-emu.com) (MIT), with Ubuntu's x86_64 base system
-- [Alpine Linux](https://alpinelinux.org)'s kernel, initramfs and tools, and
-  the distributions from [Linux Containers](https://images.linuxcontainers.org)
-  and [Armtix](https://armtix.artixlinux.org)
-- Distribution logos from [Simple Icons](https://simpleicons.org) (CC0); they
-  are trademarks of their owners
-- [MeloNX](https://starforgejo.dev/projects/MeloNX)'s RAM donor technique and
-  its way of presenting on external displays, by Stossy11 (MIT)
+- [Alpine Linux](https://alpinelinux.org)'s kernel, initramfs and tools, and the distributions from [Linux Containers](https://images.linuxcontainers.org) and [Armtix](https://armtix.artixlinux.org)
+- Distribution logos from [Simple Icons](https://simpleicons.org) (CC0); they are trademarks of their owners
+- [MeloNX](https://starforgejo.dev/projects/MeloNX)'s RAM donor technique and its way of presenting on external displays, by Stossy11 (MIT)
 - [Debian](https://www.debian.org)'s 16 KB-page arm64 kernel
-- The ideas of [Madeira](https://github.com/willfaust/Madeira),
-  [StikDebug](https://github.com/StikDebug/StikDebug) and StikPair for
-  enabling JIT on the device
+- The ideas of [Madeira](https://github.com/willfaust/Madeira), [StikDebug](https://github.com/StikDebug/StikDebug) and StikPair for enabling JIT on the device
+
+</details>
+
+## License
+
+iSH+ is licensed like iSH: under the GPL version 3 (with the terms in `LICENSE.IOS`), and version 2 for code since iSH's relicensing, so it can be used with QEMU and Linux. See [`LICENSE.md`](LICENSE.md).
