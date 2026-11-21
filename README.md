@@ -36,6 +36,7 @@ iSH+ is a fork of [iSH](https://github.com/ish-app/ish). Where iSH emulates an x
 - **Sound and microphone**: PipeWire and PulseAudio work as on a computer.
 - **x86_64 programs**: Run through [FEX](https://fex-emu.com), with `apt-x86 install` and `x86 <command>`.
 - **GPU acceleration**: OpenGL through ANGLE and Metal, plus experimental Vulkan. [Details](docs/gpu.md)
+- **Android (LineageOS 17.1)**: Run real Android 10 inside the Linux VM via Waydroid/LXC, with SurfaceFlinger routed through the same Metal GPU path. Optimized for 3–4 GB A13 devices. [Details](docs/lineageos.md)
 - **iOS integration**: `~/iOS` is the Files app's iSH+ folder, plus `pbcopy`/`pbpaste`, Shortcuts, and servers opening in Safari.
 - **More memory**: Up to 60% of the device's RAM for Linux, plus compressed swap.
 - **Security keys**: `ssh` `sk-` keys over NFC (iPhone) or USB-C.
@@ -53,6 +54,7 @@ Requires iOS 18 or later. On iOS 27, iSH+ pairs on the device; before that, make
 
 - [Setup guide](docs/setup.md): installing, JIT, VPNs, entitlements
 - [GPU acceleration](docs/gpu.md): OpenGL, Vulkan, limitations
+- [LineageOS 17.1 / Android 10](docs/lineageos.md): Waydroid/LXC in the guest, Metal GPU bridge, A13 RAM tuning
 - [How it works](docs/how-it-works.md): QEMU in-process, JIT, memory donors, the guest
 - [Building](docs/building.md): building iSH+ yourself
 

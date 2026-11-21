@@ -6,10 +6,10 @@
 	<true/>
 	<key>com.apple.developer.kernel.extended-virtual-addressing</key>
 	<true/>
-	<key>com.apple.developer.nfc.readersession.formats</key>
-	<array>
-		<string>TAG</string>
-	</array>
+	<!-- NFC Tag Reading removed: needs a paid Apple Developer account, which
+	     breaks free-account sideloads (SideStore/AltStore/Feather). The CI
+	     build omits it; sideloaders with a paid account can re-add it via
+	     ISH_INCLUDE_NFC=1 in tools/package-ipa.sh. -->
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.com.johnnydevelops.ish</string>

@@ -89,7 +89,14 @@ cp "$ROOT/tools/guest/boot/main.sh" "$ROOT/tools/guest/boot/shell.sh" "$ROOT/too
    "$ROOT/tools/guest/boot/port.sh" "$ROOT/tools/guest/boot/exec-agent.sh" \
    "$ROOT/tools/guest/boot/suspend.sh" "$ROOT/tools/guest/boot/resume.sh" \
    "$ROOT/tools/guest/boot/hangup.sh" "$ROOT/tools/guest/boot/desktop.sh" \
-   "$ROOT/tools/guest/boot/native.sh" "$ROOT/tools/guest/boot/swap.sh" "$stage/boot/"
+   "$ROOT/tools/guest/boot/native.sh" "$ROOT/tools/guest/boot/swap.sh" \
+   "$ROOT/tools/guest/boot/android.sh" "$stage/boot/"
+# Waydroid / LineageOS 17.1 installer (runs in the guest; see docs/lineageos.md).
+# Image fetcher is a host-only build step (tools/waydroid/fetch-lineagos-17.sh),
+# not shipped in the support disk — guests download images on first start.
+mkdir -p "$stage/waydroid"
+cp "$ROOT/tools/waydroid/install-waydroid.sh" "$stage/waydroid/"
+chmod 755 "$stage/boot/android.sh" "$stage/waydroid/install-waydroid.sh"
 # The iOS clipboard (like macOS's commands), through iSH+
 cat > "$stage/commands/pbcopy" <<'EOF'
 #!/bin/sh

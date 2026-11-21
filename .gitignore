@@ -25,3 +25,4 @@ e2e_out/
 /deps/StikJIT/
 /ffi/rppairing/target/
 /build-rppairing/
+core
