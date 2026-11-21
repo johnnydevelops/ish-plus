@@ -68,23 +68,50 @@ public final class VMSettings: NSObject {
         return flag?.hasPrefix("0") != true
     }
 
+    /// Whether the LineageOS 17.1 / Android 10 container is enabled in this
+    /// session (Documents/VM/android contains "1"). When on, the VM's RAM is
+    /// capped lower (1.4–1.7 GB on a 3–4 GB A13 device) so Android + lmkd +
+    /// zram coexist with iOS jetsam headroom. See docs/lineageos.md.
+    @objc public static var androidContainerEnabled: Bool {
+        let flag = try? String(contentsOf: VirtualMachine.guestDirectory.appendingPathComponent("android"), encoding: .utf8)
+        return flag?.trimmingCharacters(in: .whitespacesAndNewlines) == "1"
+    }
+
     /// The most memory the VM can have here. With memory donors, Linux's RAM
     /// is outside iSH+'s limit, so the device's RAM decides: 60% of it (about
     /// 1.7 GB on a 3 GB iPad, 7 GB on a 12 GB iPhone). Otherwise iSH+'s limit.
+    /// When the Android container is on, the cap is tightened to 1.4–1.7 GB
+    /// on 3–4 GB A13-class devices (LineageOS 17.1 + lmkd + zram + iOS
+    /// jetsam headroom all have to fit). See docs/lineageos.md.
     @objc public static var maximumMemoryMB: Int {
         guard memoryDonorsAvailable else { return processMaximumMemoryMB }
         let deviceMB = Int(ProcessInfo.processInfo.physicalMemory >> 20)
-        return max(processMaximumMemoryMB, deviceMB * 6 / 10 / 16 * 16)
+        let donorCap = max(processMaximumMemoryMB, deviceMB * 6 / 10 / 16 * 16)
+        guard androidContainerEnabled else { return donorCap }
+        // Android needs the donor RAM for itself + zram + host Linux. On a
+        // 3 GB device that is 1436 MB; on 4 GB it is 1740 MB; on ≥6 GB the
+        // cap is loose enough that the donor cap wins.
+        let androidCap: Int
+        if deviceMB <= 3072 {
+            androidCap = 1436   // 1.4 GB: ~1.6 GB left for iOS + the app
+        } else if deviceMB <= 4096 {
+            androidCap = 1740   // 1.7 GB: ~2.3 GB left for iOS + the app
+        } else {
+            androidCap = 2560   // 2.5 GB: comfortable on 6 GB+ devices
+        }
+        return min(donorCap, androidCap)
     }
 
     /// Automatic memory (the default): from the RAM, 57% less 650 MB, but at
     /// most 60% of iSH+'s memory limit, in 256 MB steps: 1 GB on a 3 GB iPad
     /// (limit ~1.85 GB), 3.5 GB on a 12 GB iPhone (limit ~6.1 GB; the VM
-    /// filling 5.5 GB there got iSH+ ended).
+    /// filling 5.5 GB there got iSH+ ended). With the Android container on,
+    /// capped to the Android-friendly maximum above.
     @objc public static var automaticMemoryMB: Int {
         let estimate = Int(Double(ProcessInfo.processInfo.physicalMemory) / 1_048_576 * 0.57) - 650
         let safe = processMemoryLimitMB * 6 / 10
-        return min(processMaximumMemoryMB, max(512, min(estimate, safe) / 256 * 256))
+        let auto = min(processMaximumMemoryMB, max(512, min(estimate, safe) / 256 * 256))
+        return min(auto, maximumMemoryMB)
     }
 
     /// The memory the user chose, or 0 for automatic.

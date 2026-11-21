@@ -42,6 +42,11 @@ static const uint64_t kChunk = 256ull << 20;
 static const uint64_t kHeadroom = 128ull << 20;
 static const int kMaxDonors = 6;
 static const NSTimeInterval kTimeout = 10;
+// When the LineageOS 17.1 / Android 10 container is on, each donor reserves
+// more for itself (192 MB instead of 128): Android's lmkd is slower to free
+// pages than iOS jetsam is to kill the app, so the headroom must absorb the
+// gap between Android noticing pressure and iOS acting. See docs/lineageos.md.
+static const uint64_t kAndroidHeadroom = 192ull << 20;
 
 static NSString *const kHelperFile = @"iSHJITHelper.appex";
 static NSString *const kDonorEndpointKey = @"ishplus-donor-endpoint";
@@ -239,8 +244,21 @@ uint64_t ISHRamDonorPrepare(uint64_t bytes) {
             break;
         count++;
         uint64_t available = [donors availableIn:donor];
-        uint64_t budget = available > kHeadroom ? available - kHeadroom : 0;
-        vmLog([NSString stringWithFormat:@"memory donor %d may allocate %llu MB", count, available >> 20]);
+        // Larger headroom when the Android container is on, so iOS jetsam
+        // has room to act before Android's lmkd frees pages. See VMSettings.
+        NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+        BOOL android = [ud boolForKey:@"VM Android"] ||
+            [[NSFileManager defaultManager] fileExistsAtPath:
+                [@"~/Documents" stringByExpandingTildeInPath].stringByAppendingPathComponent:@"VM/android"];
+        // Cheap presence check via Documents/VM/android = "1"
+        NSString *flag = [NSString stringWithContentsOfFile:
+            [@"~/Documents" stringByExpandingTildeInPath].stringByAppendingPathComponent:@"VM/android"
+            encoding:NSUTF8StringEncoding error:nil];
+        if ([flag stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]].integerValue == 1)
+            android = YES;
+        uint64_t headroom = android ? kAndroidHeadroom : kHeadroom;
+        uint64_t budget = available > headroom ? available - headroom : 0;
+        vmLog([NSString stringWithFormat:@"memory donor %d may allocate %llu MB (android=%d)", count, available >> 20, android]);
         while (offset < bytes && budget > 0) {
             uint64_t length = MIN(MIN(kChunk, bytes - offset), budget);
             length &= ~((uint64_t) vm_page_size - 1);

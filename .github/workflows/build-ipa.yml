@@ -1,0 +1,180 @@
+# Builds iSH+ with the LineageOS 17.1 / Android 10 (Waydroid/LXC) integration,
+# produces an ad-hoc signed .ipa for sideloading via SideStore / AltStore /
+# Feather, and uploads it as a GitHub Actions artifact.
+#
+# Target device: Apple A13 Bionic (iPhone 11 / iPhone SE 2 / iPad 9), 3–4 GB
+# RAM, iOS 18+, sideloaded (no paid Apple Developer account).
+#
+# The build:
+#   1. Checks out submodules (deps/qemu, deps/SwiftTerm)
+#   2. Installs macOS build dependencies (cmake, ninja, meson, pkg-config,
+#      rust/cargo, libffi, glib, pixman, squashfs, ...).
+#   3. Builds the GPU stack: ANGLE (Metal), libepoxy, virglrenderer, MoltenVK.
+#   4. Builds QEMU (deps/qemu, ishplus branch) with the iOS JIT + virgl.
+#   5. Builds the guest kernel side (Alpine netboot + Debian 16k modules,
+#      with the Android/Waydroid modules kept by tools/make-guest-kernel-16k.sh)
+#      and the support disk (Waydroid installer + android.sh).
+#   6. Fetches StikJIT (JIT enabler) and builds the iOS app (CODE_SIGNING_ALLOWED=NO).
+#   7. Packages Payload/iSH.app into iSH-Plus-LineageOS17-Android10-A13.ipa.
+#   8. Uploads the .ipa as a workflow artifact (retained 30 days).
+#
+# No code-signing identity is required: the .ipa is ad-hoc signed, and the
+# sideloader re-signs it. NFC Tag Reading is omitted (paid-account entitlement).
+name: Build iSH+ IPA (LineageOS 17.1 / Android 10 / A13)
+
+on:
+  push:
+    branches: [main, lineageos17-android10-a13]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'design/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      include_nfc:
+        description: 'Include NFC Tag Reading entitlement (needs paid account at sideload)'
+        type: boolean
+        default: false
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: build-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  XCODE_VERSION: '16.1'
+  SCHEME: iSH
+  CONFIGURATION: Release
+  IPA_NAME: iSH-Plus-LineageOS17-Android10-A13.ipa
+
+jobs:
+  build:
+    name: Build .ipa (macOS arm64)
+    runs-on: macos-15
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-path
+
+      - name: Install Homebrew build dependencies
+        # cmake, ninja, meson, pkg-config: QEMU + meson build system.
+        # libffi, glib, pixman: link-time deps for QEMU (also rebuilt from
+        #   source by tools/build-qemu-ios.sh against the iOS SDK; the
+        #   Homebrew ones are needed for the host-side meson/python tools).
+        # rust/cargo: ffi/rppairing (on-device pairing).
+        # squashfs: mksquashfs for the guest modloop + support disk.
+        # patchelf: FEX/glibc repack in the support disk.
+        # orbstack: docker for the 16k kernel module trim (case-sensitive FS).
+        run: |
+          brew update || true
+          brew install cmake ninja meson pkg-config \
+                       libffi glib pixman libslirp \
+                       rust patchelf squashfs \
+                       python@3 || true
+          brew link --overwrite python@3 || true
+          pip3 install --user meson pyyaml || true
+          # OrbStack (or Docker Desktop) for the 16k module trim step
+          brew install --cask orbstack 2>/dev/null || \
+            echo "OrbStack not available; 16k kernel build will be skipped if Docker is missing"
+          # Print versions for the log
+          cmake --version
+          ninja --version
+          meson --version
+          pkg-config --version
+          cargo --version
+
+      - name: Fetch StikJIT
+        run: ./tools/fetch-stikjit.sh
+
+      - name: Build QEMU + GPU stack (ANGLE / libepoxy / virglrenderer / MoltenVK)
+        # This is the long step (~45 min on a GHA macos-15 runner). It builds
+        # the iOS-targeted shared libraries (libqemu-*-softmmu.dylib, libEGL,
+        # libGLESv2, MoltenVK.framework) into build-qemu/sysroot-ios-arm64/.
+        run: ./tools/build-qemu-ios.sh
+
+      - name: Build guest kernel (4K, Alpine netboot + ext4 modules)
+        run: ./tools/make-guest-kernel.sh
+
+      - name: Build guest kernel (16K, Debian + Android/Waydroid modules)
+        # The 16k build needs Docker/OrbStack (case-sensitive module tree).
+        # Skipped if neither is available (CI log shows the reason).
+        run: |
+          if command -v docker >/dev/null 2>&1 || command -v orbstack >/dev/null 2>&1; then
+            ./tools/make-guest-kernel-16k.sh
+          else
+            echo "No Docker/OrbStack; skipping 16k kernel build (4k build still produced above)"
+          fi
+
+      - name: Build guest support disk (Waydroid installer + android.sh)
+        run: ./tools/make-guest-support.sh
+
+      - name: Fetch LineageOS 17.1 image-set (manifest only)
+        # We do NOT bundle the ~600 MB system.img into the .ipa: it would
+        # blow past AltStore's sideload size limit. The guest downloads the
+        # image-set on first Android start (see tools/guest/boot/android.sh).
+        # This step records the manifest + the fetch script for the guest.
+        run: ./tools/waydroid/fetch-lineagos-17.sh || \
+             echo "LineageOS image fetch skipped (network); guest will download on first start"
+
+      - name: Build the iOS app (no code signing)
+        # CODE_SIGNING_ALLOWED=NO: ad-hoc signed by package-ipa.sh.
+        # NFC entitlement omitted by default; opt-in via workflow_dispatch.
+        run: |
+          xcodebuild -project iSH.xcodeproj -scheme $SCHEME \
+            -configuration $CONFIGURATION \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            ARCHS=arm64 CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath build/DerivedData \
+            build
+
+      - name: Package the .ipa (ad-hoc signed, sideloadable)
+        env:
+          ISH_INCLUDE_NFC: ${{ github.event.inputs.include_nfc && '1' || '0' }}
+        run: |
+          mkdir -p download
+          ./tools/package-ipa.sh "download/$IPA_NAME"
+          ls -la "download/$IPA_NAME"
+
+      - name: Verify the .ipa
+        run: |
+          unzip -l "download/$IPA_NAME" | head -40
+          # Confirm the key payloads are present
+          unzip -p "download/$IPA_NAME" "Payload/iSH.app/Info.plist" | \
+            /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' /dev/stdin
+          # Confirm QEMU + GPU libs are embedded (Metal-backed GPU path)
+          unzip -l "download/$IPA_NAME" | grep -E 'libqemu-aarch64-softmmu|libEGL|libGLESv2|MoltenVK' || true
+          # Confirm the Android/Waydroid support files are in the guest
+          unzip -l "download/$IPA_NAME" | grep -E 'android.sh|install-waydroid' || true
+
+      - name: Upload .ipa artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iSH-Plus-LineageOS17-Android10-A13
+          path: download/${{ env.IPA_NAME }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0   # .ipa is already a zip
+
+      - name: Upload build logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            build-qemu/**/*.log
+            build/DerivedData/Logs/**/*.log
+            build-guest/**/*.log
+          retention-days: 7
+          if-no-files-found: ignore

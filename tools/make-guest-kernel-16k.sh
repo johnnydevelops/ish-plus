@@ -39,27 +39,67 @@ img=pkg/boot/vmlinuz-$kver
 if gzip -t "$img" 2>/dev/null; then cp "$img" /w/vmlinuz; else gzip -9c "$img" > /w/vmlinuz; fi
 m=pkg/usr/lib/modules/$kver
 # Trim: no hardware a VM never has (keeps virtio, filesystems, networking,
-# crypto, input, DRM virtio-gpu, sound, USB for passthrough-like devices)
+# crypto, input, DRM virtio-gpu, sound, USB for passthrough-like devices).
+# The Android / Waydroid / LXC subsystems (binderfs, ashmem, zram, uinput,
+# sync_file, fuse, overlayfs, veth, bridge, macvlan, dummy, tun) are kept so
+# LineageOS 17.1 boots inside an LXC container. See deps/android-waydroid.config.
 find $m/kernel/drivers -mindepth 1 -maxdepth 1 -type d \
     ! -name virtio ! -name block ! -name net ! -name char ! -name gpu \
     ! -name input ! -name hid ! -name md ! -name scsi ! -name nvme ! -name usb \
     ! -name vhost ! -name video ! -name i2c ! -name base ! -name dma-buf \
     ! -name crypto ! -name firmware ! -name rtc ! -name pci ! -name iommu \
     ! -name vdpa ! -name fuse ! -name hwmon ! -name tty ! -name virt \
+    ! -name android ! -name staging \
     -exec rm -rf {} +
 rm -rf $m/kernel/sound/soc $m/kernel/drivers/net/wireless $m/kernel/drivers/net/ethernet \
        $m/kernel/drivers/gpu/drm/{amd,radeon,nouveau,i915,xe,msm,panfrost,lima,etnaviv,rockchip,tegra,sun4i,meson,mediatek,imx,hisilicon,bridge,panel}
+# Force-keep the modules Waydroid/LineageOS needs even if they would be
+# pruned by the rules above (some live under staging/ or are .ko files
+# inside the surviving driver directories). Listed explicitly so a future
+# Debian kernel release that reorganises them still keeps them.
+keep_android_modules() {
+    for rel in \
+        kernel/drivers/android/binderfs.ko \
+        kernel/drivers/android/binder_linux.ko \
+        kernel/drivers/staging/android/ashmem.ko \
+        kernel/drivers/md/zram.ko \
+        kernel/drivers/input/misc/uinput.ko \
+        kernel/drivers/dma-buf/sync_file.ko \
+        kernel/drivers/net/macvlan.ko \
+        kernel/drivers/net/dummy.ko \
+        kernel/drivers/net/tun.ko \
+        kernel/fs/fuse/fuse.ko \
+        kernel/fs/overlayfs/overlay.ko \
+        kernel/net/bridge/bridge.ko \
+        kernel/net/bridge/br_netfilter.ko \
+        kernel/net/ipv4/netfilter/ipt_MASQUERADE.ko \
+        kernel/net/netfilter/xt_MASQUERADE.ko \
+    ; do
+        [ -e "$m/$rel" ] && echo "$m/$rel"
+    done
+}
+# Re-add any that the broad find above removed (staging/ and android/)
+mkdir -p /tmp/android-keep
+keep_android_modules | while read -r f; do
+    dest=/tmp/android-keep/${f#$m/}
+    mkdir -p "$(dirname "$dest")"; cp "$f" "$dest"
+done 2>/dev/null || true
 # Uncompressed modules: busybox modprobe in the initramfs reads plain .ko
 find $m -name "*.ko.xz" -exec xz -d {} +
 find $m -name "*.ko.zst" -exec zstd -q -d --rm {} +
+# Re-add the Android/Waydroid modules we saved (in case they were pruned)
+[ -d /tmp/android-keep ] && cp -an /tmp/android-keep/. "$m/" 2>/dev/null || true
 depmod -b pkg/usr "$kver"
 mkdir -p /tmp/sq/modules && cp -a $m /tmp/sq/modules/
 mksquashfs /tmp/sq /w/modloop -comp xz -all-root -noappend -quiet
 # The boot modules (and what they depend on) into the initramfs
 mkdir -p /tmp/extra/usr/lib/modules/$kver
-for mod in virtio_pci virtio_blk squashfs ext4; do
-    modprobe -d pkg/usr -S "$kver" --show-depends $mod | sed -n "s|^insmod ||p" | cut -d" " -f1
+for mod in virtio_pci virtio_blk squashfs ext4 \
+           binderfs binder_linux ashmem zram uinput sync_file \
+           fuse overlay bridge veth macvlan dummy tun; do
+    modprobe -d pkg/usr -S "$kver" --show-depends $mod 2>/dev/null | sed -n "s|^insmod ||p" | cut -d" " -f1
 done | sort -u | while read -r f; do
+    [ -e "$f" ] || continue
     rel=${f#*/modules/$kver/}
     mkdir -p "/tmp/extra/usr/lib/modules/$kver/$(dirname "$rel")"
     cp "$f" "/tmp/extra/usr/lib/modules/$kver/$rel"
