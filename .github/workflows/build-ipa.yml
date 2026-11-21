@@ -44,7 +44,12 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  XCODE_VERSION: '16.1'
+  # macos-15 runner image pruned the iOS 18.1 platform from Xcode 16.1's bundle
+  # (Xcode 16.1 itself is present, but `xcodebuild -destination generic/platform=iOS`
+  # then reports "iOS 18.1 is not installed"). Xcode 16.4 is the runner default
+  # and ships a fully-installed iOS 18.5 platform; pin to it. Verify before
+  # building in the "Verify iOS SDK" step below.
+  XCODE_VERSION: '16.4'
   SCHEME: iSH
   CONFIGURATION: Release
   IPA_NAME: iSH-Plus-LineageOS17-Android10-A13.ipa
@@ -68,6 +73,29 @@ jobs:
           xcodebuild -version
           xcrun --sdk iphoneos --show-sdk-path
 
+      - name: Verify iOS SDK platform is installed
+        # macos-15 has occasionally shipped an Xcode whose iOS platform was
+        # pruned to save image space — the binary is present but
+        # `xcodebuild -destination generic/platform=iOS` fails with
+        # "iOS X.Y is not installed". Fail fast here (seconds) instead of
+        # 12 minutes into the MoltenVK build.
+        run: |
+          echo "=== installed SDKs ==="
+          xcodebuild -showsdks | grep -i iphoneos || {
+            echo "ERROR: no iphoneos SDK found in $(xcodebuild -version)"
+            exit 1
+          }
+          echo "=== available destinations for generic/platform=iOS ==="
+          xcodebuild -showdestinations -scheme iSH -project iSH.xcodeproj \
+            -destination 'generic/platform=iOS' 2>&1 | head -40 || true
+          echo "=== verify the SDK directory exists (not just registered) ==="
+          SDK_PATH="$(xcrun --sdk iphoneos --show-sdk-path)"
+          if [ ! -d "$SDK_PATH/System/Library/Frameworks/UIKit.framework" ]; then
+            echo "ERROR: iOS SDK at $SDK_PATH is missing UIKit.framework — platform not actually installed"
+            exit 1
+          fi
+          echo "OK: iOS SDK at $SDK_PATH is fully installed"
+
       - name: Install Homebrew build dependencies
         # cmake, ninja, meson, pkg-config: QEMU + meson build system.
         # libffi, glib, pixman: link-time deps for QEMU (also rebuilt from
@@ -76,16 +104,21 @@ jobs:
         # rust/cargo: ffi/rppairing (on-device pairing).
         # squashfs: mksquashfs for the guest modloop + support disk.
         # patchelf: FEX/glibc repack in the support disk.
+        # llvm: tools/build-guest-agent.sh uses $(brew --prefix llvm)/bin/clang
+        #   and llvm-strip to build the iOS guest agent.
         # orbstack: docker for the 16k kernel module trim (case-sensitive FS).
         run: |
           brew update || true
           brew install cmake ninja meson pkg-config \
                        libffi glib pixman libslirp \
                        rust patchelf squashfs \
-                       python@3 || true
+                       llvm python@3 || true
           brew link --overwrite python@3 || true
           pip3 install --user meson pyyaml || true
-          # OrbStack (or Docker Desktop) for the 16k module trim step
+          # OrbStack (or Docker Desktop) for the 16k module trim step.
+          # The cask puts `orbstack` on PATH even when the VM can't start on
+          # a headless GHA runner, so we verify the daemon works below rather
+          # than relying on `command -v` in the 16k build step.
           brew install --cask orbstack 2>/dev/null || \
             echo "OrbStack not available; 16k kernel build will be skipped if Docker is missing"
           # Print versions for the log
@@ -94,6 +127,7 @@ jobs:
           meson --version
           pkg-config --version
           cargo --version
+          "$(brew --prefix llvm)/bin/clang" --version
 
       - name: Fetch StikJIT
         run: ./tools/fetch-stikjit.sh
@@ -109,12 +143,23 @@ jobs:
 
       - name: Build guest kernel (16K, Debian + Android/Waydroid modules)
         # The 16k build needs Docker/OrbStack (case-sensitive module tree).
-        # Skipped if neither is available (CI log shows the reason).
+        # Skipped if no working daemon: `command -v orbstack` is true even
+        # when the VM can't start on a headless runner, so gate on
+        # `docker info` actually succeeding.
         run: |
-          if command -v docker >/dev/null 2>&1 || command -v orbstack >/dev/null 2>&1; then
+          if docker info >/dev/null 2>&1; then
             ./tools/make-guest-kernel-16k.sh
           else
-            echo "No Docker/OrbStack; skipping 16k kernel build (4k build still produced above)"
+            echo "No working Docker daemon (orbstack binary present but VM not running);"
+            echo "skipping 16k kernel build. 4k build above is still produced."
+            # Touch placeholder files so the xcodeproj 'Bundle Linux Guest'
+            # phase's cp doesn't fail on missing kernel16k/* (it tolerates
+            # absent files; see iSH.xcodeproj project.pbxproj).
+            mkdir -p build-guest/kernel16k
+            for f in vmlinuz initramfs modloop; do
+              [ -f "build-guest/kernel16k/$f" ] || \
+                cp "build-guest/kernel/$f" "build-guest/kernel16k/$f"
+            done
           fi
 
       - name: Build guest support disk (Waydroid installer + android.sh)

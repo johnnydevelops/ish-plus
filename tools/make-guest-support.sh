@@ -29,7 +29,11 @@ FEX_DEB="pool/main/f/fex-emu-armv8.4/fex-emu-armv8.4_${FEX_VERSION}_arm64.deb"
 FEX_SHA256=37da9f385a8908e0d0f2691e718d41fe40fae8fd842d772151bc97402414b0a4
 UBUNTU=http://ports.ubuntu.com/ubuntu-ports
 UBUNTU_DEBS=(
-    "pool/main/g/glibc/libc6_2.39-0ubuntu8.9_arm64.deb"
+    # libc6_2.39-0ubuntu8.9_arm64.deb 404'd on Ubuntu ports (Ubuntu rotated
+    # past 8.9). Current as of 2026-11 is 0ubuntu8.12. If this 404s again,
+    # check http://ports.ubuntu.com/ubuntu-ports/pool/main/g/glibc/ for the
+    # current arm64 patchlevel.
+    "pool/main/g/glibc/libc6_2.39-0ubuntu8.12_arm64.deb"
     "pool/main/g/gcc-14/libstdc++6_14.2.0-4ubuntu2~24.04.1_arm64.deb"
     "pool/main/g/gcc-14/libgcc-s1_14.2.0-4ubuntu2~24.04.1_arm64.deb"
 )
