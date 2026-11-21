@@ -112,7 +112,7 @@ jobs:
           brew install cmake ninja meson pkg-config \
                        libffi glib pixman libslirp \
                        rust patchelf squashfs \
-                       llvm python@3 || true
+                       llvm lld python@3 || true
           brew link --overwrite python@3 || true
           pip3 install --user meson pyyaml || true
           # OrbStack (or Docker Desktop) for the 16k module trim step.
