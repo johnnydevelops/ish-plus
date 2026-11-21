@@ -27,18 +27,22 @@ case "$D" in
             curl -fsSL https://repo.waydro.id | sudo bash || true
             sudo apt-get update -y
             sudo apt-get install -y --no-install-recommends \
-                waydroid lxc iptables dnsmasq
+                waydroid lxc iptables dnsmasq cage weston
+        else
+            # Already installed: make sure the kiosk compositor is too, so the
+            # "Android (Waydroid)" session can launch fullscreen.
+            sudo apt-get install -y --no-install-recommends cage weston 2>/dev/null || true
         fi
         ;;
     apk)
-        sudo apk add --no-cache waydroid lxc iptables dnsmasq || {
+        sudo apk add --no-cache waydroid lxc iptables dnsmasq cage weston || {
             # Waydroid is in Alpine's community repo; on edge sometimes newer.
             sudo apk add --no-cache -X https://dl-cdn.alpinelinux.org/alpine/edge/community \
-                waydroid lxc iptables dnsmasq
+                waydroid lxc iptables dnsmasq cage weston
         }
         ;;
     dnf)
-        sudo dnf install -y waydroid lxc iptables dnsmasq
+        sudo dnf install -y waydroid lxc iptables dnsmasq cage weston
         ;;
     *)
         echo "install-waydroid: unsupported distribution (no apt/apk/dnf)" >&2
@@ -129,5 +133,90 @@ fi
 # without a network (will be brought up by android.sh).
 sudo waydroid init -f -i "$IMGDIR/system.img" -v "$IMGDIR/vendor.img" --no-network 2>&1 || true
 
-echo "Waydroid installed. Start Android with: waydroid session start & waydroid container start"
-echo "Or use: /opt/ishplus/boot/android.sh start"
+# Register an Android session entry in the Wayland sessions list, so iSH+'s
+# iOS Sessions picker (app/DesktopViewController.swift -> desktop.sh
+# sessions()) shows "Android (Waydroid)" as a top-level choice. Picking it
+# runs waydroid-kiosk.sh, which:
+#   1. /opt/ishplus/boot/android.sh start    (binderfs, bridge, props, container)
+#   2. launches cage (or weston kiosk, if cage is absent) as a fullscreen
+#      Wayland compositor whose only toplevel is Waydroid's surface.
+# SurfaceFlinger then composes straight onto the Metal-backed scanout, with
+# no other desktop chrome in the way — Android fills the iPad screen.
+sudo install -d /usr/share/wayland-sessions
+sudo tee /usr/share/wayland-sessions/waydroid-android.desktop >/dev/null <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Android (Waydroid)
+Comment=LineageOS 17.1 (Android 10) via Waydroid, fullscreen on the Metal GPU
+Exec=/opt/ishplus/boot/waydroid-kiosk.sh
+Icon=waydroid
+DesktopNames=Android
+EOF
+
+# The kiosk wrapper. desktop.sh runs this via the session Exec= line. It is
+# deliberately minimal: cage (a wlroots-based kiosk compositor ~80 KB) is the
+# first choice; weston's kiosk mode is the fallback. Either pins Waydroid's
+# surface to the full screen and routes input, then exits when Android stops.
+sudo install -d /opt/ishplus/boot
+sudo tee /opt/ishplus/boot/waydroid-kiosk.sh >/dev/null <<'EOF'
+#!/bin/sh
+# waydroid-kiosk.sh: boots Android and shows it fullscreen, no desktop chrome.
+# Invoked by desktop.sh when the user picks the "Android (Waydroid)" session.
+set -eu
+B=/opt/ishplus/bin/busybox
+
+# 1. Start the container + session (idempotent; safe if already running).
+/opt/ishplus/boot/android.sh start || {
+    echo "waydroid-kiosk: Android did not start; check /run/ishplus-android/session.log" >&2
+    exit 1
+}
+
+# 2. Wait for Waydroid's surface to exist (Waydroid writes /run/ishplus-android/ready
+#    once its hwcomposer has registered the toplevel; android.sh writes it).
+i=0
+while [ $i -lt 100 ] && [ ! -r /run/ishplus-android/ready ]; do
+    $B sleep 0.1; i=$((i + 1))
+done
+
+# 3. Pick a compositor: cage (preferred kiosk) else weston (kiosk shell).
+WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+export WAYLAND_DISPLAY XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/0}"
+export WAYDROID_DISPLAY=wayland-0
+
+# cage: a single-output, single-surface wlroots compositor. Each child added
+# with -d is shown fullscreen on its output. We hand it Waydroid.
+if command -v cage >/dev/null 2>&1; then
+    # cage's output is the host surface QEMU scans out into Metal; Android
+    # fills it because cage makes every toplevel fullscreen.
+    exec cage -d -- \
+        /bin/sh -c 'waydroid show-full-ui >/dev/null 2>&1; exec sleep infinity'
+fi
+
+# weston fallback: kiosk shell, single surface fullscreen.
+if command -v weston >/dev/null 2>&1; then
+    mkdir -p /tmp/ishplus-weston
+    cat > /tmp/ishplus-weston.ini <<'INI'
+[core]
+shell=kiosk
+[xwayland]
+[output]
+name=wayland-0
+[app-launchers]
+launcher=/usr/bin/waydroid
+INI
+    exec weston --shell=kiosk \
+        --xwayland \
+        --config=/tmp/ishplus-weston.ini \
+        --idle-time=0
+fi
+
+echo "waydroid-kiosk: neither cage nor weston is installed; install one with:" >&2
+echo "  apt-get install cage   # or: apk add cage" >&2
+exit 1
+EOF
+sudo chmod 755 /opt/ishplus/boot/waydroid-kiosk.sh
+
+echo "Waydroid installed. Start Android with one of:"
+echo "  * The iOS Sessions picker -> \"Android (Waydroid)\""
+echo "  * /opt/ishplus/boot/waydroid-kiosk.sh        (fullscreen)"
+echo "  * /opt/ishplus/boot/android.sh start        (in a window)"

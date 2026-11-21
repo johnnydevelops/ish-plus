@@ -143,10 +143,14 @@ start_session() {
     echo $! > "$R/container.pid"
 
     # Wait for the Android surface to appear (Waydroid sets a property when
-    # SurfaceFlinger is up). ~10s on A13.
+    # SurfaceFlinger is up). ~10s on A13. On success, drop the "ready" file
+    # the kiosk launcher (waydroid-kiosk.sh) waits for.
     i=0
     while [ $i -lt 50 ]; do
-        waydroid status >/dev/null 2>&1 && return 0
+        if waydroid status >/dev/null 2>&1; then
+            echo ready > "$R/ready"
+            return 0
+        fi
         sleep 0.2; i=$((i + 1))
     done
     say "Waydroid did not come up in 10 s; see $R/session.log"
@@ -159,7 +163,7 @@ stop_session() {
     waydroid session stop 2>/dev/null || true
     waydroid container stop 2>/dev/null || true
     sleep 1
-    rm -f "$R/session.pid" "$R/container.pid"
+    rm -f "$R/session.pid" "$R/container.pid" "$R/ready"
     down_network
 }
 

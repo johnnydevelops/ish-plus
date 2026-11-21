@@ -73,8 +73,26 @@ public final class VMSettings: NSObject {
     /// capped lower (1.4–1.7 GB on a 3–4 GB A13 device) so Android + lmkd +
     /// zram coexist with iOS jetsam headroom. See docs/lineageos.md.
     @objc public static var androidContainerEnabled: Bool {
-        let flag = try? String(contentsOf: VirtualMachine.guestDirectory.appendingPathComponent("android"), encoding: .utf8)
-        return flag?.trimmingCharacters(in: .whitespacesAndNewlines) == "1"
+        get {
+            let flag = try? String(contentsOf: VirtualMachine.guestDirectory.appendingPathComponent("android"), encoding: .utf8)
+            return flag?.trimmingCharacters(in: .whitespacesAndNewlines) == "1"
+        }
+        set {
+            // Write (or remove) the flag file the getter reads. The directory
+            // exists once the VM has been set up; createDirectory(withIntermediateDirectories:)
+            // is a no-op if it is already there.
+            let url = VirtualMachine.guestDirectory.appendingPathComponent("android")
+            do {
+                try FileManager.default.createDirectory(at: VirtualMachine.guestDirectory, withIntermediateDirectories: true)
+                if newValue {
+                    try "1".write(to: url, atomically: true, encoding: .utf8)
+                } else if FileManager.default.fileExists(atPath: url.path) {
+                    try FileManager.default.removeItem(at: url)
+                }
+            } catch {
+                NSLog("androidContainerEnabled: could not write flag: \(error.localizedDescription)")
+            }
+        }
     }
 
     /// The most memory the VM can have here. With memory donors, Linux's RAM
